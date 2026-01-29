@@ -1,0 +1,186 @@
+---
+# Email Setup Playbook for HeroesAndMore
+# Sets up Postfix, OpenDKIM for sending transactional emails
+# and configures email forwarding
+
+- name: Setup Email System
+  hosts: all
+  become: yes
+  vars:
+    mail_domain: mail.heroesandmore.com
+    main_domain: heroesandmore.com
+    server_ip: 174.138.33.140
+    forward_email: hello@heroesandmore.com
+    forward_to: john@nader.mx
+
+  tasks:
+    - name: Install email packages
+      apt:
+        name:
+          - postfix
+          - opendkim
+          - opendkim-tools
+          - mailutils
+        state: present
+        update_cache: yes
+
+    - name: Create OpenDKIM directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: opendkim
+        group: opendkim
+        mode: '0755'
+      loop:
+        - /etc/opendkim
+        - /etc/opendkim/keys
+        - /etc/opendkim/keys/{{ mail_domain }}
+
+    - name: Generate DKIM keys
+      command: opendkim-genkey -b 2048 -d {{ mail_domain }} -D /etc/opendkim/keys/{{ mail_domain }} -s mail -v
+      args:
+        creates: /etc/opendkim/keys/{{ mail_domain }}/mail.private
+
+    - name: Set DKIM key permissions
+      file:
+        path: /etc/opendkim/keys/{{ mail_domain }}/mail.private
+        owner: opendkim
+        group: opendkim
+        mode: '0600'
+
+    - name: Configure OpenDKIM
+      copy:
+        content: |
+          # OpenDKIM Configuration
+          Syslog                  yes
+          SyslogSuccess           yes
+          LogWhy                  yes
+
+          Canonicalization        relaxed/simple
+          Mode                    sv
+          SubDomains              no
+
+          AutoRestart             yes
+          AutoRestartRate         10/1M
+          Background              yes
+          DNSTimeout              5
+          SignatureAlgorithm      rsa-sha256
+
+          # Key and domain configuration
+          Domain                  {{ mail_domain }}
+          Selector                mail
+          KeyFile                 /etc/opendkim/keys/{{ mail_domain }}/mail.private
+
+          # Socket for Postfix
+          Socket                  inet:8891@localhost
+
+          # Internal hosts that can sign
+          InternalHosts           127.0.0.1
+        dest: /etc/opendkim.conf
+        mode: '0644'
+      notify: Restart OpenDKIM
+
+    - name: Configure Postfix main.cf
+      copy:
+        content: |
+          # Postfix configuration for HeroesAndMore
+
+          # Basic settings
+          smtpd_banner = $myhostname ESMTP
+          biff = no
+          append_dot_mydomain = no
+          readme_directory = no
+
+          # TLS parameters
+          smtpd_tls_cert_file=/etc/letsencrypt/live/{{ main_domain }}/fullchain.pem
+          smtpd_tls_key_file=/etc/letsencrypt/live/{{ main_domain }}/privkey.pem
+          smtpd_tls_security_level = may
+          smtp_tls_CApath=/etc/ssl/certs
+          smtp_tls_security_level = may
+          smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+
+          # Network settings
+          myhostname = {{ main_domain }}
+          myorigin = {{ mail_domain }}
+          mydestination = $myhostname, localhost.$mydomain, localhost, {{ main_domain }}
+          mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
+          mailbox_size_limit = 0
+          recipient_delimiter = +
+          inet_interfaces = all
+          inet_protocols = all
+
+          # DKIM milter
+          milter_protocol = 6
+          milter_default_action = accept
+          smtpd_milters = inet:localhost:8891
+          non_smtpd_milters = inet:localhost:8891
+
+          # Virtual aliases for forwarding
+          virtual_alias_maps = hash:/etc/postfix/virtual
+
+          # Relay settings
+          relayhost =
+
+          # Security
+          smtpd_recipient_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination
+        dest: /etc/postfix/main.cf
+        mode: '0644'
+      notify: Restart Postfix
+
+    - name: Configure email forwarding (virtual aliases)
+      copy:
+        content: |
+          # Email forwarding for HeroesAndMore
+          # Format: local_address  destination_address
+
+          hello@{{ main_domain }}  {{ forward_to }}
+          info@{{ main_domain }}   {{ forward_to }}
+          support@{{ main_domain }} {{ forward_to }}
+          postmaster@{{ main_domain }} {{ forward_to }}
+          postmaster@{{ mail_domain }} {{ forward_to }}
+        dest: /etc/postfix/virtual
+        mode: '0644'
+      notify: Rebuild virtual aliases
+
+    - name: Ensure services are enabled and started
+      systemd:
+        name: "{{ item }}"
+        enabled: yes
+        state: started
+      loop:
+        - postfix
+        - opendkim
+
+    - name: Get DKIM public key for DNS
+      command: cat /etc/opendkim/keys/{{ mail_domain }}/mail.txt
+      register: dkim_key
+      changed_when: false
+
+    - name: Display DKIM DNS record
+      debug:
+        msg: |
+
+          ============================================
+          ADD THIS DKIM RECORD TO YOUR DNS:
+          ============================================
+
+          Type: TXT
+          Name: mail._domainkey.{{ mail_domain }}
+          Value: {{ dkim_key.stdout | regex_replace('\n', '') | regex_replace('\t', '') | regex_replace('" "', '') }}
+
+          ============================================
+
+  handlers:
+    - name: Restart OpenDKIM
+      systemd:
+        name: opendkim
+        state: restarted
+
+    - name: Restart Postfix
+      systemd:
+        name: postfix
+        state: restarted
+
+    - name: Rebuild virtual aliases
+      command: postmap /etc/postfix/virtual
+      notify: Restart Postfix
