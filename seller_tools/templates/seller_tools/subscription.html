@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Seller Subscription | HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>
+                <i class="bi bi-award text-warning"></i>
+                Seller Subscription
+            </h1>
+            <p class="text-muted">Choose the plan that's right for your selling needs</p>
+        </div>
+    </div>
+
+    <!-- Current plan -->
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+            <strong>Your Current Plan</strong>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h3>{{ subscription.get_tier_display }}</h3>
+                    <ul class="mb-0">
+                        <li>Up to <strong>{{ subscription.max_active_listings }}</strong> active listings</li>
+                        <li><strong>{{ subscription.commission_rate }}%</strong> commission on sales</li>
+                        <li><strong>{{ subscription.featured_slots }}</strong> featured listing slots</li>
+                    </ul>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    {% if subscription.tier != 'starter' %}
+                        {% if subscription.current_period_end %}
+                            <p class="text-muted mb-2">
+                                Renews {{ subscription.current_period_end|date:"M d, Y" }}
+                            </p>
+                        {% endif %}
+                        <form method="post" action="{% url 'seller_tools:subscription_cancel' %}"
+                              onsubmit="return confirm('Are you sure you want to cancel? You will be downgraded to the Starter plan.')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                Cancel Subscription
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Available plans -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+        {% for tier_key, tier_info in tiers.items %}
+            <div class="col">
+                <div class="card h-100 {% if subscription.tier == tier_key %}border-primary{% endif %}">
+                    {% if subscription.tier == tier_key %}
+                        <div class="card-header bg-primary text-white text-center">
+                            <strong>Current Plan</strong>
+                        </div>
+                    {% endif %}
+                    <div class="card-body text-center">
+                        <h4>{{ tier_info.name }}</h4>
+                        <div class="display-5 mb-3">
+                            {% if tier_info.price == 0 %}
+                                Free
+                            {% else %}
+                                ${{ tier_info.price }}<small class="fs-6">/mo</small>
+                            {% endif %}
+                        </div>
+
+                        <ul class="list-unstyled text-start">
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                <strong>{{ tier_info.max_listings }}</strong> listings
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                <strong>{{ tier_info.commission_rate }}%</strong> commission
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-check-circle text-success"></i>
+                                <strong>{{ tier_info.featured_slots }}</strong> featured slots
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        {% if subscription.tier == tier_key %}
+                            <button class="btn btn-secondary w-100" disabled>Current Plan</button>
+                        {% elif tier_key == 'starter' %}
+                            {% if subscription.tier != 'starter' %}
+                                <form method="post" action="{% url 'seller_tools:subscription_cancel' %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-secondary w-100">
+                                        Downgrade
+                                    </button>
+                                </form>
+                            {% else %}
+                                <button class="btn btn-secondary w-100" disabled>Free Plan</button>
+                            {% endif %}
+                        {% else %}
+                            <form method="post" action="{% url 'seller_tools:subscription_upgrade' tier_key %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary w-100">
+                                    {% if tier_info.price > subscription.get_tier_info.price %}
+                                        Upgrade
+                                    {% else %}
+                                        Switch
+                                    {% endif %}
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- FAQ -->
+    <div class="card mt-5">
+        <div class="card-header">
+            <strong>Frequently Asked Questions</strong>
+        </div>
+        <div class="card-body">
+            <div class="accordion" id="faqAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#faq1">
+                            What happens if I exceed my listing limit?
+                        </button>
+                    </h2>
+                    <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            You won't be able to create new listings until some expire or you upgrade your plan.
+                            Existing listings will remain active.
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#faq2">
+                            Can I change plans at any time?
+                        </button>
+                    </h2>
+                    <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            Yes! You can upgrade instantly and the new benefits apply immediately.
+                            Downgrades take effect at the end of your current billing period.
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#faq3">
+                            How does the commission work?
+                        </button>
+                    </h2>
+                    <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            We take a percentage of each sale based on your plan. This is deducted automatically
+                            and you receive the remainder via Stripe payout.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

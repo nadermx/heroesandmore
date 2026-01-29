@@ -38,6 +38,9 @@ INSTALLED_APPS = [
     'marketplace',
     'social',
     'alerts',
+    'pricing',
+    'scanner',
+    'seller_tools',
 ]
 
 MIDDLEWARE = [

@@ -16,6 +16,9 @@ urlpatterns = [
     path('marketplace/', include('marketplace.urls')),
     path('social/', include('social.urls')),
     path('alerts/', include('alerts.urls')),
+    path('price-guide/', include('pricing.urls')),
+    path('scanner/', include('scanner.urls')),
+    path('seller/', include('seller_tools.urls')),
 
     # Static pages
     path('about/', TemplateView.as_view(template_name='pages/about.html'), name='about'),

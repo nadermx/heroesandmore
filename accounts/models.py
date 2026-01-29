@@ -6,6 +6,13 @@ from django.urls import reverse
 
 
 class Profile(models.Model):
+    SELLER_TIERS = [
+        ('starter', 'Starter'),
+        ('basic', 'Basic'),
+        ('featured', 'Featured'),
+        ('premium', 'Premium'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     bio = models.TextField(max_length=500, blank=True)
@@ -17,9 +24,20 @@ class Profile(models.Model):
     stripe_account_id = models.CharField(max_length=100, blank=True)
     stripe_account_complete = models.BooleanField(default=False)
 
+    # Seller subscription tier
+    seller_tier = models.CharField(max_length=20, choices=SELLER_TIERS, default='starter')
+    subscription_expires = models.DateTimeField(null=True, blank=True)
+
+    # Seller verification
+    id_verified = models.BooleanField(default=False)
+    address_verified = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
+
     # Stats
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=0)
     rating_count = models.PositiveIntegerField(default=0)
+    total_sales_count = models.IntegerField(default=0)
+    total_sales_value = models.DecimalField(max_digits=14, decimal_places=2, default=0)
 
     # Settings
     is_public = models.BooleanField(default=True)
@@ -53,3 +71,41 @@ def create_user_profile(sender, instance, created, **kwargs):
 def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
         instance.profile.save()
+
+
+class RecentlyViewed(models.Model):
+    """
+    Track recently viewed items with timestamp
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recently_viewed')
+    listing = models.ForeignKey('marketplace.Listing', on_delete=models.CASCADE, related_name='viewed_by')
+    viewed_at = models.DateTimeField(auto_now=True)
+    view_count = models.IntegerField(default=1)
+
+    class Meta:
+        unique_together = ['user', 'listing']
+        ordering = ['-viewed_at']
+
+    def __str__(self):
+        return f"{self.user.username} viewed {self.listing.title}"
+
+    @classmethod
+    def record_view(cls, user, listing):
+        """Record a listing view for a user"""
+        if not user.is_authenticated:
+            return None
+
+        obj, created = cls.objects.get_or_create(
+            user=user,
+            listing=listing,
+            defaults={'view_count': 1}
+        )
+        if not created:
+            obj.view_count += 1
+            obj.save(update_fields=['view_count', 'viewed_at'])
+
+        # Keep only last 50 viewed items
+        old_views = cls.objects.filter(user=user).order_by('-viewed_at')[50:]
+        cls.objects.filter(pk__in=[v.pk for v in old_views]).delete()
+
+        return obj

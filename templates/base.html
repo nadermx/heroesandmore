@@ -779,6 +779,9 @@
                         <a class="nav-link" href="{% url 'marketplace:listing_list' %}">Marketplace</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{% url 'pricing:price_guide_list' %}">Price Guide</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{% url 'social:forum_index' %}">Community</a>
                     </li>
 
@@ -802,7 +805,8 @@
                                 <li><a class="dropdown-item" href="{% url 'marketplace:my_orders' %}"><i class="bi bi-bag"></i> Orders</a></li>
                                 <li><a class="dropdown-item" href="{% url 'alerts:wishlist_list' %}"><i class="bi bi-heart"></i> Wishlists</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'accounts:seller_dashboard' %}"><i class="bi bi-shop"></i> Seller Dashboard</a></li>
+                                <li><a class="dropdown-item" href="{% url 'seller_tools:dashboard' %}"><i class="bi bi-shop"></i> Seller Dashboard</a></li>
+                                <li><a class="dropdown-item" href="{% url 'scanner:home' %}"><i class="bi bi-camera"></i> Scanner</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'accounts:settings' %}"><i class="bi bi-gear"></i> Settings</a></li>
                                 <li><a class="dropdown-item" href="{% url 'account_logout' %}"><i class="bi bi-box-arrow-right"></i> Sign Out</a></li>
@@ -877,8 +881,8 @@
                     <ul>
                         <li><a href="{% url 'marketplace:listing_list' %}">All Listings</a></li>
                         <li><a href="{% url 'marketplace:listing_list' %}?type=auction">Auctions</a></li>
-                        <li><a href="{% url 'marketplace:listing_list' %}?sort=newest">New Arrivals</a></li>
-                        <li><a href="{% url 'marketplace:listing_list' %}?sort=ending">Ending Soon</a></li>
+                        <li><a href="{% url 'pricing:price_guide_list' %}">Price Guide</a></li>
+                        <li><a href="{% url 'pricing:trending' %}">Trending</a></li>
                     </ul>
                 </div>
                 <div class="col-6 col-md-3 col-lg-2 mb-4 mb-lg-0">

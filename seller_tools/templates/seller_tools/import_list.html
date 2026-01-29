@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Imports | HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>
+                <i class="bi bi-upload text-primary"></i>
+                Bulk Imports
+            </h1>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'seller_tools:import_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> New Import
+            </a>
+        </div>
+    </div>
+
+    {% if imports %}
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>File</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                            <th>Results</th>
+                            <th>Date</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for import in imports %}
+                            <tr>
+                                <td>
+                                    <strong>{{ import.file_name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ import.file_type|upper }}</small>
+                                </td>
+                                <td>
+                                    {% if import.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif import.status == 'processing' %}
+                                        <span class="badge bg-info">Processing</span>
+                                    {% elif import.status == 'failed' %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% elif import.status == 'partial' %}
+                                        <span class="badge bg-warning">Partial</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ import.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if import.total_rows > 0 %}
+                                        <div class="progress" style="width: 100px;">
+                                            <div class="progress-bar" role="progressbar"
+                                                 style="width: {{ import.get_progress_percent }}%">
+                                                {{ import.get_progress_percent }}%
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="text-success">{{ import.success_count }}</span> /
+                                    <span class="text-danger">{{ import.error_count }}</span>
+                                </td>
+                                <td>{{ import.created|date:"M d, Y H:i" }}</td>
+                                <td>
+                                    <a href="{% url 'seller_tools:import_detail' import.pk %}" class="btn btn-sm btn-outline-primary">
+                                        View
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-inbox display-4 text-muted"></i>
+                <h4 class="mt-3">No imports yet</h4>
+                <p class="text-muted">Upload a CSV file to create multiple listings at once.</p>
+                <a href="{% url 'seller_tools:import_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg"></i> Create Import
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

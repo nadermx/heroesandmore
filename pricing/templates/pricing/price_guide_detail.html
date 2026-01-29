@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}{{ item.name }} - Price Guide | HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'pricing:price_guide_list' %}">Price Guide</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'pricing:price_guide_category' item.category.slug %}">{{ item.category.name }}</a></li>
+            <li class="breadcrumb-item active">{{ item.name|truncatechars:50 }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Item info -->
+        <div class="col-md-4">
+            <div class="card mb-3">
+                {% if item.image %}
+                    <img src="{{ item.image.url }}" class="card-img-top" alt="{{ item.name }}">
+                {% else %}
+                    <div class="card-img-top d-flex align-items-center justify-content-center bg-light"
+                         style="height: 300px;">
+                        <i class="bi bi-image text-muted" style="font-size: 4rem;"></i>
+                    </div>
+                {% endif %}
+                <div class="card-body">
+                    <h4>{{ item.name }}</h4>
+                    <table class="table table-sm">
+                        {% if item.year %}
+                            <tr><th>Year</th><td>{{ item.year }}</td></tr>
+                        {% endif %}
+                        {% if item.set_name %}
+                            <tr><th>Set</th><td>{{ item.set_name }}</td></tr>
+                        {% endif %}
+                        {% if item.card_number %}
+                            <tr><th>Number</th><td>{{ item.card_number }}</td></tr>
+                        {% endif %}
+                        {% if item.variant %}
+                            <tr><th>Variant</th><td>{{ item.variant }}</td></tr>
+                        {% endif %}
+                        {% if item.publisher %}
+                            <tr><th>Publisher</th><td>{{ item.publisher }}</td></tr>
+                        {% endif %}
+                        {% if item.issue_number %}
+                            <tr><th>Issue</th><td>#{{ item.issue_number }}</td></tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+
+            {% if user.is_authenticated %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <a href="{% url 'alerts:create_price_alert' %}?item={{ item.id }}"
+                           class="btn btn-outline-primary w-100 mb-2">
+                            <i class="bi bi-bell"></i> Set Price Alert
+                        </a>
+                        <a href="{% url 'marketplace:listing_create' %}?price_guide={{ item.id }}"
+                           class="btn btn-success w-100">
+                            <i class="bi bi-tag"></i> List This Item
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Price data -->
+        <div class="col-md-8">
+            <!-- Summary stats -->
+            <div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
+                <div class="col">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="text-success mb-0">
+                                {% if item.avg_sale_price %}
+                                    ${{ item.avg_sale_price|intcomma }}
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </h3>
+                            <small class="text-muted">Avg Price</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="mb-0">{{ item.total_sales|intcomma }}</h3>
+                            <small class="text-muted">Total Sales</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="mb-0">
+                                {% if item.price_trend == 'up' %}
+                                    <span class="text-success"><i class="bi bi-arrow-up"></i></span>
+                                {% elif item.price_trend == 'down' %}
+                                    <span class="text-danger"><i class="bi bi-arrow-down"></i></span>
+                                {% else %}
+                                    <span class="text-secondary"><i class="bi bi-dash"></i></span>
+                                {% endif %}
+                            </h3>
+                            <small class="text-muted">Trend</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="mb-0">{{ active_listings|length }}</h3>
+                            <small class="text-muted">For Sale</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Price chart placeholder -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong>Price History (Last 12 Months)</strong>
+                </div>
+                <div class="card-body">
+                    <canvas id="priceChart" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- Prices by grade -->
+            {% if grade_prices %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <strong>Prices by Grade</strong>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Grade</th>
+                                    <th class="text-end">Avg Price</th>
+                                    <th class="text-end">Low</th>
+                                    <th class="text-end">High</th>
+                                    <th class="text-end">Sales</th>
+                                    <th class="text-end">30d Change</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for gp in grade_prices %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ gp.get_grading_company_display }}</strong>
+                                            {{ gp.grade }}
+                                        </td>
+                                        <td class="text-end">
+                                            {% if gp.avg_price %}${{ gp.avg_price|intcomma }}{% else %}--{% endif %}
+                                        </td>
+                                        <td class="text-end text-muted">
+                                            {% if gp.low_price %}${{ gp.low_price|intcomma }}{% else %}--{% endif %}
+                                        </td>
+                                        <td class="text-end text-muted">
+                                            {% if gp.high_price %}${{ gp.high_price|intcomma }}{% else %}--{% endif %}
+                                        </td>
+                                        <td class="text-end">{{ gp.num_sales }}</td>
+                                        <td class="text-end">
+                                            {% if gp.price_change_30d %}
+                                                {% if gp.price_change_30d > 0 %}
+                                                    <span class="text-success">+{{ gp.price_change_30d|floatformat:1 }}%</span>
+                                                {% else %}
+                                                    <span class="text-danger">{{ gp.price_change_30d|floatformat:1 }}%</span>
+                                                {% endif %}
+                                            {% else %}
+                                                --
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Active listings -->
+            {% if active_listings %}
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <strong>Available Now</strong>
+                        <a href="{% url 'marketplace:search' %}?price_guide={{ item.id }}" class="btn btn-sm btn-outline-primary">
+                            View All
+                        </a>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        {% for listing in active_listings %}
+                            <a href="{{ listing.get_absolute_url }}" class="list-group-item list-group-item-action">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <strong>{{ listing.title|truncatechars:50 }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            {{ listing.condition }}
+                                            {% if listing.grade %} &bull; {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %}
+                                        </small>
+                                    </div>
+                                    <div class="text-end">
+                                        <strong class="text-success">${{ listing.price|intcomma }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ listing.seller.username }}</small>
+                                    </div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Recent sales -->
+            {% if recent_sales %}
+                <div class="card">
+                    <div class="card-header">
+                        <strong>Recent Sales</strong>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Grade</th>
+                                    <th class="text-end">Price</th>
+                                    <th>Source</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sale in recent_sales %}
+                                    <tr>
+                                        <td>{{ sale.sale_date|date:"M d, Y" }}</td>
+                                        <td>
+                                            {% if sale.grading_company %}
+                                                {{ sale.grading_company|upper }} {{ sale.grade }}
+                                            {% else %}
+                                                Raw
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">${{ sale.sale_price|intcomma }}</td>
+                                        <td>
+                                            {{ sale.get_source_display }}
+                                            {% if sale.source_url %}
+                                                <a href="{{ sale.source_url }}" target="_blank">
+                                                    <i class="bi bi-box-arrow-up-right"></i>
+                                                </a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Related items -->
+    {% if related_items %}
+        <div class="mt-5">
+            <h4>Related Items</h4>
+            <div class="row row-cols-2 row-cols-md-4 g-3">
+                {% for related in related_items %}
+                    <div class="col">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <a href="{{ related.get_absolute_url }}" class="text-decoration-none">
+                                        {{ related.name|truncatechars:40 }}
+                                    </a>
+                                </h6>
+                                <p class="card-text text-success mb-0">
+                                    {% if related.avg_sale_price %}
+                                        ${{ related.avg_sale_price|intcomma }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const priceHistory = {{ price_history|safe }};
+
+    if (priceHistory.length > 0) {
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: priceHistory.map(h => {
+                    const d = new Date(h.month);
+                    return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                }),
+                datasets: [{
+                    label: 'Average Price',
+                    data: priceHistory.map(h => h.avg_price),
+                    borderColor: '#198754',
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: value => '$' + value.toLocaleString()
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('priceChart').parentElement.innerHTML =
+            '<p class="text-muted text-center py-5">No price history available</p>';
+    }
+</script>
+{% endblock %}

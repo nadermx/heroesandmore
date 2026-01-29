@@ -14,6 +14,11 @@ class Collection(models.Model):
     is_public = models.BooleanField(default=True)
     cover_image = models.ImageField(upload_to='collections/', blank=True, null=True)
 
+    # Cached value tracking (updated by Celery task)
+    total_value = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    total_cost = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    value_updated_at = models.DateTimeField(null=True, blank=True)
+
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -70,15 +75,26 @@ class CollectionItem(models.Model):
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to='collection_items/', blank=True, null=True)
 
+    # Link to price guide for auto valuation
+    price_guide_item = models.ForeignKey(
+        'pricing.PriceGuideItem',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='collection_items'
+    )
+
     # Item details
     condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, blank=True)
+    grading_company = models.CharField(max_length=10, blank=True)
     grade = models.CharField(max_length=20, blank=True, help_text="PSA/BGS/CGC grade")
+    cert_number = models.CharField(max_length=50, blank=True)
     quantity = models.PositiveIntegerField(default=1)
 
     # Value tracking
     purchase_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     purchase_date = models.DateField(null=True, blank=True)
     current_value = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    value_updated_at = models.DateTimeField(null=True, blank=True)
 
     notes = models.TextField(blank=True)
 
@@ -113,3 +129,32 @@ class CollectionItem(models.Model):
         if gain and self.purchase_price:
             return (gain / self.purchase_price) * 100
         return None
+
+
+class CollectionValueSnapshot(models.Model):
+    """
+    Daily/weekly snapshots of collection value for charts
+    """
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='value_snapshots')
+    date = models.DateField()
+    total_value = models.DecimalField(max_digits=14, decimal_places=2)
+    total_cost = models.DecimalField(max_digits=14, decimal_places=2)
+    item_count = models.IntegerField()
+
+    # Value breakdown by category (optional)
+    value_by_category = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        unique_together = ['collection', 'date']
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.collection.name} - {self.date}: ${self.total_value}"
+
+    def get_gain_loss(self):
+        return self.total_value - self.total_cost
+
+    def get_gain_loss_percent(self):
+        if self.total_cost and self.total_cost > 0:
+            return ((self.total_value - self.total_cost) / self.total_cost) * 100
+        return Decimal('0')

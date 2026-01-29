@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Scanner - Identify Your Collectibles | HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col text-center">
+            <h1>
+                <i class="bi bi-camera text-primary"></i>
+                Item Scanner
+            </h1>
+            <p class="lead text-muted">Upload a photo to identify your collectibles and get pricing data</p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Upload area -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form id="scanForm" method="post" action="{% url 'scanner:upload' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div id="dropZone" class="border border-2 border-dashed rounded p-5 text-center"
+                             style="cursor: pointer; border-color: #dee2e6;">
+                            <i class="bi bi-cloud-upload display-1 text-muted mb-3"></i>
+                            <h4>Drop image here or click to upload</h4>
+                            <p class="text-muted mb-3">Supports JPG, PNG, HEIC up to 10MB</p>
+                            <input type="file" id="imageInput" name="image" accept="image/*" class="d-none">
+                            <button type="button" class="btn btn-primary" onclick="document.getElementById('imageInput').click()">
+                                <i class="bi bi-upload"></i> Choose File
+                            </button>
+                        </div>
+
+                        <div id="preview" class="mt-3 d-none">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <img id="previewImage" src="" class="rounded" style="max-height: 150px;">
+                                </div>
+                                <div class="col">
+                                    <p id="fileName" class="mb-1 fw-bold"></p>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-search"></i> Scan & Identify
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong><i class="bi bi-lightbulb"></i> Tips for Best Results</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>For Graded Items</h6>
+                            <ul class="small text-muted">
+                                <li>Include the full slab label in the photo</li>
+                                <li>Make sure the grade and cert number are visible</li>
+                                <li>Good lighting helps with text recognition</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>For Raw Items</h6>
+                            <ul class="small text-muted">
+                                <li>Photograph the front of the item clearly</li>
+                                <li>Include any text, numbers, or logos</li>
+                                <li>Avoid glare and reflections</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent scans -->
+            {% if recent_scans %}
+                <div class="card">
+                    <div class="card-header">
+                        <strong>Your Recent Scans</strong>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        {% for scan in recent_scans %}
+                            <a href="{% url 'scanner:result' scan.pk %}" class="list-group-item list-group-item-action">
+                                <div class="d-flex align-items-center">
+                                    <img src="{{ scan.image.url }}" class="me-3 rounded"
+                                         style="width: 60px; height: 60px; object-fit: cover;">
+                                    <div class="flex-grow-1">
+                                        {% if scan.identified_item %}
+                                            <strong>{{ scan.identified_item.name|truncatechars:40 }}</strong>
+                                            <br>
+                                            <small class="text-success">{{ scan.confidence|floatformat:0 }}% confidence</small>
+                                        {% else %}
+                                            <strong class="text-muted">{{ scan.get_status_display }}</strong>
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted">{{ scan.created|timesince }} ago</small>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const imageInput = document.getElementById('imageInput');
+    const preview = document.getElementById('preview');
+    const previewImage = document.getElementById('previewImage');
+    const fileName = document.getElementById('fileName');
+
+    // Drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('bg-light');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('bg-light');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('bg-light');
+        if (e.dataTransfer.files.length) {
+            imageInput.files = e.dataTransfer.files;
+            showPreview(e.dataTransfer.files[0]);
+        }
+    });
+
+    dropZone.addEventListener('click', () => {
+        imageInput.click();
+    });
+
+    imageInput.addEventListener('change', () => {
+        if (imageInput.files.length) {
+            showPreview(imageInput.files[0]);
+        }
+    });
+
+    function showPreview(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImage.src = e.target.result;
+            fileName.textContent = file.name;
+            dropZone.classList.add('d-none');
+            preview.classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function resetForm() {
+        imageInput.value = '';
+        dropZone.classList.remove('d-none');
+        preview.classList.add('d-none');
+    }
+</script>
+{% endblock %}

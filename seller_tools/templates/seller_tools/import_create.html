@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}New Bulk Import | HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'seller_tools:dashboard' %}">Seller Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'seller_tools:import_list' %}">Imports</a></li>
+                    <li class="breadcrumb-item active">New Import</li>
+                </ol>
+            </nav>
+            <h1>
+                <i class="bi bi-upload text-primary"></i>
+                Bulk Import Listings
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="mb-4">
+                            <label class="form-label">Upload File</label>
+                            <input type="file" name="file" class="form-control" accept=".csv,.xlsx" required>
+                            <div class="form-text">Supported formats: CSV, Excel (.xlsx)</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input type="checkbox" name="auto_publish" class="form-check-input" id="autoPublish">
+                                <label class="form-check-label" for="autoPublish">
+                                    Publish listings immediately
+                                </label>
+                                <div class="form-text">If unchecked, listings will be saved as drafts.</div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload"></i> Upload & Review
+                        </button>
+                        <a href="{% url 'seller_tools:import_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <strong>CSV Template</strong>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">Download our template to ensure your data is formatted correctly.</p>
+                    <a href="{% url 'seller_tools:import_template' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-download"></i> Download Template
+                    </a>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <strong>Required Columns</strong>
+                </div>
+                <div class="card-body">
+                    <ul class="small mb-0">
+                        <li><code>title</code> - Listing title</li>
+                        <li><code>description</code> - Item description</li>
+                        <li><code>category</code> - Category slug</li>
+                        <li><code>condition</code> - Item condition</li>
+                        <li><code>price</code> - Price in dollars</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <strong>Optional Columns</strong>
+                </div>
+                <div class="card-body">
+                    <ul class="small mb-0">
+                        <li><code>grading_service</code> - psa, bgs, cgc, sgc</li>
+                        <li><code>grade</code> - Numeric grade</li>
+                        <li><code>cert_number</code> - Certificate number</li>
+                        <li><code>shipping_price</code> - Shipping cost</li>
+                        <li><code>listing_type</code> - fixed or auction</li>
+                        <li><code>allow_offers</code> - yes or no</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

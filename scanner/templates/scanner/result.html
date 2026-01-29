@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Scan Result | HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'scanner:home' %}">Scanner</a></li>
+            <li class="breadcrumb-item active">Scan Result</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Scanned image -->
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <img src="{{ scan.image.url }}" class="card-img-top" alt="Scanned image">
+                <div class="card-footer small text-muted">
+                    Scanned {{ scan.created|timesince }} ago
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="col-md-8">
+            {% if scan.status == 'pending' or scan.status == 'processing' %}
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <div class="spinner-border text-primary mb-3" role="status"></div>
+                        <h4>Analyzing image...</h4>
+                        <p class="text-muted">This usually takes a few seconds</p>
+                    </div>
+                </div>
+                <script>
+                    setTimeout(() => location.reload(), 3000);
+                </script>
+
+            {% elif scan.status == 'success' and scan.identified_item %}
+                <div class="card mb-3">
+                    <div class="card-header bg-success text-white">
+                        <i class="bi bi-check-circle"></i> Item Identified!
+                    </div>
+                    <div class="card-body">
+                        <h4>{{ scan.identified_item.name }}</h4>
+                        <p class="text-muted mb-3">
+                            Confidence: <strong>{{ scan.confidence|floatformat:0 }}%</strong>
+                        </p>
+
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="border rounded p-3 text-center">
+                                    <h5 class="text-success mb-0">
+                                        {% if scan.identified_item.avg_sale_price %}
+                                            ${{ scan.identified_item.avg_sale_price|intcomma }}
+                                        {% else %}
+                                            --
+                                        {% endif %}
+                                    </h5>
+                                    <small class="text-muted">Avg Price</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="border rounded p-3 text-center">
+                                    <h5 class="mb-0">{{ scan.identified_item.total_sales|intcomma }}</h5>
+                                    <small class="text-muted">Total Sales</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <a href="{{ scan.identified_item.get_absolute_url }}" class="btn btn-outline-primary">
+                            <i class="bi bi-graph-up"></i> View Price Guide
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Extracted data -->
+                {% if scan.extracted_data %}
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <strong>Extracted Information</strong>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm mb-0">
+                                {% for key, value in scan.extracted_data.items %}
+                                    <tr>
+                                        <th class="text-capitalize">{{ key|cut:"_" }}</th>
+                                        <td>{{ value }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </table>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <strong>What would you like to do?</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <form method="post" action="{% url 'scanner:create_listing' scan.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="bi bi-tag"></i> Create Listing from This Scan
+                                </button>
+                            </form>
+
+                            {% if collections %}
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-primary w-100 dropdown-toggle" type="button"
+                                            data-bs-toggle="dropdown">
+                                        <i class="bi bi-collection"></i> Add to Collection
+                                    </button>
+                                    <ul class="dropdown-menu w-100">
+                                        {% for collection in collections %}
+                                            <li>
+                                                <form method="post" action="{% url 'scanner:add_to_collection' scan.pk %}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="collection_id" value="{{ collection.pk }}">
+                                                    <button type="submit" class="dropdown-item">
+                                                        {{ collection.name }}
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+
+                            <a href="{% url 'scanner:home' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-camera"></i> Scan Another Item
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            {% elif scan.status == 'no_match' %}
+                <div class="card">
+                    <div class="card-header bg-warning">
+                        <i class="bi bi-question-circle"></i> No Match Found
+                    </div>
+                    <div class="card-body">
+                        <p>We couldn't identify this item automatically.</p>
+
+                        {% if scan.extracted_data %}
+                            <h6>Extracted Information:</h6>
+                            <table class="table table-sm">
+                                {% for key, value in scan.extracted_data.items %}
+                                    <tr>
+                                        <th class="text-capitalize">{{ key|cut:"_" }}</th>
+                                        <td>{{ value }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </table>
+                        {% endif %}
+
+                        <hr>
+                        <p class="text-muted small">
+                            You can still create a listing manually using the extracted information above.
+                        </p>
+                        <a href="{% url 'marketplace:listing_create' %}" class="btn btn-primary">
+                            Create Listing Manually
+                        </a>
+                    </div>
+                </div>
+
+            {% else %}
+                <div class="card">
+                    <div class="card-header bg-danger text-white">
+                        <i class="bi bi-x-circle"></i> Scan Failed
+                    </div>
+                    <div class="card-body">
+                        <p>Sorry, we couldn't process this image.</p>
+                        {% if scan.error_message %}
+                            <p class="text-muted">{{ scan.error_message }}</p>
+                        {% endif %}
+                        <a href="{% url 'scanner:home' %}" class="btn btn-primary">Try Again</a>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Similar listings -->
+            {% if suggested_listings %}
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <strong>Similar Items For Sale</strong>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        {% for listing in suggested_listings %}
+                            <a href="{{ listing.get_absolute_url }}" class="list-group-item list-group-item-action">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <strong>{{ listing.title|truncatechars:50 }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ listing.condition }}</small>
+                                    </div>
+                                    <div class="text-success">
+                                        ${{ listing.price|intcomma }}
+                                    </div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

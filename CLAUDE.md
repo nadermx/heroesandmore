@@ -13,14 +13,17 @@ A full-featured collectibles marketplace and community platform built with Djang
 
 ## Project Structure
 ```
-herosandmore/
+heroesandmore/
 ├── app/                    # Django project settings
 ├── accounts/               # User auth, profiles
 ├── user_collections/       # Collection management (URL namespace: 'collections')
 ├── items/                  # Item database & categories
-├── marketplace/            # Listings, orders, payments
+├── marketplace/            # Listings, orders, payments, auction events
 ├── social/                 # Forums, messaging, follows
-├── alerts/                 # Wishlists, notifications
+├── alerts/                 # Wishlists, notifications, price alerts
+├── pricing/                # Price guide, valuation, market data
+├── scanner/                # Image recognition for collectibles
+├── seller_tools/           # Bulk import, inventory, subscriptions
 ├── templates/              # HTML templates
 ├── static/                 # CSS, JS, images
 ├── ansible/                # Deployment automation
@@ -58,16 +61,45 @@ python manage.py shell
 - `/marketplace/` - All listings
 - `/collections/` - Browse collections
 - `/social/forums/` - Forums
+- `/price-guide/` - Price guide and market data
+- `/scanner/` - Item scanner (image recognition)
+- `/seller/` - Seller dashboard and tools
 - `/admin/` - Django admin
 
 ## Key Models
-- `accounts.Profile` - User profiles, seller verification
+
+### Core Models
+- `accounts.Profile` - User profiles, seller verification, subscription tiers
+- `accounts.RecentlyViewed` - Track recently viewed listings
 - `items.Category` - Hierarchical categories
 - `items.Item` - Base item database
-- `marketplace.Listing` - For sale items
+- `marketplace.Listing` - For sale items (fixed price and auctions)
+- `marketplace.AuctionEvent` - Scheduled auction events
 - `marketplace.Order` - Purchases
-- `collections.Collection` - User collections
+- `marketplace.Offer` - Make offer/counteroffer system
+- `user_collections.Collection` - User collections with value tracking
+- `user_collections.CollectionValueSnapshot` - Daily value snapshots for charts
+
+### Price Guide (pricing app)
+- `pricing.PriceGuideItem` - Master catalog of items with pricing data
+- `pricing.GradePrice` - Price data for each grade (PSA 10, BGS 9.5, etc.)
+- `pricing.SaleRecord` - Individual sale records for price tracking
+
+### Scanner (scanner app)
+- `scanner.ScanResult` - Image recognition results
+- `scanner.ScanSession` - Bulk scanning sessions
+
+### Seller Tools (seller_tools app)
+- `seller_tools.SellerSubscription` - Seller tiers (starter, basic, featured, premium)
+- `seller_tools.BulkImport` - Bulk listing imports from CSV
+- `seller_tools.InventoryItem` - Pre-listing inventory management
+
+### Alerts (alerts app)
 - `alerts.Wishlist` - Want lists
+- `alerts.SavedSearch` - Saved searches with notifications
+- `alerts.PriceAlert` - Price drop alerts
+
+### Social
 - `social.Follow` - User follows
 - `social.ForumThread` - Forum discussions
 
@@ -119,8 +151,52 @@ ansible -i ansible/servers all -m shell -a "cd /home/www/herosandmore && venv/bi
 ansible -i ansible/servers all -m shell -a "sudo -u postgres pg_dump herosandmore > /tmp/herosandmore_backup.sql" --become
 ```
 
+## New Features (Added 2026-01)
+
+### Price Guide System
+- Comprehensive price tracking for collectibles
+- Prices by grade (PSA, BGS, CGC, SGC, Raw)
+- Historical sales data and trends
+- Price suggestions when creating listings
+- Price alerts for target prices
+
+### Image Scanner
+- Upload photos to identify collectibles
+- OCR for graded slabs (cert numbers, grades)
+- Match to price guide for instant valuation
+- Create listings or add to collection from scans
+
+### Auction Events
+- Scheduled auction events (weekly, themed, elite)
+- Extended bidding (anti-sniping)
+- Auto-bidding (proxy bidding)
+- Live auction room (via WebSocket when implemented)
+
+### Seller Tools
+- Subscription tiers with varying commission rates:
+  - Starter: Free, 50 listings, 12.95% commission
+  - Basic: $9.99/mo, 200 listings, 9.95% commission
+  - Featured: $29.99/mo, 1000 listings, 7.95% commission
+  - Premium: $99.99/mo, unlimited listings, 5.95% commission
+- Bulk import from CSV
+- Inventory management (track items before listing)
+- Sales analytics and reports
+
+### Collection Value Tracking
+- Automatic valuation from price guide
+- Daily value snapshots for charts
+- Portfolio gain/loss tracking
+
+## Celery Tasks
+- `pricing.tasks.update_price_guide_stats` - Update cached price stats
+- `pricing.tasks.record_sale_from_order` - Record sales in price guide
+- `pricing.tasks.check_price_alerts` - Check and trigger price alerts
+- `user_collections.tasks.update_collection_values` - Update collection valuations
+- `user_collections.tasks.create_daily_snapshots` - Create daily value snapshots
+
 ## Notes
 - The `collections` app uses `item_collections` as the related_name to avoid conflicts with Django's built-in collections module
 - All listing images are stored in `media/listings/`
 - User avatars are stored in `media/avatars/`
 - Platform fee is 3% (configurable in settings.PLATFORM_FEE_PERCENT)
+- Image scanner requires Google Cloud Vision API (configure credentials)

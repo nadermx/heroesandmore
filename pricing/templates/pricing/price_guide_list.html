@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Price Guide{% if current_category %} - {{ current_category.name }}{% endif %} | HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>
+                <i class="bi bi-graph-up text-success"></i>
+                Price Guide
+                {% if current_category %}
+                    <small class="text-muted">/ {{ current_category.name }}</small>
+                {% endif %}
+            </h1>
+            <p class="lead text-muted">Track prices and market trends for collectibles</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Filters sidebar -->
+        <div class="col-md-3">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <strong>Categories</strong>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'pricing:price_guide_list' %}"
+                       class="list-group-item list-group-item-action {% if not current_category %}active{% endif %}">
+                        All Categories
+                    </a>
+                    {% for cat in categories %}
+                        <a href="{% url 'pricing:price_guide_category' cat.slug %}"
+                           class="list-group-item list-group-item-action {% if current_category == cat %}active{% endif %}">
+                            {{ cat.name }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <strong>Quick Links</strong>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'pricing:trending' %}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-fire text-danger"></i> Trending
+                    </a>
+                    <a href="{% url 'pricing:popular' %}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-star text-warning"></i> Most Popular
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="col-md-9">
+            <!-- Search and sort -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <form method="get" class="row g-2">
+                        <div class="col-md-6">
+                            <input type="text" name="q" value="{{ q }}" class="form-control"
+                                   placeholder="Search price guide...">
+                        </div>
+                        <div class="col-md-3">
+                            <select name="sort" class="form-select" onchange="this.form.submit()">
+                                <option value="popular" {% if sort == 'popular' %}selected{% endif %}>Most Popular</option>
+                                <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest</option>
+                                <option value="price_high" {% if sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+                                <option value="price_low" {% if sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
+                                <option value="name" {% if sort == 'name' %}selected{% endif %}>Name A-Z</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100">Search</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                {% for item in items %}
+                    <div class="col">
+                        <div class="card h-100">
+                            {% if item.image %}
+                                <img src="{{ item.image.url }}" class="card-img-top" alt="{{ item.name }}"
+                                     style="height: 200px; object-fit: contain; background: #f8f9fa;">
+                            {% else %}
+                                <div class="card-img-top d-flex align-items-center justify-content-center bg-light"
+                                     style="height: 200px;">
+                                    <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                                </div>
+                            {% endif %}
+                            <div class="card-body">
+                                <h6 class="card-title text-truncate" title="{{ item.name }}">
+                                    <a href="{{ item.get_absolute_url }}" class="text-decoration-none">
+                                        {{ item.name }}
+                                    </a>
+                                </h6>
+                                <p class="card-text small text-muted mb-2">
+                                    {% if item.year %}{{ item.year }}{% endif %}
+                                    {% if item.set_name %} &bull; {{ item.set_name }}{% endif %}
+                                </p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        {% if item.avg_sale_price %}
+                                            <strong class="text-success">${{ item.avg_sale_price|intcomma }}</strong>
+                                            <small class="text-muted">avg</small>
+                                        {% else %}
+                                            <span class="text-muted">No sales data</span>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        {% if item.price_trend == 'up' %}
+                                            <span class="badge bg-success"><i class="bi bi-arrow-up"></i></span>
+                                        {% elif item.price_trend == 'down' %}
+                                            <span class="badge bg-danger"><i class="bi bi-arrow-down"></i></span>
+                                        {% else %}
+                                            <span class="badge bg-secondary"><i class="bi bi-dash"></i></span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer small text-muted">
+                                {{ item.total_sales|intcomma }} sales recorded
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            No items found. Try adjusting your search criteria.
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <nav class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&sort={{ sort }}">
+                                    Previous
+                                </a>
+                            </li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}&q={{ q }}&sort={{ sort }}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&sort={{ sort }}">
+                                    Next
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
