@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Order #{{ order.id }} - HeroesAndMore{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <nav aria-label="breadcrumb" class="mb-2">
+                    <ol class="breadcrumb mb-0" style="font-size: 0.875rem;">
+                        <li class="breadcrumb-item"><a href="{% url 'accounts:dashboard' %}" class="text-muted">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'marketplace:my_orders' %}" class="text-muted">Orders</a></li>
+                        <li class="breadcrumb-item active">#{{ order.id }}</li>
+                    </ol>
+                </nav>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0;">Order #{{ order.id }}</h1>
+            </div>
+            <span class="badge fs-6" style="background: var(--gray-200); color: var(--gray-700); padding: 0.5rem 1rem;">{{ order.get_status_display }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Order Progress -->
+            <div class="card mb-4">
+                <div class="card-body py-4">
+                    <div class="d-flex justify-content-between text-center position-relative">
+                        <!-- Progress line -->
+                        <div style="position: absolute; top: 1rem; left: 15%; right: 15%; height: 2px; background: var(--gray-200); z-index: 0;"></div>
+
+                        <div class="position-relative" style="z-index: 1;">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 40px; height: 40px; {% if order.status != 'pending' %}background: var(--gray-900); color: white;{% else %}background: var(--gray-200); color: var(--gray-500);{% endif %}">
+                                <i class="bi bi-check"></i>
+                            </div>
+                            <small class="text-muted">Ordered</small>
+                        </div>
+                        <div class="position-relative" style="z-index: 1;">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 40px; height: 40px; {% if order.status in 'paid,shipped,delivered,completed' %}background: var(--gray-900); color: white;{% else %}background: var(--gray-200); color: var(--gray-500);{% endif %}">
+                                <i class="bi bi-{% if order.status in 'paid,shipped,delivered,completed' %}check{% else %}credit-card{% endif %}"></i>
+                            </div>
+                            <small class="text-muted">Paid</small>
+                        </div>
+                        <div class="position-relative" style="z-index: 1;">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 40px; height: 40px; {% if order.status in 'shipped,delivered,completed' %}background: var(--gray-900); color: white;{% else %}background: var(--gray-200); color: var(--gray-500);{% endif %}">
+                                <i class="bi bi-{% if order.status in 'shipped,delivered,completed' %}check{% else %}truck{% endif %}"></i>
+                            </div>
+                            <small class="text-muted">Shipped</small>
+                        </div>
+                        <div class="position-relative" style="z-index: 1;">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 40px; height: 40px; {% if order.status in 'delivered,completed' %}background: var(--gray-900); color: white;{% else %}background: var(--gray-200); color: var(--gray-500);{% endif %}">
+                                <i class="bi bi-{% if order.status in 'delivered,completed' %}check{% else %}box{% endif %}"></i>
+                            </div>
+                            <small class="text-muted">Delivered</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item Details -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Item</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex">
+                        {% if order.listing.image1 %}
+                        <img src="{{ order.listing.image1.url }}" class="me-3" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px;">
+                        {% else %}
+                        <div class="me-3 d-flex align-items-center justify-content-center" style="width: 100px; height: 100px; background: var(--gray-100); border-radius: 8px;">
+                            <i class="bi bi-image" style="font-size: 2rem; color: var(--gray-400);"></i>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <h5 class="mb-1" style="color: var(--gray-900);">{{ order.listing.title }}</h5>
+                            <p class="mb-1 text-muted">Condition: {{ order.listing.get_condition_display }}</p>
+                            {% if order.listing.grading_service %}
+                            <p class="mb-0 text-muted">Grade: <span class="fw-semibold">{{ order.listing.grading_service|upper }} {{ order.listing.grade }}</span></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shipping -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Shipping</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <h6 class="text-muted small text-uppercase" style="letter-spacing: 0.05em;">Shipping Address</h6>
+                            <p class="mb-0" style="color: var(--gray-900);">{{ order.shipping_address|linebreaks }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            {% if order.tracking_number %}
+                            <h6 class="text-muted small text-uppercase" style="letter-spacing: 0.05em;">Tracking</h6>
+                            <p class="mb-0">
+                                <span class="badge mb-2" style="background: var(--gray-200); color: var(--gray-700);">{{ order.tracking_carrier|upper }}</span><br>
+                                <span style="color: var(--gray-900); font-family: monospace;">{{ order.tracking_number }}</span>
+                            </p>
+                            {% elif is_seller and order.status == 'paid' %}
+                            <h6 class="text-muted small text-uppercase" style="letter-spacing: 0.05em;">Add Tracking</h6>
+                            <form method="post" action="{% url 'marketplace:order_ship' pk=order.pk %}">
+                                {% csrf_token %}
+                                <div class="mb-2">
+                                    <select name="tracking_carrier" class="form-select form-select-sm" required>
+                                        <option value="">Select carrier</option>
+                                        <option value="usps">USPS</option>
+                                        <option value="ups">UPS</option>
+                                        <option value="fedex">FedEx</option>
+                                        <option value="dhl">DHL</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <input type="text" name="tracking_number" class="form-control form-control-sm" placeholder="Tracking number" required>
+                                </div>
+                                <button type="submit" class="btn btn-dark btn-sm">Mark as Shipped</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buyer Actions -->
+            {% if not is_seller %}
+                {% if order.status == 'shipped' %}
+                <div class="card mb-4" style="border: 2px solid var(--gray-900);">
+                    <div class="card-body text-center py-4">
+                        <h6 class="fw-bold mb-2">Did you receive your item?</h6>
+                        <p class="text-muted mb-3">Confirm delivery to complete the order</p>
+                        <form method="post" action="{% url 'marketplace:order_received' pk=order.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-dark">Yes, I received it</button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if order.status == 'completed' and not order.review %}
+                <div class="card mb-4">
+                    <div class="card-header bg-transparent">
+                        <h6 class="fw-bold mb-0">Leave a Review</h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="{% url 'marketplace:leave_review' pk=order.pk %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Rating</label>
+                                <div class="btn-group" role="group">
+                                    {% for i in "12345" %}
+                                    <input type="radio" class="btn-check" name="rating" id="rating{{ i }}" value="{{ i }}" required>
+                                    <label class="btn btn-outline-dark" for="rating{{ i }}">{{ i }} <i class="bi bi-star-fill"></i></label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Review (optional)</label>
+                                <textarea name="text" class="form-control" rows="3" placeholder="Share your experience with this seller..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-dark">Submit Review</button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- Order Summary Sidebar -->
+        <div class="col-lg-4">
+            <div class="sticky-top" style="top: 80px;">
+                <div class="card mb-3">
+                    <div class="card-header bg-transparent">
+                        <h6 class="fw-bold mb-0">Order Summary</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Item Price</span>
+                            <span style="color: var(--gray-900);">${{ order.item_price|intcomma }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Shipping</span>
+                            <span style="color: var(--gray-900);">${{ order.shipping_price }}</span>
+                        </div>
+                        <hr style="border-color: var(--gray-200);">
+                        <div class="d-flex justify-content-between">
+                            <strong style="color: var(--gray-900);">Total</strong>
+                            <strong style="color: var(--gray-900);">${{ order.amount|intcomma }}</strong>
+                        </div>
+
+                        {% if is_seller %}
+                        <hr style="border-color: var(--gray-200);">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Platform Fee (3%)</span>
+                            <span class="text-muted">-${{ order.platform_fee }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <strong style="color: var(--gray-900);">Your Payout</strong>
+                            <strong style="color: var(--accent-success);">${{ order.seller_payout|intcomma }}</strong>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-2">{% if is_seller %}Buyer{% else %}Seller{% endif %}</h6>
+                        <a href="{% url 'accounts:profile' username=order.buyer.username %}" class="text-decoration-none d-flex align-items-center mb-2">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; background: var(--gray-200);">
+                                <i class="bi bi-person" style="color: var(--gray-600);"></i>
+                            </div>
+                            <span style="color: var(--gray-900);">{% if is_seller %}{{ order.buyer.username }}{% else %}{{ order.seller.username }}{% endif %}</span>
+                        </a>
+                        <a href="{% url 'social:compose_to' username=order.buyer.username %}" class="btn btn-outline-dark btn-sm w-100">
+                            <i class="bi bi-envelope me-1"></i> Send Message
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <small class="text-muted">
+                            <i class="bi bi-calendar me-1"></i> Ordered: {{ order.created|date:"M d, Y g:i A" }}<br>
+                            {% if order.shipped_at %}
+                            <i class="bi bi-truck me-1"></i> Shipped: {{ order.shipped_at|date:"M d, Y" }}<br>
+                            {% endif %}
+                            {% if order.delivered_at %}
+                            <i class="bi bi-box-seam me-1"></i> Delivered: {{ order.delivered_at|date:"M d, Y" }}
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

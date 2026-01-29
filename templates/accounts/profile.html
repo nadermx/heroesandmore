@@ -1,0 +1,327 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ profile_user.username }} - HeroesAndMore{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-header {
+        background: linear-gradient(180deg, var(--gray-100) 0%, var(--gray-50) 100%);
+        padding: 3rem 0;
+    }
+
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid #fff;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .profile-avatar-placeholder {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: var(--gray-200);
+        border: 4px solid #fff;
+        box-shadow: var(--shadow-lg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--gray-500);
+    }
+
+    .stat-box {
+        text-align: center;
+        padding: 1rem;
+    }
+
+    .stat-box .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--gray-900);
+    }
+
+    .stat-box .label {
+        font-size: 0.8rem;
+        color: var(--gray-500);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .rating-display {
+        color: #FBBF24;
+    }
+
+    .verified-badge {
+        background: linear-gradient(135deg, var(--accent-success) 0%, #059669 100%);
+        color: #fff;
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Profile Header -->
+<div class="profile-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                {% if profile.avatar %}
+                <img src="{{ profile.avatar.url }}" class="profile-avatar" alt="{{ profile_user.username }}">
+                {% else %}
+                <div class="profile-avatar-placeholder">
+                    {{ profile_user.username|slice:":1"|upper }}
+                </div>
+                {% endif %}
+            </div>
+            <div class="col">
+                <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+                    <h1 style="font-size: 1.75rem; margin: 0;">{{ profile_user.username }}</h1>
+                    {% if profile.is_seller_verified %}
+                    <span class="verified-badge">
+                        <i class="bi bi-patch-check-fill"></i> Verified Seller
+                    </span>
+                    {% endif %}
+                </div>
+
+                {% if profile.rating %}
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <div class="rating-display">
+                        {% for i in "12345" %}
+                            {% if forloop.counter <= profile.rating %}
+                            <i class="bi bi-star-fill"></i>
+                            {% else %}
+                            <i class="bi bi-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <span class="text-muted small">{{ profile.rating|floatformat:1 }} ({{ profile.rating_count }} reviews)</span>
+                </div>
+                {% endif %}
+
+                {% if profile.location %}
+                <p class="text-muted mb-2"><i class="bi bi-geo-alt me-1"></i> {{ profile.location }}</p>
+                {% endif %}
+
+                <p class="text-muted small mb-0">Member since {{ profile_user.date_joined|date:"F Y" }}</p>
+            </div>
+            <div class="col-auto">
+                {% if user.is_authenticated and user != profile_user %}
+                <div class="d-flex gap-2">
+                    <button class="btn {% if is_following %}btn-dark{% else %}btn-outline-dark{% endif %}"
+                            hx-post="{% url 'social:follow_user' username=profile_user.username %}"
+                            hx-swap="outerHTML">
+                        {% if is_following %}
+                        <i class="bi bi-person-check me-1"></i> Following
+                        {% else %}
+                        <i class="bi bi-person-plus me-1"></i> Follow
+                        {% endif %}
+                    </button>
+                    <a href="{% url 'social:compose_to' username=profile_user.username %}" class="btn btn-outline-dark">
+                        <i class="bi bi-chat me-1"></i> Message
+                    </a>
+                </div>
+                {% elif user == profile_user %}
+                <a href="{% url 'accounts:settings' %}" class="btn btn-outline-dark">
+                    <i class="bi bi-gear me-1"></i> Edit Profile
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Bar -->
+<div class="section-alt border-bottom">
+    <div class="container">
+        <div class="row">
+            <div class="col-3 col-md-2">
+                <div class="stat-box">
+                    <div class="value">{{ stats.listings_count|default:0 }}</div>
+                    <div class="label">Listings</div>
+                </div>
+            </div>
+            <div class="col-3 col-md-2">
+                <div class="stat-box">
+                    <div class="value">{{ stats.sales_count|default:0 }}</div>
+                    <div class="label">Sales</div>
+                </div>
+            </div>
+            <div class="col-3 col-md-2">
+                <div class="stat-box">
+                    <div class="value">{{ stats.followers_count|default:0 }}</div>
+                    <div class="label">Followers</div>
+                </div>
+            </div>
+            <div class="col-3 col-md-2">
+                <div class="stat-box">
+                    <div class="value">{{ stats.following_count|default:0 }}</div>
+                    <div class="label">Following</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8 mb-4">
+            <!-- Bio Section -->
+            {% if profile.bio %}
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">About</h6>
+                    <p class="mb-0" style="color: var(--gray-700); line-height: 1.7;">{{ profile.bio }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Active Listings -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="fw-bold mb-0">Listings</h5>
+                        <span class="badge bg-dark">{{ stats.listings_count|default:0 }}</span>
+                    </div>
+
+                    {% if listings %}
+                    <div class="row g-3">
+                        {% for listing in listings %}
+                        <div class="col-6 col-md-4">
+                            {% include 'components/listing_card.html' with listing=listing %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if listings.has_next %}
+                    <div class="text-center mt-4">
+                        <button class="btn btn-outline-dark">Load More</button>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-tag display-4 text-muted"></i>
+                        <p class="text-muted mt-2 mb-0">No active listings</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Reviews -->
+            {% if reviews %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="fw-bold mb-0">Reviews</h5>
+                        <span class="badge bg-dark">{{ profile.rating_count|default:0 }}</span>
+                    </div>
+
+                    <div class="reviews-list">
+                        {% for review in reviews %}
+                        <div class="d-flex gap-3 {% if not forloop.last %}mb-4 pb-4 border-bottom{% endif %}">
+                            {% if review.reviewer.profile.avatar %}
+                            <img src="{{ review.reviewer.profile.avatar.url }}" class="rounded-circle" width="48" height="48" style="object-fit: cover;">
+                            {% else %}
+                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; background: var(--gray-200);">
+                                <span style="font-weight: 600; color: var(--gray-600);">{{ review.reviewer.username|slice:":1"|upper }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <a href="{% url 'accounts:profile' username=review.reviewer.username %}" class="fw-semibold text-decoration-none">
+                                            {{ review.reviewer.username }}
+                                        </a>
+                                        <div class="rating-display small">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= review.rating %}
+                                                <i class="bi bi-star-fill"></i>
+                                                {% else %}
+                                                <i class="bi bi-star"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">{{ review.created|timesince }} ago</small>
+                                </div>
+                                {% if review.text %}
+                                <p class="mb-0 mt-2" style="color: var(--gray-700);">{{ review.text }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Quick Info -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Quick Info</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted">Response Time</span>
+                            <span class="fw-medium">Within 24 hours</span>
+                        </li>
+                        <li class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted">Ships From</span>
+                            <span class="fw-medium">{{ profile.location|default:"Not specified" }}</span>
+                        </li>
+                        <li class="d-flex justify-content-between py-2">
+                            <span class="text-muted">Member Since</span>
+                            <span class="fw-medium">{{ profile_user.date_joined|date:"M Y" }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            {% if profile.website %}
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Links</h6>
+                    <a href="{{ profile.website }}" target="_blank" rel="noopener" class="d-flex align-items-center text-decoration-none" style="color: var(--gray-700);">
+                        <i class="bi bi-link-45deg me-2"></i>
+                        {{ profile.website|truncatechars:30 }}
+                        <i class="bi bi-box-arrow-up-right ms-auto small text-muted"></i>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Trust & Safety -->
+            <div class="card" style="background: var(--gray-50); border: none;">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Trust & Safety</h6>
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <i class="bi bi-shield-check" style="color: var(--accent-success); font-size: 1.25rem;"></i>
+                        <div>
+                            <span class="fw-medium d-block">Secure Payments</span>
+                            <small class="text-muted">All transactions protected</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start gap-3">
+                        <i class="bi bi-chat-square-text" style="color: var(--gray-600); font-size: 1.25rem;"></i>
+                        <div>
+                            <span class="fw-medium d-block">Direct Messaging</span>
+                            <small class="text-muted">Contact seller before buying</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,2 @@
+[web]
+heroesandmore ansible_host=174.138.33.140 ansible_user=root

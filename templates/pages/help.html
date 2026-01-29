@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}Help Center - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 3rem 0;">
+    <div class="container">
+        <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Help Center</h1>
+        <p class="lead text-muted">Find answers to common questions</p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Buying -->
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold mb-4"><i class="bi bi-bag me-2"></i>Buying</h4>
+                    <div class="accordion" id="buyingFAQ">
+                        <div class="accordion-item border-0 border-bottom">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed px-0" type="button" data-bs-toggle="collapse" data-bs-target="#buy1">
+                                    How do I purchase an item?
+                                </button>
+                            </h2>
+                            <div id="buy1" class="accordion-collapse collapse" data-bs-parent="#buyingFAQ">
+                                <div class="accordion-body px-0 text-muted">
+                                    Simply find an item you like, click "Buy Now" for fixed-price items or place a bid on auctions. You'll be guided through our secure checkout process powered by Stripe.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-0 border-bottom">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed px-0" type="button" data-bs-toggle="collapse" data-bs-target="#buy2">
+                                    What payment methods are accepted?
+                                </button>
+                            </h2>
+                            <div id="buy2" class="accordion-collapse collapse" data-bs-parent="#buyingFAQ">
+                                <div class="accordion-body px-0 text-muted">
+                                    We accept all major credit cards (Visa, Mastercard, American Express) through our secure Stripe payment system.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed px-0" type="button" data-bs-toggle="collapse" data-bs-target="#buy3">
+                                    How does buyer protection work?
+                                </button>
+                            </h2>
+                            <div id="buy3" class="accordion-collapse collapse" data-bs-parent="#buyingFAQ">
+                                <div class="accordion-body px-0 text-muted">
+                                    All purchases are covered by our buyer protection. If an item doesn't match the description or doesn't arrive, you're eligible for a full refund.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selling -->
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold mb-4"><i class="bi bi-tag me-2"></i>Selling</h4>
+                    <div class="accordion" id="sellingFAQ">
+                        <div class="accordion-item border-0 border-bottom">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed px-0" type="button" data-bs-toggle="collapse" data-bs-target="#sell1">
+                                    How do I list an item for sale?
+                                </button>
+                            </h2>
+                            <div id="sell1" class="accordion-collapse collapse" data-bs-parent="#sellingFAQ">
+                                <div class="accordion-body px-0 text-muted">
+                                    Click "Sell" in the navigation bar, fill out the listing form with photos and details, set your price, and publish. It's free to list!
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-0 border-bottom">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed px-0" type="button" data-bs-toggle="collapse" data-bs-target="#sell2">
+                                    What are the fees?
+                                </button>
+                            </h2>
+                            <div id="sell2" class="accordion-collapse collapse" data-bs-parent="#sellingFAQ">
+                                <div class="accordion-body px-0 text-muted">
+                                    Listing is free! We only charge a 3% transaction fee when your item sells, plus standard payment processing fees.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed px-0" type="button" data-bs-toggle="collapse" data-bs-target="#sell3">
+                                    When do I get paid?
+                                </button>
+                            </h2>
+                            <div id="sell3" class="accordion-collapse collapse" data-bs-parent="#sellingFAQ">
+                                <div class="accordion-body px-0 text-muted">
+                                    Funds are released to your connected Stripe account once the buyer confirms receipt of the item, typically within 3-5 business days after delivery.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account -->
+            <div class="card">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold mb-4"><i class="bi bi-person me-2"></i>Account</h4>
+                    <div class="accordion" id="accountFAQ">
+                        <div class="accordion-item border-0 border-bottom">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed px-0" type="button" data-bs-toggle="collapse" data-bs-target="#acc1">
+                                    How do I create an account?
+                                </button>
+                            </h2>
+                            <div id="acc1" class="accordion-collapse collapse" data-bs-parent="#accountFAQ">
+                                <div class="accordion-body px-0 text-muted">
+                                    Click "Get Started" and sign up with your email or Google account. It's free and only takes a few seconds.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed px-0" type="button" data-bs-toggle="collapse" data-bs-target="#acc2">
+                                    How do I become a verified seller?
+                                </button>
+                            </h2>
+                            <div id="acc2" class="accordion-collapse collapse" data-bs-parent="#accountFAQ">
+                                <div class="accordion-body px-0 text-muted">
+                                    Verified seller status is granted to sellers who maintain a high rating and complete identity verification. Contact support for more details.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-4" style="background: var(--gray-50); border: none;">
+                <div class="card-body p-4 text-center">
+                    <i class="bi bi-envelope display-4 mb-3" style="color: var(--gray-600);"></i>
+                    <h5 class="fw-bold">Still need help?</h5>
+                    <p class="text-muted small mb-3">Our support team is here to help you.</p>
+                    <a href="{% url 'contact' %}" class="btn btn-dark">Contact Support</a>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">Quick Links</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><a href="{% url 'seller_guide' %}" class="text-decoration-none"><i class="bi bi-arrow-right me-2"></i>Seller Guide</a></li>
+                        <li class="mb-2"><a href="{% url 'safety' %}" class="text-decoration-none"><i class="bi bi-arrow-right me-2"></i>Safety Tips</a></li>
+                        <li><a href="{% url 'terms' %}" class="text-decoration-none"><i class="bi bi-arrow-right me-2"></i>Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

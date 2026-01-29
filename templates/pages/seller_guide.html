@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Seller Guide - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 3rem 0;">
+    <div class="container">
+        <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Seller Guide</h1>
+        <p class="lead text-muted">Everything you need to know to sell successfully on HeroesAndMore</p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold mb-4">Getting Started</h4>
+                    <div class="mb-4">
+                        <h6 class="fw-bold">1. Create Your Account</h6>
+                        <p class="text-muted">Sign up for free and complete your profile. A complete profile with a photo helps build trust with buyers.</p>
+                    </div>
+                    <div class="mb-4">
+                        <h6 class="fw-bold">2. Create Your First Listing</h6>
+                        <p class="text-muted">Click "Sell" in the navigation bar. Add clear photos, a detailed description, set your price, and choose your shipping options.</p>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold">3. Connect Payment</h6>
+                        <p class="text-muted">Link your Stripe account to receive payments. This is required before you can receive funds from sales.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold mb-4">Tips for Great Listings</h4>
+                    <ul class="mb-0" style="line-height: 2;">
+                        <li><strong>Use high-quality photos</strong> - Include multiple angles and close-ups of any flaws</li>
+                        <li><strong>Be accurate about condition</strong> - Honestly describe any wear, damage, or defects</li>
+                        <li><strong>Include grading info</strong> - If your item is PSA/BGS/CGC graded, include the cert number</li>
+                        <li><strong>Price competitively</strong> - Research similar items to price appropriately</li>
+                        <li><strong>Write detailed descriptions</strong> - Include year, set, player/character, and any special features</li>
+                        <li><strong>Respond quickly</strong> - Answer buyer questions promptly to close sales faster</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold mb-4">Fees & Payments</h4>
+                    <table class="table mb-0">
+                        <tr>
+                            <td><strong>Listing Fee</strong></td>
+                            <td>Free</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Transaction Fee</strong></td>
+                            <td>3% of sale price</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Payment Processing</strong></td>
+                            <td>~2.9% + $0.30 (Stripe)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Payout Time</strong></td>
+                            <td>3-5 business days after buyer confirms receipt</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-4" style="background: var(--gray-900); color: #fff; border: none;">
+                <div class="card-body p-4 text-center">
+                    <i class="bi bi-tag display-4 mb-3"></i>
+                    <h5 class="fw-bold">Ready to sell?</h5>
+                    <p class="small opacity-75 mb-3">List your first item in minutes.</p>
+                    <a href="{% url 'marketplace:listing_create' %}" class="btn btn-light w-100">Create Listing</a>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">Need Help?</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><a href="{% url 'help' %}" class="text-decoration-none"><i class="bi bi-arrow-right me-2"></i>Help Center</a></li>
+                        <li><a href="{% url 'contact' %}" class="text-decoration-none"><i class="bi bi-arrow-right me-2"></i>Contact Support</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

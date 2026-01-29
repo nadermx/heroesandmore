@@ -1,0 +1,152 @@
+---
+- name: Initial server setup
+  hosts: web
+  become: yes
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install system packages
+      apt:
+        name:
+          - python3
+          - python3-venv
+          - python3-dev
+          - python3-pip
+          - postgresql
+          - postgresql-contrib
+          - libpq-dev
+          - redis-server
+          - nginx
+          - supervisor
+          - certbot
+          - python3-certbot-nginx
+          - git
+          - build-essential
+          - libjpeg-dev
+          - zlib1g-dev
+          - libpng-dev
+          - acl
+        state: present
+
+    - name: Create www user
+      user:
+        name: "{{ server_user }}"
+        shell: /bin/bash
+        create_home: yes
+
+    - name: Create app directory
+      file:
+        path: "{{ app_path }}"
+        state: directory
+        owner: "{{ server_user }}"
+        group: "{{ server_user }}"
+        mode: '0755'
+
+    - name: Create media directory
+      file:
+        path: "{{ app_path }}/media"
+        state: directory
+        owner: "{{ server_user }}"
+        group: "{{ server_user }}"
+        mode: '0755'
+
+    - name: Create staticfiles directory
+      file:
+        path: "{{ app_path }}/staticfiles"
+        state: directory
+        owner: "{{ server_user }}"
+        group: "{{ server_user }}"
+        mode: '0755'
+
+    - name: Create logs directory
+      file:
+        path: /var/log/{{ app_name }}
+        state: directory
+        owner: "{{ server_user }}"
+        group: "{{ server_user }}"
+        mode: '0755'
+
+    - name: Start PostgreSQL
+      systemd:
+        name: postgresql
+        state: started
+        enabled: yes
+
+    - name: Create PostgreSQL database
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: "{{ db_name }}"
+        encoding: UTF-8
+      ignore_errors: yes
+
+    - name: Create PostgreSQL database (shell fallback)
+      shell: sudo -u postgres psql -c "CREATE DATABASE {{ db_name }};"
+      ignore_errors: yes
+
+    - name: Create PostgreSQL user
+      shell: sudo -u postgres psql -c "CREATE USER {{ db_user }} WITH PASSWORD '{{ db_password }}';"
+      ignore_errors: yes
+
+    - name: Grant database privileges
+      shell: sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE {{ db_name }} TO {{ db_user }};"
+      ignore_errors: yes
+
+    - name: Grant schema privileges
+      shell: sudo -u postgres psql -d {{ db_name }} -c "GRANT ALL ON SCHEMA public TO {{ db_user }};"
+      ignore_errors: yes
+
+    - name: Start and enable Redis
+      systemd:
+        name: redis-server
+        state: started
+        enabled: yes
+
+    - name: Copy Nginx config (initial, no SSL)
+      copy:
+        src: files/heroesandmore.nginx.initial.conf
+        dest: "{{ nginx_conf }}"
+      notify: Reload Nginx
+
+    - name: Enable Nginx site
+      file:
+        src: "{{ nginx_conf }}"
+        dest: /etc/nginx/sites-enabled/{{ app_name }}
+        state: link
+      notify: Reload Nginx
+
+    - name: Remove default Nginx site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Reload Nginx
+
+    - name: Copy Supervisor config
+      copy:
+        src: files/heroesandmore.supervisor.conf
+        dest: "{{ supervisor_conf }}"
+      notify: Reload Supervisor
+
+    - name: Start and enable Nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Start and enable Supervisor
+      systemd:
+        name: supervisor
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: Reload Nginx
+      systemd:
+        name: nginx
+        state: reloaded
+
+    - name: Reload Supervisor
+      shell: supervisorctl reread && supervisorctl update

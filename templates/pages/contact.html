@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Contact Us - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 3rem 0;">
+    <div class="container">
+        <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Contact Us</h1>
+        <p class="lead text-muted">We're here to help</p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold mb-4">Send us a message</h4>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Subject</label>
+                            <select class="form-select" name="subject">
+                                <option value="general">General Inquiry</option>
+                                <option value="buying">Buying Help</option>
+                                <option value="selling">Selling Help</option>
+                                <option value="account">Account Issues</option>
+                                <option value="report">Report a Problem</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Message</label>
+                            <textarea class="form-control" name="message" rows="5" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-dark w-100">Send Message</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4">Other Ways to Reach Us</h5>
+                    <div class="d-flex align-items-start gap-3 mb-4">
+                        <i class="bi bi-envelope fs-4" style="color: var(--gray-600);"></i>
+                        <div>
+                            <h6 class="fw-bold mb-1">Email</h6>
+                            <p class="text-muted mb-0">support@heroesandmore.com</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start gap-3">
+                        <i class="bi bi-clock fs-4" style="color: var(--gray-600);"></i>
+                        <div>
+                            <h6 class="fw-bold mb-1">Response Time</h6>
+                            <p class="text-muted mb-0">We typically respond within 24 hours</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="background: var(--gray-50); border: none;">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3">Quick Links</h5>
+                    <p class="text-muted small mb-3">You might find your answer here:</p>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><a href="{% url 'help' %}" class="text-decoration-none"><i class="bi bi-arrow-right me-2"></i>Help Center</a></li>
+                        <li class="mb-2"><a href="{% url 'seller_guide' %}" class="text-decoration-none"><i class="bi bi-arrow-right me-2"></i>Seller Guide</a></li>
+                        <li><a href="{% url 'safety' %}" class="text-decoration-none"><i class="bi bi-arrow-right me-2"></i>Safety Tips</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - HeroesAndMore{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Dashboard</h1>
+        <p class="text-muted mb-0">Manage your activity and track your progress</p>
+    </div>
+</div>
+
+<div class="container py-4">
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="mb-2">
+                        <i class="bi bi-tag" style="font-size: 1.5rem; color: var(--gray-400);"></i>
+                    </div>
+                    <h2 class="mb-1" style="font-size: 2rem;">{{ stats.active_listings|default:0 }}</h2>
+                    <small class="text-muted">Active Listings</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="mb-2">
+                        <i class="bi bi-cash-stack" style="font-size: 1.5rem; color: var(--gray-400);"></i>
+                    </div>
+                    <h2 class="mb-1" style="font-size: 2rem;">{{ stats.total_sales|default:0 }}</h2>
+                    <small class="text-muted">Total Sales</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="mb-2">
+                        <i class="bi bi-bag-check" style="font-size: 1.5rem; color: var(--gray-400);"></i>
+                    </div>
+                    <h2 class="mb-1" style="font-size: 2rem;">{{ stats.total_purchases|default:0 }}</h2>
+                    <small class="text-muted">Purchases</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="mb-2">
+                        <i class="bi bi-hourglass-split" style="font-size: 1.5rem; color: var(--gray-400);"></i>
+                    </div>
+                    <h2 class="mb-1" style="font-size: 2rem;">{{ stats.pending_orders|default:0 }}</h2>
+                    <small class="text-muted">Pending Orders</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Recent Purchases -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0">Recent Purchases</h6>
+                    <a href="{% url 'marketplace:my_orders' %}" class="btn btn-sm btn-outline-dark">View All</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for order in recent_purchases %}
+                    <a href="{{ order.get_absolute_url }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong style="color: var(--gray-900);">{{ order.listing.title|truncatechars:40 }}</strong>
+                                <br>
+                                <small class="text-muted">From {{ order.seller.username }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge" style="background: var(--gray-100); color: var(--gray-700);">{{ order.get_status_display }}</span>
+                                <br>
+                                <small class="fw-semibold">${{ order.amount }}</small>
+                            </div>
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="list-group-item text-center py-5">
+                        <i class="bi bi-bag" style="font-size: 2rem; color: var(--gray-300);"></i>
+                        <p class="text-muted mt-2 mb-0">No purchases yet</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Sales -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0">Recent Sales</h6>
+                    <a href="{% url 'accounts:seller_dashboard' %}" class="btn btn-sm btn-outline-dark">Seller Dashboard</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for order in recent_sales %}
+                    <a href="{{ order.get_absolute_url }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong style="color: var(--gray-900);">{{ order.listing.title|truncatechars:40 }}</strong>
+                                <br>
+                                <small class="text-muted">To {{ order.buyer.username }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge" style="background: var(--gray-100); color: var(--gray-700);">{{ order.get_status_display }}</span>
+                                <br>
+                                <small class="fw-semibold" style="color: var(--accent-success);">${{ order.seller_payout }}</small>
+                            </div>
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="list-group-item text-center py-5">
+                        <i class="bi bi-shop" style="font-size: 2rem; color: var(--gray-300);"></i>
+                        <p class="text-muted mt-2 mb-2">No sales yet</p>
+                        <a href="{% url 'marketplace:listing_create' %}" class="btn btn-sm btn-dark">Create a listing</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card mt-4">
+        <div class="card-header bg-transparent">
+            <h6 class="fw-bold mb-0">Quick Actions</h6>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <a href="{% url 'marketplace:listing_create' %}" class="btn btn-dark w-100">
+                        <i class="bi bi-plus-lg me-1"></i> Create Listing
+                    </a>
+                </div>
+                <div class="col-6 col-md-3">
+                    <a href="{% url 'collections:collection_create' %}" class="btn btn-outline-dark w-100">
+                        <i class="bi bi-collection me-1"></i> New Collection
+                    </a>
+                </div>
+                <div class="col-6 col-md-3">
+                    <a href="{% url 'alerts:wishlist_create' %}" class="btn btn-outline-dark w-100">
+                        <i class="bi bi-heart me-1"></i> Create Wishlist
+                    </a>
+                </div>
+                <div class="col-6 col-md-3">
+                    <a href="{% url 'marketplace:listing_list' %}" class="btn btn-outline-dark w-100">
+                        <i class="bi bi-search me-1"></i> Browse Listings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

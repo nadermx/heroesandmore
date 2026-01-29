@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Checkout - HeroesAndMore{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb mb-0" style="font-size: 0.875rem;">
+                <li class="breadcrumb-item"><a href="{% url 'marketplace:listing_list' %}" class="text-muted">Listings</a></li>
+                <li class="breadcrumb-item"><a href="{{ listing.get_absolute_url }}" class="text-muted">{{ listing.title|truncatechars:30 }}</a></li>
+                <li class="breadcrumb-item active">Checkout</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 1.75rem; margin-bottom: 0;">Checkout</h1>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="row">
+                <!-- Order Summary -->
+                <div class="col-md-5 order-md-2 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-transparent">
+                            <h6 class="fw-bold mb-0">Order Summary</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex mb-3">
+                                {% if listing.image1 %}
+                                <img src="{{ listing.image1.url }}" class="me-3" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;">
+                                {% else %}
+                                <div class="me-3 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; background: var(--gray-100); border-radius: 8px;">
+                                    <i class="bi bi-image" style="font-size: 1.5rem; color: var(--gray-400);"></i>
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <h6 class="mb-1" style="color: var(--gray-900);">{{ listing.title }}</h6>
+                                    <small class="text-muted">{{ listing.get_condition_display }}</small>
+                                </div>
+                            </div>
+
+                            <hr style="border-color: var(--gray-200);">
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Item Price</span>
+                                <span style="color: var(--gray-900);">${{ listing.price|intcomma }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Shipping</span>
+                                <span style="color: var(--gray-900);">{% if listing.shipping_price %}${{ listing.shipping_price }}{% else %}<span style="color: var(--accent-success);">Free</span>{% endif %}</span>
+                            </div>
+                            <hr style="border-color: var(--gray-200);">
+                            <div class="d-flex justify-content-between">
+                                <strong style="color: var(--gray-900);">Total</strong>
+                                <strong style="font-size: 1.25rem; color: var(--gray-900);">${{ total|intcomma }}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <h6 class="fw-bold mb-2" style="color: var(--gray-700);">Seller</h6>
+                            <a href="{% url 'accounts:profile' username=listing.seller.username %}" class="text-decoration-none d-flex align-items-center">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; background: var(--gray-200);">
+                                    <i class="bi bi-person" style="color: var(--gray-600);"></i>
+                                </div>
+                                <span style="color: var(--gray-900);">{{ listing.seller.username }}</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Checkout Form -->
+                <div class="col-md-7 order-md-1">
+                    <div class="card">
+                        <div class="card-header bg-transparent">
+                            <h6 class="fw-bold mb-0">Shipping Address</h6>
+                        </div>
+                        <div class="card-body p-4">
+                            <form method="post">
+                                {% csrf_token %}
+
+                                <div class="mb-4">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Full Name</label>
+                                    <input type="text" name="name" class="form-control" value="{{ user.get_full_name }}" required>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Shipping Address</label>
+                                    <textarea name="shipping_address" class="form-control" rows="4" required placeholder="Street Address&#10;City, State ZIP&#10;Country"></textarea>
+                                </div>
+
+                                <div class="card mb-4" style="background: var(--gray-50); border: 1px solid var(--gray-200);">
+                                    <div class="card-body py-3">
+                                        <div class="d-flex align-items-start">
+                                            <i class="bi bi-shield-check me-2" style="color: var(--gray-600);"></i>
+                                            <small class="text-muted">You will be redirected to complete payment securely via Stripe.</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-dark btn-lg w-100">
+                                    Continue to Payment
+                                </button>
+
+                                <p class="text-center mt-3 mb-0">
+                                    <small class="text-muted">
+                                        <i class="bi bi-lock me-1"></i> Secure checkout powered by Stripe
+                                    </small>
+                                </p>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

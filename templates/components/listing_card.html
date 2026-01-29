@@ -1,0 +1,107 @@
+<div class="listing-card h-100">
+    <!-- Image Container -->
+    <div class="card-img-container">
+        <a href="{{ listing.get_absolute_url }}">
+            {% if listing.image1 %}
+            <img src="{{ listing.image1.url }}" class="card-img-top" alt="{{ listing.title }}" loading="lazy">
+            {% else %}
+            <div class="card-img-top d-flex align-items-center justify-content-center" style="background: var(--gray-100);">
+                <i class="bi bi-image" style="font-size: 3rem; color: var(--gray-300);"></i>
+            </div>
+            {% endif %}
+        </a>
+
+        <!-- Badges overlay -->
+        <div class="position-absolute top-0 start-0 p-2 d-flex flex-wrap gap-1">
+            {% if listing.listing_type == 'auction' %}
+            <span class="badge badge-auction">Auction</span>
+            {% endif %}
+            {% if listing.grading_service %}
+            <span class="badge badge-grade">{{ listing.grading_service|upper }} {{ listing.grade }}</span>
+            {% endif %}
+        </div>
+
+        <!-- Quick actions -->
+        <div class="card-actions">
+            {% if user.is_authenticated %}
+            <button class="action-btn" title="Save to wishlist"
+                    hx-post="{% url 'marketplace:save_listing' listing.id %}"
+                    hx-swap="none">
+                <i class="bi bi-heart"></i>
+            </button>
+            {% endif %}
+            <button class="action-btn" title="Quick view" data-bs-toggle="modal" data-bs-target="#quickview-{{ listing.id }}">
+                <i class="bi bi-eye"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Card Body -->
+    <div class="card-body">
+        <h6 class="card-title">
+            <a href="{{ listing.get_absolute_url }}">{{ listing.title }}</a>
+        </h6>
+
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <span class="price {% if listing.listing_type == 'auction' %}auction{% endif %}">
+                ${{ listing.get_current_price|floatformat:2 }}
+            </span>
+            {% if listing.condition %}
+            <span class="badge badge-condition">{{ listing.get_condition_display }}</span>
+            {% endif %}
+        </div>
+
+        {% if show_time and listing.listing_type == 'auction' %}
+        <div class="time-remaining mb-2">
+            <i class="bi bi-clock"></i>
+            {% if listing.auction_end %}
+            <span data-countdown="{{ listing.auction_end|date:'c' }}">
+                {% with remaining=listing.time_remaining %}
+                    {% if remaining.days > 0 %}
+                        {{ remaining.days }}d {{ remaining.hours }}h
+                    {% elif remaining.hours > 0 %}
+                        {{ remaining.hours }}h {{ remaining.minutes }}m
+                    {% elif remaining.minutes > 0 %}
+                        {{ remaining.minutes }}m
+                    {% else %}
+                        Ending soon
+                    {% endif %}
+                {% endwith %}
+            </span>
+            {% else %}
+            <span>No end date</span>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if listing.listing_type == 'auction' and listing.bid_count %}
+        <div class="text-muted" style="font-size: 0.75rem;">
+            {{ listing.bid_count }} bid{{ listing.bid_count|pluralize }}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Card Footer -->
+    <div class="card-body pt-0 border-top" style="border-color: var(--gray-100) !important;">
+        <div class="seller-info d-flex align-items-center gap-2 pt-2">
+            {% if listing.seller.profile.avatar %}
+            <img src="{{ listing.seller.profile.avatar.url }}" class="rounded-circle" width="20" height="20" style="object-fit: cover;">
+            {% else %}
+            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 20px; height: 20px; background: var(--gray-200); font-size: 0.6rem; color: var(--gray-600);">
+                {{ listing.seller.username|slice:":1"|upper }}
+            </div>
+            {% endif %}
+            <a href="{% url 'accounts:profile' username=listing.seller.username %}">
+                {{ listing.seller.username }}
+            </a>
+            {% if listing.seller.profile.is_seller_verified %}
+            <i class="bi bi-patch-check-fill" style="color: var(--accent-success); font-size: 0.75rem;" title="Verified Seller"></i>
+            {% endif %}
+            {% if listing.seller.profile.rating %}
+            <span class="ms-auto" style="color: var(--gray-500); font-size: 0.75rem;">
+                <i class="bi bi-star-fill" style="color: #FBBF24;"></i> {{ listing.seller.profile.rating|floatformat:1 }}
+            </span>
+            {% endif %}
+        </div>
+    </div>
+</div>

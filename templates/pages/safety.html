@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Safety Tips - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 3rem 0;">
+    <div class="container">
+        <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Safety Tips</h1>
+        <p class="lead text-muted">Stay safe while buying and selling collectibles</p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold mb-4"><i class="bi bi-bag-check me-2"></i>For Buyers</h4>
+                    <div class="mb-4 pb-4 border-bottom">
+                        <h6 class="fw-bold">Always use our checkout</h6>
+                        <p class="text-muted mb-0">Never pay outside of HeroesAndMore. Our secure checkout protects your purchase with buyer protection.</p>
+                    </div>
+                    <div class="mb-4 pb-4 border-bottom">
+                        <h6 class="fw-bold">Check seller ratings</h6>
+                        <p class="text-muted mb-0">Review the seller's feedback and ratings before purchasing. Verified sellers have passed our verification process.</p>
+                    </div>
+                    <div class="mb-4 pb-4 border-bottom">
+                        <h6 class="fw-bold">Ask questions</h6>
+                        <p class="text-muted mb-0">If something isn't clear, message the seller. A legitimate seller will be happy to answer questions and provide additional photos.</p>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold">Verify graded items</h6>
+                        <p class="text-muted mb-0">For PSA, BGS, or CGC items, verify the certification number on the grading company's website before purchasing.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold mb-4"><i class="bi bi-tag me-2"></i>For Sellers</h4>
+                    <div class="mb-4 pb-4 border-bottom">
+                        <h6 class="fw-bold">Ship with tracking</h6>
+                        <p class="text-muted mb-0">Always use a shipping service with tracking and consider insurance for valuable items.</p>
+                    </div>
+                    <div class="mb-4 pb-4 border-bottom">
+                        <h6 class="fw-bold">Document everything</h6>
+                        <p class="text-muted mb-0">Take photos of items before shipping and keep shipping receipts as proof of shipment.</p>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold">Be accurate</h6>
+                        <p class="text-muted mb-0">Accurately describe item condition. Misrepresenting items leads to returns and negative reviews.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold mb-4"><i class="bi bi-exclamation-triangle me-2"></i>Red Flags to Watch For</h4>
+                    <ul class="mb-0" style="line-height: 2; color: var(--gray-700);">
+                        <li>Requests to pay outside of HeroesAndMore</li>
+                        <li>Prices that seem too good to be true</li>
+                        <li>Sellers who won't answer questions or provide additional photos</li>
+                        <li>Pressure to complete a transaction quickly</li>
+                        <li>Requests for personal information beyond what's needed for shipping</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-4" style="background: var(--gray-50); border: none;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <i class="bi bi-shield-check fs-3" style="color: var(--accent-success);"></i>
+                        <div>
+                            <h6 class="fw-bold mb-1">Buyer Protection</h6>
+                            <p class="small text-muted mb-0">All purchases through our checkout are protected.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-4 text-center">
+                    <i class="bi bi-flag display-4 mb-3" style="color: var(--gray-400);"></i>
+                    <h6 class="fw-bold">Report an Issue</h6>
+                    <p class="small text-muted mb-3">If you encounter suspicious activity, let us know.</p>
+                    <a href="{% url 'contact' %}" class="btn btn-outline-dark btn-sm">Report</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

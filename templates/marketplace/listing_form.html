@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if listing %}Edit Listing{% else %}Create Listing{% endif %} - HeroesAndMore{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{% if listing %}Edit Listing{% else %}Create New Listing{% endif %}</h1>
+        <p class="text-muted mb-0">{% if listing %}Update your listing details{% else %}List an item for sale on HeroesAndMore{% endif %}</p>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body p-4">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        {% if form.errors %}
+                        <div class="card mb-4" style="border-left: 4px solid var(--accent-danger);">
+                            <div class="card-body py-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-exclamation-circle me-2" style="color: var(--accent-danger);"></i>
+                                    <span style="color: var(--gray-700);">Please correct the errors below.</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <h6 class="fw-bold mb-3" style="color: var(--gray-900);">Basic Information</h6>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Title *</label>
+                            {{ form.title }}
+                            {% if form.title.errors %}<div class="small mt-1" style="color: var(--accent-danger);">{{ form.title.errors.0 }}</div>{% endif %}
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Category *</label>
+                                {{ form.category }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Condition *</label>
+                                {{ form.condition }}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Description *</label>
+                            {{ form.description }}
+                            <small class="text-muted d-block mt-1">Include details about the item's condition, any flaws, and what's included.</small>
+                        </div>
+
+                        <hr class="my-4" style="border-color: var(--gray-200);">
+
+                        <h6 class="fw-bold mb-3" style="color: var(--gray-900);">Grading (Optional)</h6>
+
+                        <div class="row mb-4">
+                            <div class="col-md-4 mb-3 mb-md-0">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Grading Service</label>
+                                {{ form.grading_service }}
+                            </div>
+                            <div class="col-md-4 mb-3 mb-md-0">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Grade</label>
+                                {{ form.grade }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Cert Number</label>
+                                {{ form.cert_number }}
+                            </div>
+                        </div>
+
+                        <hr class="my-4" style="border-color: var(--gray-200);">
+
+                        <h6 class="fw-bold mb-3" style="color: var(--gray-900);">Pricing</h6>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Listing Type *</label>
+                                {{ form.listing_type }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Price / Starting Bid *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ form.price }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4" id="auctionOptions" style="display: none;">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Auction Duration</label>
+                                {{ form.auction_duration }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Reserve Price (Optional)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ form.reserve_price }}
+                                </div>
+                                <small class="text-muted d-block mt-1">Minimum price to sell.</small>
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-4" id="offerOption">
+                            {{ form.allow_offers }}
+                            <label class="form-check-label" for="id_allow_offers">
+                                <strong>Allow buyers to make offers</strong>
+                            </label>
+                        </div>
+
+                        <hr class="my-4" style="border-color: var(--gray-200);">
+
+                        <h6 class="fw-bold mb-3" style="color: var(--gray-900);">Images</h6>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Main Image *</label>
+                                {{ form.image1 }}
+                                {% if form.instance.image1 %}
+                                <img src="{{ form.instance.image1.url }}" class="mt-2" style="max-height: 80px; border-radius: 8px;">
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Image 2</label>
+                                {{ form.image2 }}
+                                {% if form.instance.image2 %}
+                                <img src="{{ form.instance.image2.url }}" class="mt-2" style="max-height: 80px; border-radius: 8px;">
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Image 3</label>
+                                {{ form.image3 }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Image 4</label>
+                                {{ form.image4 }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Image 5</label>
+                                {{ form.image5 }}
+                            </div>
+                        </div>
+
+                        <hr class="my-4" style="border-color: var(--gray-200);">
+
+                        <h6 class="fw-bold mb-3" style="color: var(--gray-900);">Shipping</h6>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Shipping Price</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ form.shipping_price }}
+                                </div>
+                                <small class="text-muted d-block mt-1">Enter 0 for free shipping.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Ships From</label>
+                                {{ form.ships_from }}
+                            </div>
+                        </div>
+
+                        <hr class="my-4" style="border-color: var(--gray-200);">
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-dark">
+                                {% if listing %}Save Changes{% else %}Create Listing{% endif %}
+                            </button>
+                            {% if listing %}
+                            <a href="{{ listing.get_absolute_url }}" class="btn btn-outline-dark">Cancel</a>
+                            {% else %}
+                            <a href="{% url 'marketplace:listing_list' %}" class="btn btn-outline-dark">Cancel</a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const listingType = document.getElementById('id_listing_type');
+    const auctionOptions = document.getElementById('auctionOptions');
+    const offerOption = document.getElementById('offerOption');
+
+    function toggleOptions() {
+        if (listingType.value === 'auction') {
+            auctionOptions.style.display = 'flex';
+            offerOption.style.display = 'none';
+        } else {
+            auctionOptions.style.display = 'none';
+            offerOption.style.display = 'block';
+        }
+    }
+
+    listingType.addEventListener('change', toggleOptions);
+    toggleOptions();
+});
+</script>
+{% endblock %}
+{% endblock %}

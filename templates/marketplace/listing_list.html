@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block title %}Marketplace - HeroesAndMore{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="section-alt border-bottom" style="padding: 2rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Marketplace</h1>
+                <p class="text-muted mb-0">{{ listings.paginator.count|default:0 }} items available</p>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <!-- View Toggle -->
+                <div class="btn-group d-none d-md-flex" role="group">
+                    <button type="button" class="btn btn-outline-dark btn-sm active" title="Grid view">
+                        <i class="bi bi-grid-3x3-gap"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-dark btn-sm" title="List view">
+                        <i class="bi bi-list"></i>
+                    </button>
+                </div>
+                <!-- Sort -->
+                <select class="form-select form-select-sm" style="width: auto;" onchange="updateSort(this.value)">
+                    <option value="newest" {% if request.GET.sort == 'newest' or not request.GET.sort %}selected{% endif %}>Newest First</option>
+                    <option value="price_low" {% if request.GET.sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
+                    <option value="price_high" {% if request.GET.sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+                    <option value="ending" {% if request.GET.sort == 'ending' %}selected{% endif %}>Ending Soon</option>
+                    <option value="popular" {% if request.GET.sort == 'popular' %}selected{% endif %}>Most Popular</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <!-- Filters Sidebar -->
+        <div class="col-lg-3 mb-4">
+            <div class="sticky-top" style="top: 80px;">
+                <!-- Mobile Filter Toggle -->
+                <button class="btn btn-outline-dark w-100 d-lg-none mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse">
+                    <i class="bi bi-funnel me-2"></i> Filters
+                </button>
+
+                <div class="collapse d-lg-block" id="filtersCollapse">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0 fw-bold">Filters</h6>
+                                <a href="{% url 'marketplace:listing_list' %}" class="text-muted small">Clear all</a>
+                            </div>
+
+                            <form method="get" id="filterForm">
+                                <!-- Preserve sort -->
+                                {% if request.GET.sort %}
+                                <input type="hidden" name="sort" value="{{ request.GET.sort }}">
+                                {% endif %}
+
+                                <!-- Category -->
+                                <div class="mb-4">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Category</label>
+                                    <select name="category" class="form-select" onchange="this.form.submit()">
+                                        <option value="">All Categories</option>
+                                        {% for cat in categories %}
+                                        <option value="{{ cat.slug }}" {% if request.GET.category == cat.slug %}selected{% endif %}>
+                                            {{ cat.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- Listing Type -->
+                                <div class="mb-4">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Type</label>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <a href="?{% if request.GET.sort %}sort={{ request.GET.sort }}&{% endif %}{% if request.GET.category %}category={{ request.GET.category }}&{% endif %}{% if request.GET.condition %}condition={{ request.GET.condition }}{% endif %}"
+                                           class="btn btn-sm {% if not request.GET.type %}btn-dark{% else %}btn-outline-dark{% endif %}">All</a>
+                                        <a href="?type=fixed{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}"
+                                           class="btn btn-sm {% if request.GET.type == 'fixed' %}btn-dark{% else %}btn-outline-dark{% endif %}">Buy Now</a>
+                                        <a href="?type=auction{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}"
+                                           class="btn btn-sm {% if request.GET.type == 'auction' %}btn-dark{% else %}btn-outline-dark{% endif %}">Auction</a>
+                                    </div>
+                                </div>
+
+                                <!-- Condition -->
+                                <div class="mb-4">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Condition</label>
+                                    <select name="condition" class="form-select" onchange="this.form.submit()">
+                                        <option value="">Any Condition</option>
+                                        <option value="mint" {% if request.GET.condition == 'mint' %}selected{% endif %}>Mint</option>
+                                        <option value="near_mint" {% if request.GET.condition == 'near_mint' %}selected{% endif %}>Near Mint</option>
+                                        <option value="excellent" {% if request.GET.condition == 'excellent' %}selected{% endif %}>Excellent</option>
+                                        <option value="very_good" {% if request.GET.condition == 'very_good' %}selected{% endif %}>Very Good</option>
+                                        <option value="good" {% if request.GET.condition == 'good' %}selected{% endif %}>Good</option>
+                                        <option value="fair" {% if request.GET.condition == 'fair' %}selected{% endif %}>Fair</option>
+                                    </select>
+                                </div>
+
+                                <!-- Price Range -->
+                                <div class="mb-4">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Price Range</label>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" name="min_price" class="form-control" placeholder="Min" value="{{ request.GET.min_price }}">
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" name="max_price" class="form-control" placeholder="Max" value="{{ request.GET.max_price }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-dark btn-sm w-100 mt-2">Apply Price</button>
+                                </div>
+
+                                <!-- Graded Only -->
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="graded" id="gradedOnly"
+                                               {% if request.GET.graded %}checked{% endif %} onchange="this.form.submit()">
+                                        <label class="form-check-label small" for="gradedOnly">
+                                            Graded items only
+                                        </label>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Save Search -->
+                    {% if user.is_authenticated and request.GET %}
+                    <div class="mt-3">
+                        <button class="btn btn-outline-dark btn-sm w-100"
+                                hx-post="{% url 'alerts:saved_search_create' %}"
+                                hx-vals='{"query": "{{ request.GET.urlencode }}"}'
+                                hx-swap="none">
+                            <i class="bi bi-bell me-1"></i> Save this search
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Listings Grid -->
+        <div class="col-lg-9">
+            <!-- Active Filters -->
+            {% if request.GET.category or request.GET.type or request.GET.condition or request.GET.min_price or request.GET.max_price %}
+            <div class="mb-4 d-flex flex-wrap gap-2 align-items-center">
+                <span class="text-muted small">Active filters:</span>
+                {% if request.GET.category %}
+                <span class="badge bg-dark">{{ request.GET.category }} <a href="?" class="text-white ms-1">&times;</a></span>
+                {% endif %}
+                {% if request.GET.type %}
+                <span class="badge bg-dark">{{ request.GET.type }} <a href="?" class="text-white ms-1">&times;</a></span>
+                {% endif %}
+                {% if request.GET.condition %}
+                <span class="badge bg-dark">{{ request.GET.condition }} <a href="?" class="text-white ms-1">&times;</a></span>
+                {% endif %}
+                {% if request.GET.min_price or request.GET.max_price %}
+                <span class="badge bg-dark">${{ request.GET.min_price|default:'0' }} - ${{ request.GET.max_price|default:'∞' }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Results Grid -->
+            <div class="row g-4">
+                {% for listing in listings %}
+                <div class="col-6 col-md-4 col-xl-3">
+                    {% include 'components/listing_card.html' with listing=listing %}
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <div class="mb-4">
+                            <i class="bi bi-search display-1" style="color: var(--gray-300);"></i>
+                        </div>
+                        <h4>No listings found</h4>
+                        <p class="text-muted mb-4">Try adjusting your filters or search for something else.</p>
+                        <div class="d-flex gap-2 justify-content-center">
+                            <a href="{% url 'marketplace:listing_list' %}" class="btn btn-outline-dark">Clear Filters</a>
+                            <a href="{% url 'marketplace:listing_create' %}" class="btn btn-dark">Sell an Item</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if listings.has_other_pages %}
+            <nav class="mt-5">
+                <ul class="pagination justify-content-center">
+                    {% if listings.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ listings.previous_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in listings.paginator.page_range %}
+                        {% if listings.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > listings.number|add:'-3' and num < listings.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if listings.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ listings.next_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateSort(value) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('sort', value);
+    url.searchParams.delete('page');
+    window.location.href = url.toString();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}Cookie Policy - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 3rem 0;">
+    <div class="container">
+        <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Cookie Policy</h1>
+        <p class="text-muted">Last updated: January 2026</p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body p-4" style="line-height: 1.8; color: var(--gray-700);">
+                    <h5 class="fw-bold mb-3">What Are Cookies</h5>
+                    <p>Cookies are small text files stored on your device when you visit websites. They help us remember your preferences and improve your experience.</p>
+
+                    <h5 class="fw-bold mb-3 mt-4">Cookies We Use</h5>
+
+                    <h6 class="fw-bold mt-3">Essential Cookies</h6>
+                    <p>Required for the site to function. These include session cookies for keeping you logged in and security cookies.</p>
+
+                    <h6 class="fw-bold mt-3">Functional Cookies</h6>
+                    <p>Remember your preferences such as language and display settings.</p>
+
+                    <h6 class="fw-bold mt-3">Analytics Cookies</h6>
+                    <p>Help us understand how visitors use our site so we can improve it. This data is anonymized.</p>
+
+                    <h5 class="fw-bold mb-3 mt-4">Managing Cookies</h5>
+                    <p>You can control cookies through your browser settings. Note that disabling certain cookies may affect site functionality.</p>
+
+                    <h5 class="fw-bold mb-3 mt-4">Third-Party Cookies</h5>
+                    <p>Some cookies are placed by third parties like Stripe (payment processing). These are subject to their own privacy policies.</p>
+
+                    <h5 class="fw-bold mb-3 mt-4">Contact</h5>
+                    <p class="mb-0">For questions about our cookie use, please <a href="{% url 'contact' %}">contact us</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card" style="position: sticky; top: 100px;">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">Related Policies</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><a href="{% url 'terms' %}" class="text-decoration-none"><i class="bi bi-arrow-right me-2"></i>Terms of Service</a></li>
+                        <li><a href="{% url 'privacy' %}" class="text-decoration-none"><i class="bi bi-arrow-right me-2"></i>Privacy Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

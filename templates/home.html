@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <div class="container position-relative">
+        <div class="row align-items-center">
+            <div class="col-lg-7">
+                <p class="text-uppercase fw-semibold mb-3" style="color: var(--gray-400); letter-spacing: 0.1em; font-size: 0.85rem;">The Premier Collectibles Marketplace</p>
+                <h1>Buy. Sell. Collect.</h1>
+                <p class="lead mb-4">Join thousands of collectors trading cards, comics, figures, and more. Track your collection's value and discover rare finds.</p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{% url 'marketplace:listing_list' %}" class="btn btn-light btn-lg">
+                        Explore Marketplace
+                    </a>
+                    {% if not user.is_authenticated %}
+                    <a href="{% url 'account_signup' %}" class="btn btn-outline-light btn-lg">
+                        Create Free Account
+                    </a>
+                    {% else %}
+                    <a href="{% url 'marketplace:listing_create' %}" class="btn btn-outline-light btn-lg">
+                        <i class="bi bi-plus-lg me-2"></i>List an Item
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-5 d-none d-lg-block text-end">
+                <div class="position-relative">
+                    <!-- Floating cards visual -->
+                    <div class="d-flex justify-content-end gap-3">
+                        <div style="width: 140px; height: 190px; background: linear-gradient(135deg, #404040 0%, #262626 100%); border-radius: 12px; transform: rotate(-6deg); box-shadow: 0 25px 50px rgba(0,0,0,0.3);"></div>
+                        <div style="width: 140px; height: 190px; background: linear-gradient(135deg, #525252 0%, #404040 100%); border-radius: 12px; transform: rotate(3deg) translateY(-20px); box-shadow: 0 25px 50px rgba(0,0,0,0.3);"></div>
+                        <div style="width: 140px; height: 190px; background: linear-gradient(135deg, #737373 0%, #525252 100%); border-radius: 12px; transform: rotate(-2deg) translateY(10px); box-shadow: 0 25px 50px rgba(0,0,0,0.3);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Bar -->
+<section class="stats-bar d-none d-md-block">
+    <div class="container">
+        <div class="row">
+            <div class="col-3">
+                <div class="stat-item">
+                    <div class="stat-value">50K+</div>
+                    <div class="stat-label">Active Listings</div>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="stat-item">
+                    <div class="stat-value">10K+</div>
+                    <div class="stat-label">Collectors</div>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="stat-item">
+                    <div class="stat-value">$2M+</div>
+                    <div class="stat-label">Items Sold</div>
+                </div>
+            </div>
+            <div class="col-3">
+                <div class="stat-item">
+                    <div class="stat-value">4.9</div>
+                    <div class="stat-label">Avg Rating</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories -->
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Browse Categories</h2>
+            <a href="{% url 'items:category_list' %}" class="btn btn-outline-dark btn-sm">View All</a>
+        </div>
+        <div class="row g-3">
+            {% for category in categories %}
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                <a href="{{ category.get_absolute_url }}" class="category-card h-100">
+                    <i class="bi {{ category.icon|default:'bi-box' }} icon"></i>
+                    <span class="name">{{ category.name }}</span>
+                </a>
+            </div>
+            {% empty %}
+            <!-- Default categories if none exist -->
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                <a href="#" class="category-card h-100">
+                    <i class="bi bi-suit-spade icon"></i>
+                    <span class="name">Trading Cards</span>
+                </a>
+            </div>
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                <a href="#" class="category-card h-100">
+                    <i class="bi bi-book icon"></i>
+                    <span class="name">Comics</span>
+                </a>
+            </div>
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                <a href="#" class="category-card h-100">
+                    <i class="bi bi-person-standing icon"></i>
+                    <span class="name">Action Figures</span>
+                </a>
+            </div>
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                <a href="#" class="category-card h-100">
+                    <i class="bi bi-controller icon"></i>
+                    <span class="name">Video Games</span>
+                </a>
+            </div>
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                <a href="#" class="category-card h-100">
+                    <i class="bi bi-vinyl icon"></i>
+                    <span class="name">Funko Pops</span>
+                </a>
+            </div>
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                <a href="#" class="category-card h-100">
+                    <i class="bi bi-currency-dollar icon"></i>
+                    <span class="name">Coins</span>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Recently Listed -->
+<section class="section section-alt">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Just Listed</h2>
+            <a href="{% url 'marketplace:listing_list' %}?sort=newest" class="btn btn-outline-dark btn-sm">View All</a>
+        </div>
+        <div class="row g-4">
+            {% for listing in recent_listings %}
+            <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+                {% include 'components/listing_card.html' with listing=listing %}
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="bi bi-inbox display-1 text-muted"></i>
+                    </div>
+                    <h5>No listings yet</h5>
+                    <p class="text-muted mb-4">Be the first to list an item on the marketplace.</p>
+                    <a href="{% url 'marketplace:listing_create' %}" class="btn btn-dark">Create Listing</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Trending / Hot Items -->
+{% if trending_listings %}
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">
+                <span style="color: var(--accent-danger);">Trending Now</span>
+            </h2>
+            <a href="{% url 'marketplace:listing_list' %}?sort=popular" class="btn btn-outline-dark btn-sm">View All</a>
+        </div>
+        <div class="row g-4">
+            {% for listing in trending_listings %}
+            <div class="col-6 col-md-4 col-lg-3">
+                {% include 'components/listing_card.html' with listing=listing %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Ending Soon Auctions -->
+{% if ending_soon %}
+<section class="section section-alt">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">
+                <i class="bi bi-clock" style="color: var(--accent-warning);"></i>
+                Ending Soon
+            </h2>
+            <a href="{% url 'marketplace:listing_list' %}?type=auction&sort=ending" class="btn btn-outline-dark btn-sm">All Auctions</a>
+        </div>
+        <div class="row g-4">
+            {% for listing in ending_soon %}
+            <div class="col-6 col-md-4 col-lg-3">
+                {% include 'components/listing_card.html' with listing=listing show_time=True %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Why Choose Us - Features -->
+<section class="section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="mb-3">Why Collectors Choose Us</h2>
+            <p class="text-secondary" style="max-width: 600px; margin: 0 auto;">Everything you need to buy, sell, and manage your collection in one place.</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-3">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <h5 class="feature-title">Secure Transactions</h5>
+                    <p class="feature-desc">Protected payments with Stripe. Buyer protection on every purchase.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+                    <h5 class="feature-title">Price Tracking</h5>
+                    <p class="feature-desc">Real-time market values. Track your collection's worth over time.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-award"></i>
+                    </div>
+                    <h5 class="feature-title">Grading Support</h5>
+                    <p class="feature-desc">PSA, BGS, CGC certified items. Verified authentication.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <h5 class="feature-title">Active Community</h5>
+                    <p class="feature-desc">Forums, messaging, and follows. Connect with fellow collectors.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+{% if not user.is_authenticated %}
+<section class="section" style="background: var(--gray-900); color: #fff;">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8 mb-4 mb-lg-0">
+                <h2 style="color: #fff; font-size: 2.25rem; margin-bottom: 1rem;">Start Your Collection Today</h2>
+                <p style="color: var(--gray-400); font-size: 1.1rem; margin: 0;">Join thousands of collectors. Free to sign up, only pay when you sell.</p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <a href="{% url 'account_signup' %}" class="btn btn-light btn-lg">
+                    Create Free Account
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- How It Works -->
+<section class="section section-alt">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="mb-3">How It Works</h2>
+            <p class="text-secondary">Get started in minutes</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="text-center">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" style="width: 80px; height: 80px; background: var(--gray-100); font-size: 2rem; font-weight: 800; color: var(--gray-400);">1</div>
+                    <h5>Create Your Account</h5>
+                    <p class="text-secondary">Sign up for free in seconds. No credit card required to browse or buy.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" style="width: 80px; height: 80px; background: var(--gray-100); font-size: 2rem; font-weight: 800; color: var(--gray-400);">2</div>
+                    <h5>List or Browse</h5>
+                    <p class="text-secondary">Create listings in minutes or browse thousands of collectibles from trusted sellers.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" style="width: 80px; height: 80px; background: var(--gray-100); font-size: 2rem; font-weight: 800; color: var(--gray-400);">3</div>
+                    <h5>Buy, Sell, Collect</h5>
+                    <p class="text-secondary">Secure checkout, seller ratings, and collection tracking all in one place.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

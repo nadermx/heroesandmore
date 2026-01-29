@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign Out - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center" style="background: var(--gray-50); margin-top: -1px;">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-5 col-lg-4">
+                <div class="text-center mb-4">
+                    <a href="{% url 'home' %}" class="text-decoration-none">
+                        <span style="font-size: 1.75rem; font-weight: 800; color: var(--gray-900);">HEROESANDMORE</span>
+                    </a>
+                </div>
+
+                <div class="card">
+                    <div class="card-body p-4 text-center">
+                        <i class="bi bi-box-arrow-right display-4 mb-3" style="color: var(--gray-400);"></i>
+                        <h4 class="fw-bold mb-3">Sign out?</h4>
+                        <p class="text-muted mb-4">Are you sure you want to sign out of your account?</p>
+
+                        <form method="post" action="{% url 'account_logout' %}">
+                            {% csrf_token %}
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-dark py-2">Yes, Sign Out</button>
+                                <a href="{% url 'home' %}" class="btn btn-outline-dark py-2">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

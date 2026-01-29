@@ -1,0 +1,29 @@
+---
+# Server user
+server_user: www
+app_name: heroesandmore
+domain: heroesandmore.com
+
+# Paths
+app_path: /home/{{ server_user }}/{{ app_name }}
+venv_path: "{{ app_path }}/venv"
+
+# Database
+db_name: heroesandmore
+db_user: heroesandmore
+db_password: "VSk9S1p1YntnQkcPlYM2kZnkwqC6MxUO"
+
+# Python version
+python_version: "3.12"
+
+# Supervisor
+supervisor_conf: /etc/supervisor/conf.d/{{ app_name }}.conf
+
+# Nginx
+nginx_conf: /etc/nginx/sites-available/{{ app_name }}
+
+# Celery
+celery_workers: 2
+
+# Redis
+redis_url: redis://localhost:6379/0

@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% load allauth %}
+
+{% block title %}Create Account - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center" style="background: var(--gray-50); margin-top: -1px;">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-5 col-lg-4">
+                <div class="text-center mb-4">
+                    <a href="{% url 'home' %}" class="text-decoration-none">
+                        <span style="font-size: 1.75rem; font-weight: 800; color: var(--gray-900);">HEROESANDMORE</span>
+                    </a>
+                </div>
+
+                <div class="card">
+                    <div class="card-body p-4">
+                        <h4 class="fw-bold text-center mb-2">Create your account</h4>
+                        <p class="text-center text-muted small mb-4">Join thousands of collectors today</p>
+
+                        {% if form.errors %}
+                        <div class="alert alert-danger small">
+                            Please correct the errors below.
+                        </div>
+                        {% endif %}
+
+                        <form method="post" action="{% url 'account_signup' %}">
+                            {% csrf_token %}
+
+                            <div class="mb-3">
+                                <label for="id_username" class="form-label">Username</label>
+                                <input type="text" name="username" id="id_username"
+                                       class="form-control {% if form.username.errors %}is-invalid{% endif %}"
+                                       placeholder="Choose a username" value="{{ form.username.value|default:'' }}" required autofocus>
+                                {% if form.username.errors %}
+                                <div class="invalid-feedback">{{ form.username.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="id_email" class="form-label">Email</label>
+                                <input type="email" name="email" id="id_email"
+                                       class="form-control {% if form.email.errors %}is-invalid{% endif %}"
+                                       placeholder="Enter your email" value="{{ form.email.value|default:'' }}" required>
+                                {% if form.email.errors %}
+                                <div class="invalid-feedback">{{ form.email.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="id_password1" class="form-label">Password</label>
+                                <input type="password" name="password1" id="id_password1"
+                                       class="form-control {% if form.password1.errors %}is-invalid{% endif %}"
+                                       placeholder="Create a password" required>
+                                {% if form.password1.errors %}
+                                <div class="invalid-feedback">{{ form.password1.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text small">Must be at least 8 characters</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="id_password2" class="form-label">Confirm Password</label>
+                                <input type="password" name="password2" id="id_password2"
+                                       class="form-control {% if form.password2.errors %}is-invalid{% endif %}"
+                                       placeholder="Confirm your password" required>
+                                {% if form.password2.errors %}
+                                <div class="invalid-feedback">{{ form.password2.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            {% if redirect_field_value %}
+                            <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+                            {% endif %}
+
+                            <button type="submit" class="btn btn-dark w-100 py-2 fw-semibold">
+                                Create Account
+                            </button>
+
+                            <p class="text-center text-muted small mt-3 mb-0">
+                                By signing up, you agree to our
+                                <a href="{% url 'terms' %}" class="text-muted">Terms</a> and
+                                <a href="{% url 'privacy' %}" class="text-muted">Privacy Policy</a>
+                            </p>
+                        </form>
+                    </div>
+                </div>
+
+                <p class="text-center mt-4 text-muted">
+                    Already have an account? <a href="{% url 'account_login' %}" class="fw-semibold text-dark">Sign in</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

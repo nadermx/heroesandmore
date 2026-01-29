@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if query %}Search: {{ query }}{% else %}Search{% endif %} - HeroesAndMore{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                {% if query %}
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Results for "{{ query }}"</h1>
+                {% else %}
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">All Listings</h1>
+                {% endif %}
+                <p class="text-muted mb-0">{{ listings.paginator.count }} result{{ listings.paginator.count|pluralize }}</p>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <select class="form-select form-select-sm" style="width: auto;" onchange="window.location.href='?q={{ query }}&sort=' + this.value">
+                    <option value="relevance" {% if request.GET.sort == 'relevance' %}selected{% endif %}>Relevance</option>
+                    <option value="newest" {% if request.GET.sort == 'newest' %}selected{% endif %}>Newest</option>
+                    <option value="price_low" {% if request.GET.sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
+                    <option value="price_high" {% if request.GET.sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <!-- Filters -->
+        <div class="col-lg-3 mb-4">
+            <div class="sticky-top" style="top: 80px;">
+                <!-- Mobile Filter Toggle -->
+                <button class="btn btn-outline-dark w-100 d-lg-none mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse">
+                    <i class="bi bi-funnel me-2"></i> Filters
+                </button>
+
+                <div class="collapse d-lg-block" id="filtersCollapse">
+                    <div class="card">
+                        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                            <h6 class="fw-bold mb-0">Refine Search</h6>
+                            <a href="{% url 'items:search' %}{% if query %}?q={{ query }}{% endif %}" class="text-muted small">Clear</a>
+                        </div>
+                        <div class="card-body">
+                            <form method="get">
+                                <input type="hidden" name="q" value="{{ query }}">
+
+                                <div class="mb-4">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Category</label>
+                                    <select name="category" class="form-select" onchange="this.form.submit()">
+                                        <option value="">All Categories</option>
+                                        {% for cat in categories %}
+                                        <option value="{{ cat.slug }}" {% if request.GET.category == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Condition</label>
+                                    <select name="condition" class="form-select" onchange="this.form.submit()">
+                                        <option value="">Any Condition</option>
+                                        <option value="mint" {% if request.GET.condition == 'mint' %}selected{% endif %}>Mint</option>
+                                        <option value="near_mint" {% if request.GET.condition == 'near_mint' %}selected{% endif %}>Near Mint</option>
+                                        <option value="excellent" {% if request.GET.condition == 'excellent' %}selected{% endif %}>Excellent</option>
+                                        <option value="very_good" {% if request.GET.condition == 'very_good' %}selected{% endif %}>Very Good</option>
+                                        <option value="good" {% if request.GET.condition == 'good' %}selected{% endif %}>Good</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Price Range</label>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" name="min_price" class="form-control" placeholder="Min" value="{{ request.GET.min_price }}">
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" name="max_price" class="form-control" placeholder="Max" value="{{ request.GET.max_price }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-dark btn-sm w-100 mt-2">Apply Price</button>
+                                </div>
+                            </form>
+
+                            {% if user.is_authenticated %}
+                            <hr class="my-3">
+                            <a href="{% url 'alerts:saved_search_create' %}?q={{ query }}&category={{ request.GET.category }}&condition={{ request.GET.condition }}&min_price={{ request.GET.min_price }}&max_price={{ request.GET.max_price }}"
+                               class="btn btn-outline-dark btn-sm w-100">
+                                <i class="bi bi-bell me-1"></i> Save This Search
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="col-lg-9">
+            <div class="row g-4">
+                {% for listing in listings %}
+                <div class="col-6 col-md-4 col-xl-3">
+                    {% include 'components/listing_card.html' with listing=listing %}
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <div class="mb-4">
+                            <i class="bi bi-search display-1" style="color: var(--gray-300);"></i>
+                        </div>
+                        <h4 style="color: var(--gray-700);">No results found</h4>
+                        <p class="text-muted mb-4">Try different keywords or remove some filters.</p>
+                        <a href="{% url 'marketplace:listing_list' %}" class="btn btn-dark">Browse All Listings</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if listings.has_other_pages %}
+            <nav class="mt-5">
+                <ul class="pagination justify-content-center">
+                    {% if listings.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ query }}&page={{ listings.previous_page_number }}" style="color: var(--gray-900);">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in listings.paginator.page_range %}
+                        {% if listings.number == num %}
+                        <li class="page-item active"><span class="page-link" style="background: var(--gray-900); border-color: var(--gray-900);">{{ num }}</span></li>
+                        {% elif num > listings.number|add:'-3' and num < listings.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?q={{ query }}&page={{ num }}" style="color: var(--gray-900);">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if listings.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ query }}&page={{ listings.next_page_number }}" style="color: var(--gray-900);">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

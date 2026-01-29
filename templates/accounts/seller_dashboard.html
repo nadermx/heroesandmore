@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+
+{% block title %}Seller Dashboard - HeroesAndMore{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Seller Dashboard</h1>
+                <p class="text-muted mb-0">Manage your listings and track your sales</p>
+            </div>
+            <a href="{% url 'marketplace:listing_create' %}" class="btn btn-dark">
+                <i class="bi bi-plus-lg me-1"></i> New Listing
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    {% if not profile.stripe_account_complete %}
+    <div class="card mb-4" style="border-left: 4px solid var(--gray-900);">
+        <div class="card-body">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-exclamation-triangle me-3" style="font-size: 1.5rem; color: var(--gray-700);"></i>
+                <div>
+                    <h6 class="fw-bold mb-1">Complete Your Seller Setup</h6>
+                    <p class="text-muted mb-2">To receive payments, you need to connect your Stripe account.</p>
+                    <a href="{% url 'marketplace:seller_setup' %}" class="btn btn-dark btn-sm">Complete Setup</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-2">
+            <div class="card">
+                <div class="card-body text-center py-3">
+                    <h3 class="mb-0" style="color: var(--gray-900);">{{ stats.active_listings|default:0 }}</h3>
+                    <small class="text-muted">Active</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card">
+                <div class="card-body text-center py-3">
+                    <h3 class="mb-0" style="color: var(--gray-500);">{{ stats.draft_listings|default:0 }}</h3>
+                    <small class="text-muted">Drafts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card">
+                <div class="card-body text-center py-3">
+                    <h3 class="mb-0" style="color: var(--gray-900);">{{ stats.sold_listings|default:0 }}</h3>
+                    <small class="text-muted">Sold</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card">
+                <div class="card-body text-center py-3">
+                    <h3 class="mb-0" style="color: var(--gray-700);">{{ stats.pending_orders|default:0 }}</h3>
+                    <small class="text-muted">Pending</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card">
+                <div class="card-body text-center py-3">
+                    <h3 class="mb-0" style="color: var(--gray-900);">{{ stats.completed_orders|default:0 }}</h3>
+                    <small class="text-muted">Completed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="card" style="background: var(--gray-900);">
+                <div class="card-body text-center py-3">
+                    <h3 class="mb-0 text-white">${{ stats.total_revenue|default:"0" }}</h3>
+                    <small style="color: var(--gray-400);">Revenue</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Orders Needing Action -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Orders Needing Action</h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead style="background: var(--gray-50);">
+                            <tr>
+                                <th class="border-0">Order</th>
+                                <th class="border-0">Buyer</th>
+                                <th class="border-0">Amount</th>
+                                <th class="border-0">Status</th>
+                                <th class="border-0">Date</th>
+                                <th class="border-0"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in pending_orders %}
+                            <tr>
+                                <td>
+                                    <a href="{{ order.get_absolute_url }}" style="color: var(--gray-900);">#{{ order.id }}</a>
+                                    <br>
+                                    <small class="text-muted">{{ order.listing.title|truncatechars:30 }}</small>
+                                </td>
+                                <td>{{ order.buyer.username }}</td>
+                                <td class="fw-semibold">${{ order.amount }}</td>
+                                <td><span class="badge" style="background: var(--gray-200); color: var(--gray-700);">{{ order.get_status_display }}</span></td>
+                                <td class="text-muted">{{ order.created|date:"M d" }}</td>
+                                <td>
+                                    <a href="{{ order.get_absolute_url }}" class="btn btn-sm btn-outline-dark">View</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <i class="bi bi-inbox" style="font-size: 2rem; color: var(--gray-300);"></i>
+                                    <p class="text-muted mt-2 mb-0">No pending orders</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seller Stats & Reviews -->
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Seller Rating</h6>
+                </div>
+                <div class="card-body text-center py-4">
+                    {% if profile.rating %}
+                    <h1 class="display-4 fw-bold mb-2" style="color: var(--gray-900);">{{ profile.rating }}</h1>
+                    <div class="mb-2">
+                        {% for i in "12345" %}
+                            {% if forloop.counter <= profile.rating %}
+                            <i class="bi bi-star-fill" style="color: var(--gray-900);"></i>
+                            {% else %}
+                            <i class="bi bi-star" style="color: var(--gray-300);"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <p class="text-muted mb-0">{{ profile.rating_count }} reviews</p>
+                    {% else %}
+                    <i class="bi bi-star" style="font-size: 2.5rem; color: var(--gray-300);"></i>
+                    <p class="text-muted mt-2 mb-0">No reviews yet</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Recent Reviews</h6>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for review in reviews %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong style="color: var(--gray-900);">{{ review.reviewer.username }}</strong>
+                            <div>
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= review.rating %}
+                                    <i class="bi bi-star-fill" style="color: var(--gray-900); font-size: 0.75rem;"></i>
+                                    {% else %}
+                                    <i class="bi bi-star" style="color: var(--gray-300); font-size: 0.75rem;"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% if review.text %}
+                        <small class="text-muted">{{ review.text|truncatechars:100 }}</small>
+                        {% endif %}
+                    </div>
+                    {% empty %}
+                    <div class="list-group-item text-center py-4">
+                        <small class="text-muted">No reviews yet</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <div class="row g-3 text-center">
+                <div class="col-6 col-md-3">
+                    <a href="{% url 'marketplace:my_listings' %}" class="btn btn-outline-dark w-100">
+                        <i class="bi bi-tag me-1"></i> Manage Listings
+                    </a>
+                </div>
+                <div class="col-6 col-md-3">
+                    <a href="{% url 'marketplace:my_listings' %}?status=draft" class="btn btn-outline-dark w-100">
+                        <i class="bi bi-file-earmark me-1"></i> Draft Listings
+                    </a>
+                </div>
+                <div class="col-6 col-md-3">
+                    <a href="{% url 'marketplace:seller_setup' %}" class="btn btn-outline-dark w-100">
+                        <i class="bi bi-credit-card me-1"></i> Payment Settings
+                    </a>
+                </div>
+                <div class="col-6 col-md-3">
+                    <a href="{% url 'accounts:settings' %}" class="btn btn-outline-dark w-100">
+                        <i class="bi bi-gear me-1"></i> Account Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

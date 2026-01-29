@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Privacy Policy - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 3rem 0;">
+    <div class="container">
+        <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Privacy Policy</h1>
+        <p class="text-muted">Last updated: January 2026</p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body p-4" style="line-height: 1.8; color: var(--gray-700);">
+                    <h5 class="fw-bold mb-3">Information We Collect</h5>
+                    <p>We collect information you provide directly, including: name, email address, shipping address, payment information, and profile information. We also collect usage data automatically through cookies and similar technologies.</p>
+
+                    <h5 class="fw-bold mb-3 mt-4">How We Use Your Information</h5>
+                    <p>We use your information to: process transactions, communicate with you, improve our services, prevent fraud, and comply with legal obligations.</p>
+
+                    <h5 class="fw-bold mb-3 mt-4">Information Sharing</h5>
+                    <p>We share information with: sellers (shipping address for purchases), payment processors (Stripe), and service providers who assist our operations. We do not sell your personal information.</p>
+
+                    <h5 class="fw-bold mb-3 mt-4">Data Security</h5>
+                    <p>We implement industry-standard security measures to protect your information. Payment information is processed securely through Stripe and is never stored on our servers.</p>
+
+                    <h5 class="fw-bold mb-3 mt-4">Your Rights</h5>
+                    <p>You have the right to: access your data, correct inaccuracies, delete your account, and opt out of marketing communications. Contact us to exercise these rights.</p>
+
+                    <h5 class="fw-bold mb-3 mt-4">Cookies</h5>
+                    <p>We use cookies to improve your experience. See our <a href="{% url 'cookies' %}">Cookie Policy</a> for more details.</p>
+
+                    <h5 class="fw-bold mb-3 mt-4">Changes to This Policy</h5>
+                    <p>We may update this policy periodically. We will notify you of significant changes via email or site notice.</p>
+
+                    <h5 class="fw-bold mb-3 mt-4">Contact</h5>
+                    <p class="mb-0">For privacy-related questions, please <a href="{% url 'contact' %}">contact us</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card" style="position: sticky; top: 100px;">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">Related Policies</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><a href="{% url 'terms' %}" class="text-decoration-none"><i class="bi bi-arrow-right me-2"></i>Terms of Service</a></li>
+                        <li><a href="{% url 'cookies' %}" class="text-decoration-none"><i class="bi bi-arrow-right me-2"></i>Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+---
+- name: Quick deploy - git pull only
+  hosts: web
+  become: yes
+  become_user: "{{ server_user }}"
+
+  tasks:
+    - name: Pull latest code
+      git:
+        repo: "git@github.com:yourusername/herosandmore.git"
+        dest: "{{ app_path }}"
+        version: main
+        accept_hostkey: yes
+
+    - name: Install new requirements
+      pip:
+        requirements: "{{ app_path }}/requirements.txt"
+        virtualenv: "{{ venv_path }}"
+
+    - name: Run migrations
+      command: "{{ venv_path }}/bin/python manage.py migrate --noinput"
+      args:
+        chdir: "{{ app_path }}"
+
+    - name: Collect static files
+      command: "{{ venv_path }}/bin/python manage.py collectstatic --noinput"
+      args:
+        chdir: "{{ app_path }}"
+
+    - name: Restart application
+      become: yes
+      become_user: root
+      command: supervisorctl restart {{ app_name }}:*
