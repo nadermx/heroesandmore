@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Scan Sessions - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Scan Sessions</h1>
+                <p class="text-muted mb-0">Manage your bulk scanning sessions</p>
+            </div>
+            <form method="post" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-dark">
+                    <i class="bi bi-plus-lg me-1"></i> New Session
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    {% if sessions %}
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Session</th>
+                            <th class="text-center">Scans</th>
+                            <th class="text-center">Success</th>
+                            <th class="text-center">Failed</th>
+                            <th>Started</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in sessions %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'scanner:session_detail' pk=session.pk %}" class="text-decoration-none fw-semibold">
+                                    {{ session.name|default:"Untitled Session" }}
+                                </a>
+                            </td>
+                            <td class="text-center">{{ session.total_scans }}</td>
+                            <td class="text-center text-success">{{ session.successful_scans }}</td>
+                            <td class="text-center text-danger">{{ session.failed_scans }}</td>
+                            <td class="text-muted small">{{ session.created|date:"M d, Y g:i A" }}</td>
+                            <td>
+                                {% if session.completed_at %}
+                                <span class="badge bg-success">Completed</span>
+                                {% else %}
+                                <span class="badge bg-primary">Active</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="{% url 'scanner:session_detail' pk=session.pk %}" class="btn btn-sm btn-outline-dark">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-camera display-1 text-muted mb-3 d-block"></i>
+        <h4>No Scan Sessions Yet</h4>
+        <p class="text-muted mb-4">Create a session to start bulk scanning your collectibles</p>
+        <form method="post" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-dark">
+                <i class="bi bi-plus-lg me-1"></i> Start New Session
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{% url 'scanner:home' %}" class="btn btn-outline-dark">
+            <i class="bi bi-arrow-left me-1"></i> Back to Scanner
+        </a>
+    </div>
+</div>
+{% endblock %}

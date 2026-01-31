@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}{{ session.name|default:"Scan Session" }} - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'scanner:home' %}">Scanner</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'scanner:sessions' %}">Sessions</a></li>
+                <li class="breadcrumb-item active">{{ session.name|default:"Session"|truncatewords:3 }}</li>
+            </ol>
+        </nav>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{{ session.name|default:"Scan Session" }}</h1>
+                <p class="text-muted mb-0">Started {{ session.created|date:"M d, Y g:i A" }}</p>
+            </div>
+            <a href="{% url 'scanner:home' %}" class="btn btn-dark">
+                <i class="bi bi-plus-lg me-1"></i> Add Scan
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold">{{ session.total_scans }}</div>
+                    <div class="text-muted small">Total Scans</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold text-success">{{ session.successful_scans }}</div>
+                    <div class="text-muted small">Identified</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold text-warning">{{ session.failed_scans }}</div>
+                    <div class="text-muted small">No Match</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold">
+                        {% if session.completed_at %}
+                        <span class="text-success"><i class="bi bi-check-circle"></i></span>
+                        {% else %}
+                        <span class="text-primary"><i class="bi bi-clock"></i></span>
+                        {% endif %}
+                    </div>
+                    <div class="text-muted small">
+                        {% if session.completed_at %}Completed{% else %}Active{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scans -->
+    {% if scans %}
+    <div class="card">
+        <div class="card-header bg-transparent">
+            <h6 class="fw-bold mb-0">Scans in This Session</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="row g-0">
+                {% for scan in scans %}
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="p-3 border-bottom border-end">
+                        <a href="{% url 'scanner:result' pk=scan.pk %}" class="text-decoration-none">
+                            <div class="position-relative mb-2">
+                                <img src="{{ scan.image.url }}" class="img-fluid rounded" alt="Scan"
+                                     style="height: 150px; width: 100%; object-fit: cover;">
+                                <span class="position-absolute top-0 end-0 m-2">
+                                    {% if scan.status == 'success' %}
+                                    <span class="badge bg-success"><i class="bi bi-check"></i></span>
+                                    {% elif scan.status == 'pending' or scan.status == 'processing' %}
+                                    <span class="badge bg-primary"><i class="bi bi-hourglass-split"></i></span>
+                                    {% elif scan.status == 'no_match' %}
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-question"></i></span>
+                                    {% else %}
+                                    <span class="badge bg-danger"><i class="bi bi-x"></i></span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="small">
+                                {% if scan.identified_item %}
+                                <div class="fw-semibold text-truncate">{{ scan.identified_item.name }}</div>
+                                <div class="text-success">${{ scan.identified_item.avg_sale_price|default:0|intcomma }}</div>
+                                {% elif scan.status == 'pending' or scan.status == 'processing' %}
+                                <div class="text-muted">Processing...</div>
+                                {% elif scan.status == 'no_match' %}
+                                <div class="text-warning">No match found</div>
+                                {% else %}
+                                <div class="text-danger">Failed</div>
+                                {% endif %}
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-camera display-1 text-muted mb-3 d-block"></i>
+            <h4>No Scans Yet</h4>
+            <p class="text-muted mb-4">Start scanning items to add them to this session</p>
+            <a href="{% url 'scanner:home' %}" class="btn btn-dark">
+                <i class="bi bi-camera me-1"></i> Start Scanning
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-4 d-flex gap-2">
+        <a href="{% url 'scanner:sessions' %}" class="btn btn-outline-dark">
+            <i class="bi bi-arrow-left me-1"></i> All Sessions
+        </a>
+    </div>
+</div>
+{% endblock %}
