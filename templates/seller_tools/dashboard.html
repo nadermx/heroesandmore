@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+
+{% block title %}Seller Dashboard - HeroesAndMore{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Seller Dashboard</h1>
+                <p class="text-muted mb-0">
+                    <span class="badge bg-dark">{{ subscription.get_tier_display }}</span>
+                    {% if subscription.tier != 'starter' %}
+                    <span class="ms-2 small">{{ subscription.commission_rate }}% commission</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'seller_tools:subscription' %}" class="btn btn-outline-dark">
+                    <i class="bi bi-award me-1"></i> Upgrade
+                </a>
+                <a href="{% url 'marketplace:listing_create' %}" class="btn btn-dark">
+                    <i class="bi bi-plus-lg me-1"></i> New Listing
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-lg-3 mb-4">
+            <div class="card">
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'seller_tools:dashboard' %}" class="list-group-item list-group-item-action active" style="background: var(--gray-900); border-color: var(--gray-900);">
+                        <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                    </a>
+                    <a href="{% url 'marketplace:my_listings' %}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-tag me-2"></i> My Listings
+                    </a>
+                    <a href="{% url 'seller_tools:inventory_list' %}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-box-seam me-2"></i> Inventory
+                    </a>
+                    <a href="{% url 'seller_tools:import_list' %}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-upload me-2"></i> Bulk Import
+                    </a>
+                    <a href="{% url 'seller_tools:analytics' %}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-graph-up me-2"></i> Analytics
+                    </a>
+                    <a href="{% url 'seller_tools:subscription' %}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-award me-2"></i> Subscription
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-9">
+            <!-- Stats Row -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <div class="display-6 fw-bold text-dark">{{ active_listings }}</div>
+                            <div class="text-muted small">Active Listings</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <div class="display-6 fw-bold text-warning">{{ pending_orders }}</div>
+                            <div class="text-muted small">Pending Orders</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <div class="display-6 fw-bold text-success">{{ monthly_sales.count|default:0 }}</div>
+                            <div class="text-muted small">Sales This Month</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <div class="display-6 fw-bold text-primary">${{ monthly_sales.total|default:0|floatformat:0 }}</div>
+                            <div class="text-muted small">Revenue This Month</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6 col-md-3">
+                            <a href="{% url 'marketplace:listing_create' %}" class="btn btn-outline-dark w-100 py-3">
+                                <i class="bi bi-plus-lg d-block mb-1 fs-4"></i>
+                                <span class="small">New Listing</span>
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <a href="{% url 'seller_tools:import_create' %}" class="btn btn-outline-dark w-100 py-3">
+                                <i class="bi bi-upload d-block mb-1 fs-4"></i>
+                                <span class="small">Bulk Import</span>
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <a href="{% url 'seller_tools:inventory_add' %}" class="btn btn-outline-dark w-100 py-3">
+                                <i class="bi bi-box-seam d-block mb-1 fs-4"></i>
+                                <span class="small">Add Inventory</span>
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <a href="{% url 'scanner:home' %}" class="btn btn-outline-dark w-100 py-3">
+                                <i class="bi bi-camera d-block mb-1 fs-4"></i>
+                                <span class="small">Scan Item</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Sales -->
+            <div class="card">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0">Recent Sales</h6>
+                    <a href="{% url 'seller_tools:sales_report' %}" class="btn btn-sm btn-outline-dark">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_sales %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Buyer</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_sales %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'marketplace:order_detail' pk=order.pk %}" class="text-decoration-none text-dark">
+                                            {% if order.listing %}
+                                            {{ order.listing.title|truncatewords:5 }}
+                                            {% else %}
+                                            <span class="text-muted">Item deleted</span>
+                                            {% endif %}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'accounts:profile' username=order.buyer.username %}" class="text-decoration-none">
+                                            {{ order.buyer.username }}
+                                        </a>
+                                    </td>
+                                    <td class="fw-semibold">${{ order.item_price }}</td>
+                                    <td>
+                                        {% if order.status == 'paid' %}
+                                        <span class="badge bg-info">Paid</span>
+                                        {% elif order.status == 'shipped' %}
+                                        <span class="badge bg-primary">Shipped</span>
+                                        {% elif order.status == 'delivered' %}
+                                        <span class="badge bg-success">Delivered</span>
+                                        {% elif order.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ order.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-muted small">{{ order.created|date:"M d" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-receipt display-4 text-muted"></i>
+                        <p class="text-muted mt-3 mb-0">No sales yet. Start listing items to make your first sale!</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Subscription Info -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="fw-bold mb-1">{{ subscription.get_tier_display }} Plan</h6>
+                            <p class="text-muted small mb-0">
+                                {{ subscription.max_active_listings }} listings | {{ subscription.commission_rate }}% commission
+                                {% if subscription.featured_slots > 0 %}
+                                | {{ subscription.featured_slots }} featured slots
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% if subscription.tier != 'premium' %}
+                        <a href="{% url 'seller_tools:subscription' %}" class="btn btn-dark btn-sm">
+                            Upgrade Plan
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
