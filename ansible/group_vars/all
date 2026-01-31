@@ -1,17 +1,22 @@
 ---
-# Server user
+# Server configuration
 server_user: www
 app_name: heroesandmore
 domain: heroesandmore.com
 
+# Git repository
+git_repo: https://github.com/nadermx/heroesandmore.git
+git_branch: main
+
 # Paths
 app_path: /home/{{ server_user }}/{{ app_name }}
 venv_path: "{{ app_path }}/venv"
+config_path: "{{ app_path }}/config.py"
 
-# Database
+# Database (password from vault.yml)
 db_name: heroesandmore
 db_user: heroesandmore
-db_password: "VSk9S1p1YntnQkcPlYM2kZnkwqC6MxUO"
+db_password: "{{ vault_db_password }}"
 
 # Python version
 python_version: "3.12"
@@ -27,3 +32,11 @@ celery_workers: 2
 
 # Redis
 redis_url: redis://localhost:6379/0
+
+# Config template variables (from vault.yml for secrets)
+django_secret_key: "{{ vault_secret_key | default('change-me') }}"
+stripe_public_key: "{{ vault_stripe_public_key | default('') }}"
+stripe_secret_key: "{{ vault_stripe_secret_key | default('') }}"
+stripe_webhook_secret: "{{ vault_stripe_webhook_secret | default('') }}"
+do_spaces_key: "{{ vault_do_spaces_key | default('') }}"
+do_spaces_secret: "{{ vault_do_spaces_secret | default('') }}"

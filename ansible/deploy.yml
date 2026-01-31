@@ -1,20 +1,34 @@
 ---
-- name: Deploy application
+# Full deploy with config update
+# Usage: ansible-playbook -i servers deploy.yml
+# With vault: ansible-playbook -i servers deploy.yml --ask-vault-pass
+- name: Deploy HeroesAndMore application
   hosts: web
   become: yes
   become_user: "{{ server_user }}"
+  vars_files:
+    - group_vars/vault.yml
+
+  pre_tasks:
+    - name: Backup current config
+      copy:
+        src: "{{ config_path }}"
+        dest: "{{ config_path }}.backup"
+        remote_src: yes
+      ignore_errors: yes
 
   tasks:
     - name: Pull latest code
       git:
-        repo: "git@github.com:yourusername/heroesandmore.git"
+        repo: "{{ git_repo }}"
         dest: "{{ app_path }}"
-        version: main
+        version: "{{ git_branch }}"
+        force: yes
         accept_hostkey: yes
       register: git_result
 
-    - name: Create virtualenv
-      command: python3.12 -m venv {{ venv_path }}
+    - name: Create virtualenv if not exists
+      command: python{{ python_version }} -m venv {{ venv_path }}
       args:
         creates: "{{ venv_path }}/bin/activate"
 
@@ -24,29 +38,50 @@
         virtualenv: "{{ venv_path }}"
       when: git_result.changed
 
+    - name: Deploy config.py from template
+      template:
+        src: templates/config.py.j2
+        dest: "{{ config_path }}"
+        mode: '0640'
+
     - name: Run migrations
       command: "{{ venv_path }}/bin/python manage.py migrate --noinput"
       args:
         chdir: "{{ app_path }}"
-      when: git_result.changed
 
     - name: Collect static files
       command: "{{ venv_path }}/bin/python manage.py collectstatic --noinput"
       args:
         chdir: "{{ app_path }}"
-      when: git_result.changed
 
     - name: Restart application
       become: yes
       become_user: root
       command: supervisorctl restart {{ app_name }}:*
-      when: git_result.changed
 
-- name: Post-deploy tasks
+- name: Post-deploy verification
   hosts: web
   become: yes
   tasks:
+    - name: Wait for app to start
+      wait_for:
+        path: /tmp/{{ app_name }}.sock
+        timeout: 30
+
     - name: Reload Nginx
       systemd:
         name: nginx
         state: reloaded
+
+    - name: Health check
+      uri:
+        url: "https://{{ domain }}/"
+        method: GET
+        validate_certs: yes
+        status_code: 200
+      register: health_check
+      ignore_errors: yes
+
+    - name: Display deployment status
+      debug:
+        msg: "Deployment complete! Health check {{ 'passed' if health_check.status == 200 else 'failed - please verify manually' }}"

@@ -1,0 +1,63 @@
+---
+# Backup database and config
+# Usage: ansible-playbook -i servers backup.yml
+- name: Backup database and config
+  hosts: web
+  become: yes
+
+  vars:
+    backup_dir: /home/{{ server_user }}/backups
+    timestamp: "{{ ansible_date_time.date }}_{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}"
+
+  tasks:
+    - name: Create backup directory
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        owner: "{{ server_user }}"
+        group: "{{ server_user }}"
+        mode: '0750'
+
+    - name: Backup PostgreSQL database
+      shell: |
+        sudo -u postgres pg_dump {{ db_name }} | gzip > {{ backup_dir }}/{{ db_name }}_{{ timestamp }}.sql.gz
+      args:
+        creates: "{{ backup_dir }}/{{ db_name }}_{{ timestamp }}.sql.gz"
+
+    - name: Backup config.py
+      copy:
+        src: "{{ config_path }}"
+        dest: "{{ backup_dir }}/config_{{ timestamp }}.py"
+        remote_src: yes
+        mode: '0640'
+
+    - name: Backup media directory (if exists)
+      archive:
+        path: "{{ app_path }}/media"
+        dest: "{{ backup_dir }}/media_{{ timestamp }}.tar.gz"
+        format: gz
+      ignore_errors: yes
+
+    - name: List backups
+      find:
+        paths: "{{ backup_dir }}"
+        file_type: file
+      register: backup_files
+
+    - name: Display backup info
+      debug:
+        msg: "Created backup at {{ backup_dir }}/{{ db_name }}_{{ timestamp }}.sql.gz"
+
+    - name: Clean old backups (keep last 7 days)
+      find:
+        paths: "{{ backup_dir }}"
+        age: 7d
+        file_type: file
+      register: old_backups
+
+    - name: Remove old backups
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_backups.files }}"
+      when: old_backups.files | length > 0

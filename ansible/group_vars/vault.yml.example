@@ -1,0 +1,26 @@
+---
+# SECRETS - Copy this to vault.yml and fill in your values
+# vault.yml is gitignored and should never be committed
+#
+# For extra security, encrypt with ansible-vault:
+#   ansible-vault encrypt group_vars/vault.yml
+#
+# Then run playbooks with --ask-vault-pass
+
+# Database
+vault_db_password: "your-database-password"
+
+# Django secret key (generate with: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())")
+vault_secret_key: "your-secret-key-here"
+
+# Stripe keys (from dashboard.stripe.com)
+vault_stripe_public_key: "pk_live_..."
+vault_stripe_secret_key: "sk_live_..."
+vault_stripe_webhook_secret: "whsec_..."
+
+# DigitalOcean Spaces (for media storage)
+vault_do_spaces_key: ""
+vault_do_spaces_secret: ""
+
+# Email password (if using authenticated SMTP)
+vault_email_host_password: ""

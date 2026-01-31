@@ -1,0 +1,46 @@
+# Local configuration - DO NOT COMMIT TO GIT
+# Copy this file to config.py and fill in your values
+
+SECRET_KEY = 'change-me-in-production-use-a-real-secret-key'
+
+# Database (for PostgreSQL)
+DATABASE_PASSWORD = 'your-password-here'
+DATABASE_HOST = 'localhost'
+DATABASE_PORT = '5432'
+
+# Redis
+REDIS_URL = 'redis://localhost:6379/0'
+
+# Stripe (from dashboard.stripe.com)
+STRIPE_PUBLIC_KEY = 'pk_test_...'
+STRIPE_SECRET_KEY = 'sk_test_...'
+STRIPE_WEBHOOK_SECRET = 'whsec_...'
+
+# DigitalOcean Spaces (S3-compatible storage)
+DO_SPACES_KEY = ''
+DO_SPACES_SECRET = ''
+DO_SPACES_BUCKET = 'heroesandmore'
+DO_SPACES_REGION = 'nyc3'
+DO_SPACES_ENDPOINT = 'https://nyc3.digitaloceanspaces.com'
+
+# Email Configuration
+# For local dev, you can use console backend in settings.py
+# For production with self-hosted SMTP:
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'localhost'
+EMAIL_PORT = 25
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = ''
+EMAIL_HOST_PASSWORD = ''
+DEFAULT_FROM_EMAIL = 'HeroesAndMore <noreply@mail.heroesandmore.com>'
+SERVER_EMAIL = 'HeroesAndMore <noreply@mail.heroesandmore.com>'
+
+# Debug mode - set to False in production
+DEBUG = True
+
+# SSL - set to True in production
+SECURE_SSL_REDIRECT = False
+
+# Allowed hosts
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'heroesandmore.com', 'www.heroesandmore.com']
