@@ -16,6 +16,15 @@ REDIS_URL = '{{ redis_url }}'
 STRIPE_PUBLIC_KEY = '{{ stripe_public_key }}'
 STRIPE_SECRET_KEY = '{{ stripe_secret_key }}'
 STRIPE_WEBHOOK_SECRET = '{{ stripe_webhook_secret }}'
+STRIPE_CONNECT_WEBHOOK_SECRET = '{{ stripe_connect_webhook_secret }}'
+
+# Stripe subscription price IDs (from Stripe Dashboard)
+STRIPE_PRICE_BASIC = '{{ stripe_price_basic }}'
+STRIPE_PRICE_FEATURED = '{{ stripe_price_featured }}'
+STRIPE_PRICE_PREMIUM = '{{ stripe_price_premium }}'
+
+# Site URL for callbacks
+SITE_URL = 'https://www.{{ domain }}'
 
 # DigitalOcean Spaces (S3-compatible storage)
 DO_SPACES_KEY = '{{ do_spaces_key }}'

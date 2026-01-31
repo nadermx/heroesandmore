@@ -417,9 +417,86 @@ curl -X POST https://heroesandmore.com/api/v1/marketplace/listings/ \
   -d '{"title":"Test Item","price":"99.99","category":1,"condition":"mint"}'
 ```
 
+## Stripe Payment Integration
+
+### Overview
+Full Stripe integration for marketplace payments:
+- **Stripe Payments**: PaymentIntents for checkout with saved cards support
+- **Stripe Connect**: Express accounts for seller payouts
+- **Stripe Billing**: Subscriptions for seller tiers
+
+### Configuration
+Required settings in `config.py`:
+```python
+STRIPE_PUBLIC_KEY = 'pk_test_...'
+STRIPE_SECRET_KEY = 'sk_test_...'
+STRIPE_WEBHOOK_SECRET = 'whsec_...'  # Main webhook
+STRIPE_CONNECT_WEBHOOK_SECRET = 'whsec_...'  # Connect webhook
+STRIPE_PRICE_BASIC = 'price_...'  # $9.99/month
+STRIPE_PRICE_FEATURED = 'price_...'  # $29.99/month
+STRIPE_PRICE_PREMIUM = 'price_...'  # $99.99/month
+SITE_URL = 'https://www.heroesandmore.com'
+```
+
+### Webhook Endpoints
+Register these in Stripe Dashboard:
+- **Main**: `https://heroesandmore.com/marketplace/webhooks/stripe/`
+  - Events: payment_intent.*, charge.refunded, charge.dispute.*, customer.subscription.*, invoice.*
+- **Connect**: `https://heroesandmore.com/marketplace/webhooks/stripe-connect/`
+  - Events: account.updated
+
+### Local Testing with Stripe CLI
+```bash
+# Install Stripe CLI
+brew install stripe/stripe-cli/stripe
+
+# Login
+stripe login
+
+# Forward webhooks
+stripe listen --forward-to localhost:8000/marketplace/webhooks/stripe/
+
+# Test events
+stripe trigger payment_intent.succeeded
+```
+
+### Service Layer
+Located in `marketplace/services/`:
+- `stripe_service.py` - Payment intents, payment methods, refunds
+- `connect_service.py` - Seller account onboarding, transfers
+- `subscription_service.py` - Seller tier subscriptions
+
+### Key Models
+- `Order` - Has `stripe_payment_intent`, `stripe_transfer_id`, refund tracking
+- `PaymentMethod` - Saved cards for buyers
+- `StripeEvent` - Webhook event tracking for idempotency
+- `Refund` - Order refund records
+- `Profile` - Has `stripe_account_id` (Connect), `stripe_customer_id` (buyer)
+- `SellerSubscription` - Has `stripe_subscription_id`, tier info
+
+### Commission Rates by Tier
+- Starter (Free): 12.95% commission, 50 listings
+- Basic ($9.99/mo): 9.95% commission, 200 listings
+- Featured ($29.99/mo): 7.95% commission, 1000 listings
+- Premium ($99.99/mo): 5.95% commission, unlimited listings
+
+### Payment Flow
+1. Buyer clicks "Buy Now" -> creates pending Order
+2. Checkout page shows Stripe Elements
+3. PaymentIntent created with seller's Connect account as destination
+4. On success, webhook updates Order status, listing marked sold
+5. Funds automatically transferred to seller (minus commission)
+
+### Seller Onboarding Flow
+1. Seller visits `/marketplace/seller-setup/`
+2. Express account created if needed
+3. Redirect to Stripe-hosted onboarding
+4. Return to `/marketplace/seller-setup/return/`
+5. Account status synced from webhook
+
 ## Notes
 - The `collections` app uses `item_collections` as the related_name to avoid conflicts with Django's built-in collections module
 - All listing images are stored in `media/listings/`
 - User avatars are stored in `media/avatars/`
-- Platform fee is 3% (configurable in settings.PLATFORM_FEE_PERCENT)
+- Platform fee is tier-based (see commission rates above)
 - Image scanner requires Google Cloud Vision API (configure credentials)

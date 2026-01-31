@@ -3,6 +3,46 @@
 
 {% block title %}Checkout - HeroesAndMore{% endblock %}
 
+{% block extra_css %}
+<style>
+    #card-element {
+        padding: 12px;
+        border: 1px solid var(--gray-300);
+        border-radius: 6px;
+        background: white;
+    }
+    #card-element.StripeElement--focus {
+        border-color: var(--gray-900);
+    }
+    #card-element.StripeElement--invalid {
+        border-color: var(--accent-danger);
+    }
+    #card-errors {
+        color: var(--accent-danger);
+        margin-top: 8px;
+        font-size: 0.875rem;
+    }
+    .saved-card {
+        cursor: pointer;
+        transition: border-color 0.2s, background-color 0.2s;
+        border: 1px solid var(--gray-200);
+    }
+    .saved-card:hover {
+        border-color: var(--gray-400);
+        background-color: var(--gray-50);
+    }
+    .saved-card.selected {
+        border-color: var(--gray-900);
+        background-color: var(--gray-50);
+    }
+    .card-brand-icon {
+        width: 32px;
+        height: 20px;
+        object-fit: contain;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Header -->
 <div class="section-alt border-bottom" style="padding: 1.5rem 0;">
@@ -76,43 +116,84 @@
 
                 <!-- Checkout Form -->
                 <div class="col-md-7 order-md-1">
-                    <div class="card">
+                    <!-- Shipping Address -->
+                    <div class="card mb-4">
                         <div class="card-header bg-transparent">
                             <h6 class="fw-bold mb-0">Shipping Address</h6>
                         </div>
-                        <div class="card-body p-4">
-                            <form method="post">
-                                {% csrf_token %}
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Full Name</label>
+                                <input type="text" id="shipping-name" class="form-control" value="{{ user.get_full_name }}" required>
+                            </div>
 
-                                <div class="mb-4">
-                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Full Name</label>
-                                    <input type="text" name="name" class="form-control" value="{{ user.get_full_name }}" required>
-                                </div>
+                            <div class="mb-0">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Address</label>
+                                <textarea id="shipping-address" class="form-control" rows="3" required placeholder="Street Address&#10;City, State ZIP&#10;Country">{{ order.shipping_address }}</textarea>
+                            </div>
+                        </div>
+                    </div>
 
-                                <div class="mb-4">
-                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Shipping Address</label>
-                                    <textarea name="shipping_address" class="form-control" rows="4" required placeholder="Street Address&#10;City, State ZIP&#10;Country"></textarea>
-                                </div>
-
-                                <div class="card mb-4" style="background: var(--gray-50); border: 1px solid var(--gray-200);">
-                                    <div class="card-body py-3">
-                                        <div class="d-flex align-items-start">
-                                            <i class="bi bi-shield-check me-2" style="color: var(--gray-600);"></i>
-                                            <small class="text-muted">You will be redirected to complete payment securely via Stripe.</small>
+                    <!-- Payment Method -->
+                    <div class="card">
+                        <div class="card-header bg-transparent">
+                            <h6 class="fw-bold mb-0">Payment Method</h6>
+                        </div>
+                        <div class="card-body">
+                            {% if payment_methods %}
+                            <!-- Saved Payment Methods -->
+                            <div class="mb-4">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Saved Cards</label>
+                                {% for pm in payment_methods %}
+                                <div class="card saved-card mb-2 {% if pm.id == user.profile.default_payment_method_id %}selected{% endif %}"
+                                     data-payment-method-id="{{ pm.id }}">
+                                    <div class="card-body py-2 px-3">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-credit-card me-2" style="color: var(--gray-600);"></i>
+                                                <span class="text-capitalize">{{ pm.card.brand }}</span>
+                                                <span class="mx-1 text-muted">****</span>
+                                                <span>{{ pm.card.last4 }}</span>
+                                                <small class="text-muted ms-3">{{ pm.card.exp_month }}/{{ pm.card.exp_year }}</small>
+                                            </div>
+                                            <input type="radio" name="selected_card" value="{{ pm.id }}"
+                                                   class="form-check-input"
+                                                   {% if pm.id == user.profile.default_payment_method_id %}checked{% endif %}>
                                         </div>
                                     </div>
                                 </div>
-
-                                <button type="submit" class="btn btn-dark btn-lg w-100">
-                                    Continue to Payment
+                                {% endfor %}
+                                <button type="button" class="btn btn-link ps-0" id="use-new-card">
+                                    <i class="bi bi-plus"></i> Use a different card
                                 </button>
+                            </div>
+                            {% endif %}
 
-                                <p class="text-center mt-3 mb-0">
-                                    <small class="text-muted">
-                                        <i class="bi bi-lock me-1"></i> Secure checkout powered by Stripe
-                                    </small>
-                                </p>
-                            </form>
+                            <!-- New Card Form -->
+                            <div id="new-card-form" {% if payment_methods %}style="display: none;"{% endif %}>
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Card Details</label>
+                                <div id="card-element"></div>
+                                <div id="card-errors" role="alert"></div>
+
+                                <div class="form-check mt-3">
+                                    <input type="checkbox" class="form-check-input" id="save-card" checked>
+                                    <label class="form-check-label text-muted" for="save-card">Save card for future purchases</label>
+                                </div>
+                            </div>
+
+                            <hr class="my-4" style="border-color: var(--gray-200);">
+
+                            <!-- Pay Button -->
+                            <button type="button" id="pay-button" class="btn btn-dark btn-lg w-100">
+                                <span id="button-text">Pay ${{ total|intcomma }}</span>
+                                <span id="spinner" class="spinner-border spinner-border-sm d-none ms-2" role="status"></span>
+                            </button>
+
+                            <p class="text-center mt-3 mb-0">
+                                <small class="text-muted">
+                                    <i class="bi bi-lock me-1"></i> Secure checkout powered by Stripe
+                                </small>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -120,4 +201,114 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+const stripe = Stripe('{{ stripe_public_key }}');
+const elements = stripe.elements();
+const cardElement = elements.create('card', {
+    style: {
+        base: {
+            fontSize: '16px',
+            color: '#333',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            '::placeholder': { color: '#aab7c4' }
+        }
+    }
+});
+cardElement.mount('#card-element');
+
+// Handle card errors
+cardElement.on('change', function(event) {
+    const errorEl = document.getElementById('card-errors');
+    errorEl.textContent = event.error ? event.error.message : '';
+});
+
+// Toggle new card form
+document.getElementById('use-new-card')?.addEventListener('click', function() {
+    document.getElementById('new-card-form').style.display = 'block';
+    document.querySelectorAll('input[name="selected_card"]').forEach(r => r.checked = false);
+    document.querySelectorAll('.saved-card').forEach(c => c.classList.remove('selected'));
+});
+
+// Select saved card
+document.querySelectorAll('.saved-card').forEach(card => {
+    card.addEventListener('click', function() {
+        document.querySelectorAll('.saved-card').forEach(c => c.classList.remove('selected'));
+        this.classList.add('selected');
+        this.querySelector('input[type="radio"]').checked = true;
+        document.getElementById('new-card-form').style.display = 'none';
+    });
+});
+
+// Process payment
+document.getElementById('pay-button').addEventListener('click', async function() {
+    const button = this;
+    const spinner = document.getElementById('spinner');
+    const buttonText = document.getElementById('button-text');
+
+    // Validate shipping address
+    const shippingName = document.getElementById('shipping-name').value.trim();
+    const shippingAddress = document.getElementById('shipping-address').value.trim();
+
+    if (!shippingName || !shippingAddress) {
+        document.getElementById('card-errors').textContent = 'Please enter your shipping address.';
+        return;
+    }
+
+    button.disabled = true;
+    spinner.classList.remove('d-none');
+    buttonText.textContent = 'Processing...';
+
+    try {
+        const selectedCard = document.querySelector('input[name="selected_card"]:checked');
+        let paymentMethodId;
+
+        if (selectedCard) {
+            paymentMethodId = selectedCard.value;
+        } else {
+            // Create new payment method
+            const { paymentMethod, error } = await stripe.createPaymentMethod({
+                type: 'card',
+                card: cardElement,
+                billing_details: {
+                    name: shippingName,
+                }
+            });
+
+            if (error) {
+                throw new Error(error.message);
+            }
+            paymentMethodId = paymentMethod.id;
+        }
+
+        // Confirm payment
+        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
+            '{{ client_secret }}',
+            {
+                payment_method: paymentMethodId,
+                return_url: window.location.origin + '/marketplace/order/{{ order.id }}/complete/'
+            }
+        );
+
+        if (confirmError) {
+            throw new Error(confirmError.message);
+        }
+
+        if (paymentIntent.status === 'succeeded') {
+            window.location.href = '/marketplace/order/{{ order.id }}/complete/';
+        } else if (paymentIntent.status === 'requires_action') {
+            // 3D Secure - Stripe.js handles this automatically with return_url
+        }
+
+    } catch (error) {
+        document.getElementById('card-errors').textContent = error.message;
+        button.disabled = false;
+        spinner.classList.add('d-none');
+        buttonText.textContent = 'Pay ${{ total|intcomma }}';
+    }
+});
+</script>
 {% endblock %}

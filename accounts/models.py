@@ -21,8 +21,17 @@ class Profile(models.Model):
 
     # Seller info
     is_seller_verified = models.BooleanField(default=False)
+
+    # Stripe Connect (seller)
     stripe_account_id = models.CharField(max_length=100, blank=True)
+    stripe_account_type = models.CharField(max_length=20, default='express')  # express, standard, custom
     stripe_account_complete = models.BooleanField(default=False)
+    stripe_payouts_enabled = models.BooleanField(default=False)
+    stripe_charges_enabled = models.BooleanField(default=False)
+
+    # Stripe Customer (buyer)
+    stripe_customer_id = models.CharField(max_length=100, blank=True)
+    default_payment_method_id = models.CharField(max_length=100, blank=True)
 
     # Seller subscription tier
     seller_tier = models.CharField(max_length=20, choices=SELLER_TIERS, default='starter')
@@ -109,3 +118,26 @@ class RecentlyViewed(models.Model):
         cls.objects.filter(pk__in=[v.pk for v in old_views]).delete()
 
         return obj
+
+
+class DeviceToken(models.Model):
+    """
+    Store device tokens for push notifications (FCM).
+    """
+    PLATFORM_CHOICES = [
+        ('android', 'Android'),
+        ('ios', 'iOS'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='device_tokens')
+    token = models.CharField(max_length=255, unique=True)
+    platform = models.CharField(max_length=20, choices=PLATFORM_CHOICES)
+    active = models.BooleanField(default=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.platform} device"

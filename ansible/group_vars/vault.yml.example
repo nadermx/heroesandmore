@@ -16,7 +16,13 @@ vault_secret_key: "your-secret-key-here"
 # Stripe keys (from dashboard.stripe.com)
 vault_stripe_public_key: "pk_live_..."
 vault_stripe_secret_key: "sk_live_..."
-vault_stripe_webhook_secret: "whsec_..."
+vault_stripe_webhook_secret: "whsec_..."  # Main webhook for payments
+vault_stripe_connect_webhook_secret: "whsec_..."  # Connect webhook for seller accounts
+
+# Stripe subscription price IDs (create in Stripe Dashboard > Products)
+vault_stripe_price_basic: "price_..."  # $9.99/month Basic tier
+vault_stripe_price_featured: "price_..."  # $29.99/month Featured tier
+vault_stripe_price_premium: "price_..."  # $99.99/month Premium tier
 
 # DigitalOcean Spaces (for media storage)
 vault_do_spaces_key: ""

@@ -61,6 +61,15 @@ def subscription_manage(request):
         defaults={'tier': 'starter'}
     )
 
+    # Sync with Stripe if there's an active subscription
+    if subscription.stripe_subscription_id:
+        from marketplace.services.subscription_service import SubscriptionService
+        try:
+            SubscriptionService.get_subscription_status(request.user)
+            subscription.refresh_from_db()
+        except Exception:
+            pass
+
     tiers = SellerSubscription.TIER_DETAILS
 
     return render(request, 'seller_tools/subscription.html', {
@@ -70,27 +79,31 @@ def subscription_manage(request):
 
 
 @login_required
-@require_POST
 def subscription_upgrade(request, tier):
-    """Upgrade seller subscription"""
-    if tier not in dict(SellerSubscription.TIERS):
+    """Upgrade seller subscription via Stripe Checkout"""
+    from marketplace.services.subscription_service import SubscriptionService
+
+    if tier not in ['basic', 'featured', 'premium']:
         messages.error(request, 'Invalid subscription tier')
         return redirect('seller_tools:subscription')
 
-    subscription, created = SellerSubscription.objects.get_or_create(
-        user=request.user
-    )
+    try:
+        session = SubscriptionService.create_checkout_session(
+            request.user,
+            tier,
+            success_url=request.build_absolute_uri('/seller/subscription/success/'),
+            cancel_url=request.build_absolute_uri('/seller/subscription/')
+        )
+        return redirect(session.url)
+    except Exception as e:
+        messages.error(request, f'Unable to start subscription: {e}')
+        return redirect('seller_tools:subscription')
 
-    # In production, this would integrate with Stripe
-    # For now, just update the tier
-    tier_info = SellerSubscription.TIER_DETAILS[tier]
-    subscription.tier = tier
-    subscription.max_active_listings = tier_info['max_listings']
-    subscription.commission_rate = tier_info['commission_rate']
-    subscription.featured_slots = tier_info['featured_slots']
-    subscription.save()
 
-    messages.success(request, f'Successfully upgraded to {tier_info["name"]} tier!')
+@login_required
+def subscription_success(request):
+    """Handle successful subscription signup"""
+    messages.success(request, 'Welcome! Your subscription is now active.')
     return redirect('seller_tools:subscription')
 
 
@@ -98,19 +111,59 @@ def subscription_upgrade(request, tier):
 @require_POST
 def subscription_cancel(request):
     """Cancel seller subscription"""
+    from marketplace.services.subscription_service import SubscriptionService
+
     subscription = get_object_or_404(SellerSubscription, user=request.user)
 
-    # Downgrade to starter
-    starter_info = SellerSubscription.TIER_DETAILS['starter']
-    subscription.tier = 'starter'
-    subscription.max_active_listings = starter_info['max_listings']
-    subscription.commission_rate = starter_info['commission_rate']
-    subscription.featured_slots = starter_info['featured_slots']
-    subscription.stripe_subscription_id = ''
-    subscription.save()
+    if subscription.stripe_subscription_id:
+        try:
+            # Cancel at period end (graceful cancellation)
+            SubscriptionService.cancel_subscription(request.user, at_period_end=True)
+            messages.success(request, 'Your subscription will be cancelled at the end of the billing period.')
+        except Exception as e:
+            messages.error(request, f'Unable to cancel subscription: {e}')
+    else:
+        # No Stripe subscription, just downgrade
+        starter_info = SellerSubscription.TIER_DETAILS['starter']
+        subscription.tier = 'starter'
+        subscription.max_active_listings = starter_info['max_listings']
+        subscription.commission_rate = starter_info['commission_rate']
+        subscription.featured_slots = starter_info['featured_slots']
+        subscription.save()
+        messages.success(request, 'You are now on the Starter tier.')
 
-    messages.success(request, 'Subscription cancelled. You are now on the Starter tier.')
     return redirect('seller_tools:subscription')
+
+
+@login_required
+@require_POST
+def subscription_reactivate(request):
+    """Reactivate a subscription that was set to cancel"""
+    from marketplace.services.subscription_service import SubscriptionService
+
+    try:
+        SubscriptionService.reactivate_subscription(request.user)
+        messages.success(request, 'Your subscription has been reactivated.')
+    except Exception as e:
+        messages.error(request, f'Unable to reactivate subscription: {e}')
+
+    return redirect('seller_tools:subscription')
+
+
+@login_required
+def subscription_billing_portal(request):
+    """Redirect to Stripe Billing Portal"""
+    from marketplace.services.subscription_service import SubscriptionService
+
+    try:
+        session = SubscriptionService.create_billing_portal_session(
+            request.user,
+            return_url=request.build_absolute_uri('/seller/subscription/')
+        )
+        return redirect(session.url)
+    except Exception as e:
+        messages.error(request, f'Unable to access billing portal: {e}')
+        return redirect('seller_tools:subscription')
 
 
 @login_required
@@ -482,3 +535,32 @@ def export_analytics(request):
         ])
 
     return response
+
+
+@login_required
+def payout_settings(request):
+    """Seller payout settings and history"""
+    from marketplace.services.connect_service import ConnectService
+
+    profile = request.user.profile
+
+    if not profile.stripe_account_id:
+        messages.info(request, 'Please complete your seller account setup first.')
+        return redirect('marketplace:seller_setup')
+
+    # Get account details
+    try:
+        account = ConnectService.retrieve_account(profile.stripe_account_id)
+        balance = ConnectService.get_balance(profile.stripe_account_id)
+        transfers = ConnectService.list_transfers(profile.stripe_account_id, limit=20)
+    except Exception as e:
+        messages.error(request, f'Unable to load payout information: {e}')
+        account = None
+        balance = {'available': [], 'pending': []}
+        transfers = []
+
+    return render(request, 'seller_tools/payout_settings.html', {
+        'account': account,
+        'balance': balance,
+        'transfers': transfers.data if hasattr(transfers, 'data') else [],
+    })

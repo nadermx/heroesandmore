@@ -63,7 +63,7 @@ def listing_list(request):
 
 def listing_detail(request, pk):
     """Individual listing page"""
-    listing = get_object_or_404(Listing.objects.select_related('seller', 'category'), pk=pk)
+    listing = get_object_or_404(Listing.objects.select_related('seller', 'category', 'price_guide_item'), pk=pk)
 
     # Increment view count (simple approach)
     Listing.objects.filter(pk=pk).update(views=F('views') + 1)
@@ -93,6 +93,11 @@ def listing_detail(request, pk):
         status='active'
     ).exclude(pk=pk).order_by('-created')[:4]
 
+    # Recent sales from price guide (for price ticker)
+    recent_sales = []
+    if listing.price_guide_item:
+        recent_sales = listing.price_guide_item.sales.order_by('-sale_date')[:6]
+
     context = {
         'listing': listing,
         'is_saved': is_saved,
@@ -100,6 +105,7 @@ def listing_detail(request, pk):
         'offer_form': offer_form,
         'related': related,
         'seller_listings': seller_listings,
+        'recent_sales': recent_sales,
     }
     return render(request, 'marketplace/listing_detail.html', context)
 
@@ -297,40 +303,51 @@ def respond_offer(request, pk):
 
 @login_required
 def checkout(request, pk):
-    """Checkout page for buying"""
+    """Checkout page for buying - combines shipping and payment"""
     listing = get_object_or_404(Listing, pk=pk, status='active')
 
     if request.user == listing.seller:
         raise Http404("Cannot buy your own listing")
 
-    platform_fee = listing.price * Decimal(str(settings.PLATFORM_FEE_PERCENT)) / 100
+    # Calculate fees based on seller tier
+    from marketplace.services.stripe_service import StripeService
+    commission_rate = StripeService.get_seller_commission_rate(listing.seller)
+    platform_fee = listing.price * commission_rate
     total = listing.price + listing.shipping_price
 
-    if request.method == 'POST':
-        shipping_address = request.POST.get('shipping_address', '').strip()
-        if not shipping_address:
-            messages.error(request, 'Please enter a shipping address.')
-        else:
-            # Create order
-            order = Order.objects.create(
-                listing=listing,
-                buyer=request.user,
-                seller=listing.seller,
-                item_price=listing.price,
-                shipping_price=listing.shipping_price,
-                amount=total,
-                platform_fee=platform_fee,
-                seller_payout=listing.price - platform_fee,
-                shipping_address=shipping_address,
-            )
-            # Mark listing as sold
-            listing.status = 'sold'
-            listing.save()
-            # Redirect to payment
-            return redirect('marketplace:payment', pk=order.pk)
+    # Get or create pending order for this listing/buyer
+    order, created = Order.objects.get_or_create(
+        listing=listing,
+        buyer=request.user,
+        status='pending',
+        defaults={
+            'seller': listing.seller,
+            'item_price': listing.price,
+            'shipping_price': listing.shipping_price,
+            'amount': total,
+            'platform_fee': platform_fee,
+            'seller_payout': listing.price - platform_fee,
+            'shipping_address': '',
+        }
+    )
+
+    # Get saved payment methods
+    payment_methods = StripeService.list_payment_methods(request.user)
+
+    # Create or retrieve payment intent
+    if not order.stripe_payment_intent:
+        intent = StripeService.create_payment_intent(order)
+    else:
+        intent = StripeService.retrieve_payment_intent(order.stripe_payment_intent)
+        # If intent was canceled or expired, create new one
+        if intent.status in ['canceled', 'requires_payment_method']:
+            intent = StripeService.create_payment_intent(order)
 
     context = {
         'listing': listing,
+        'order': order,
+        'payment_methods': payment_methods,
+        'client_secret': intent.client_secret,
         'platform_fee': platform_fee,
         'total': total,
         'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
@@ -340,14 +357,180 @@ def checkout(request, pk):
 
 @login_required
 def payment(request, pk):
-    """Handle Stripe payment"""
+    """Handle Stripe payment confirmation"""
     order = get_object_or_404(Order, pk=pk, buyer=request.user, status='pending')
+
+    from marketplace.services.stripe_service import StripeService
+
+    # Check if payment was already completed
+    if order.stripe_payment_intent:
+        intent = StripeService.retrieve_payment_intent(order.stripe_payment_intent)
+        if intent.status == 'succeeded':
+            order.status = 'paid'
+            order.stripe_payment_status = 'succeeded'
+            order.paid_at = timezone.now()
+            order.save()
+            return redirect('marketplace:order_detail', pk=pk)
 
     context = {
         'order': order,
         'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
     }
     return render(request, 'marketplace/payment.html', context)
+
+
+@login_required
+def checkout_complete(request, pk):
+    """Order confirmation page after successful payment"""
+    order = get_object_or_404(Order, pk=pk, buyer=request.user)
+
+    from marketplace.services.stripe_service import StripeService
+
+    # Verify payment status with Stripe
+    if order.stripe_payment_intent and order.status == 'pending':
+        intent = StripeService.retrieve_payment_intent(order.stripe_payment_intent)
+        if intent.status == 'succeeded':
+            order.status = 'paid'
+            order.stripe_payment_status = 'succeeded'
+            order.paid_at = timezone.now()
+            order.save()
+
+            # Mark listing as sold
+            if order.listing and order.listing.status != 'sold':
+                order.listing.status = 'sold'
+                order.listing.save()
+
+    context = {
+        'order': order,
+    }
+    return render(request, 'marketplace/checkout_complete.html', context)
+
+
+@login_required
+def process_payment(request, pk):
+    """Process payment with selected method (AJAX endpoint)"""
+    from django.http import JsonResponse
+
+    order = get_object_or_404(Order, pk=pk, buyer=request.user, status='pending')
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    # Update shipping address
+    shipping_address = request.POST.get('shipping_address', '').strip()
+    if shipping_address:
+        order.shipping_address = shipping_address
+        order.save(update_fields=['shipping_address'])
+
+    payment_method_id = request.POST.get('payment_method_id')
+    save_card = request.POST.get('save_card') == 'true'
+
+    from marketplace.services.stripe_service import StripeService
+
+    try:
+        intent = StripeService.create_payment_intent(
+            order,
+            payment_method_id=payment_method_id,
+            save_card=save_card
+        )
+
+        if intent.status == 'succeeded':
+            order.status = 'paid'
+            order.stripe_payment_status = 'succeeded'
+            order.paid_at = timezone.now()
+            order.save()
+
+            # Mark listing as sold
+            if order.listing:
+                order.listing.status = 'sold'
+                order.listing.save()
+
+            return JsonResponse({
+                'success': True,
+                'redirect': f'/marketplace/order/{order.id}/'
+            })
+
+        elif intent.status == 'requires_action':
+            return JsonResponse({
+                'requires_action': True,
+                'client_secret': intent.client_secret
+            })
+
+        else:
+            return JsonResponse({
+                'error': f'Payment status: {intent.status}'
+            }, status=400)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+def payment_methods(request):
+    """Manage saved payment methods"""
+    from marketplace.services.stripe_service import StripeService
+
+    methods = StripeService.list_payment_methods(request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        pm_id = request.POST.get('payment_method_id')
+
+        if action == 'delete' and pm_id:
+            try:
+                StripeService.detach_payment_method(pm_id)
+                messages.success(request, "Payment method removed.")
+            except Exception as e:
+                messages.error(request, f"Error removing card: {e}")
+            return redirect('marketplace:payment_methods')
+
+        elif action == 'set_default' and pm_id:
+            try:
+                StripeService.attach_payment_method(request.user, pm_id, set_default=True)
+                messages.success(request, "Default payment method updated.")
+            except Exception as e:
+                messages.error(request, f"Error setting default: {e}")
+            return redirect('marketplace:payment_methods')
+
+    # Create setup intent for adding new card
+    setup_intent = StripeService.create_setup_intent(request.user)
+
+    context = {
+        'payment_methods': methods,
+        'client_secret': setup_intent.client_secret,
+        'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
+    }
+    return render(request, 'marketplace/payment_methods.html', context)
+
+
+@login_required
+def add_payment_method(request):
+    """Add new payment method via AJAX"""
+    from django.http import JsonResponse
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    payment_method_id = request.POST.get('payment_method_id')
+    set_default = request.POST.get('set_default') == 'true'
+
+    from marketplace.services.stripe_service import StripeService
+
+    try:
+        pm = StripeService.attach_payment_method(
+            request.user,
+            payment_method_id,
+            set_default=set_default
+        )
+        return JsonResponse({
+            'success': True,
+            'card': {
+                'brand': pm.card.brand,
+                'last4': pm.card.last4,
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 
 @login_required
@@ -506,9 +689,64 @@ def my_orders(request):
 
 @login_required
 def seller_setup(request):
-    """Stripe Connect onboarding"""
-    # Placeholder - will implement Stripe Connect
-    context = {
-        'profile': request.user.profile,
-    }
-    return render(request, 'marketplace/seller_setup.html', context)
+    """Stripe Connect onboarding - start or continue"""
+    from marketplace.services.connect_service import ConnectService
+
+    profile = request.user.profile
+
+    # Create account if needed
+    if not profile.stripe_account_id:
+        ConnectService.create_express_account(request.user)
+
+    # Check current status
+    account = ConnectService.update_account_status(request.user)
+
+    if profile.stripe_account_complete:
+        messages.success(request, 'Your seller account is ready to receive payments!')
+        return redirect('seller_tools:dashboard')
+
+    # Create onboarding link
+    account_link = ConnectService.create_account_link(
+        profile.stripe_account_id,
+        return_url=request.build_absolute_uri('/marketplace/seller-setup/return/'),
+        refresh_url=request.build_absolute_uri('/marketplace/seller-setup/')
+    )
+
+    return redirect(account_link.url)
+
+
+@login_required
+def seller_setup_return(request):
+    """Return from Stripe Connect onboarding"""
+    from marketplace.services.connect_service import ConnectService
+
+    profile = request.user.profile
+
+    if profile.stripe_account_id:
+        ConnectService.update_account_status(request.user)
+
+    if profile.stripe_account_complete:
+        messages.success(request, 'Your seller account setup is complete! You can now receive payments.')
+    else:
+        messages.warning(request, 'Please complete all required information to start selling.')
+
+    return redirect('seller_tools:dashboard')
+
+
+@login_required
+def seller_stripe_dashboard(request):
+    """Redirect to Stripe Express dashboard"""
+    from marketplace.services.connect_service import ConnectService
+
+    profile = request.user.profile
+
+    if not profile.stripe_account_id:
+        messages.error(request, 'You need to set up your seller account first.')
+        return redirect('marketplace:seller_setup')
+
+    try:
+        login_link = ConnectService.create_login_link(profile.stripe_account_id)
+        return redirect(login_link.url)
+    except Exception as e:
+        messages.error(request, f'Unable to access Stripe dashboard: {e}')
+        return redirect('seller_tools:dashboard')

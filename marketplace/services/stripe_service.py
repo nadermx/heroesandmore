@@ -1,0 +1,231 @@
+import stripe
+import logging
+from decimal import Decimal
+from django.conf import settings
+from django.utils import timezone
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+logger = logging.getLogger(__name__)
+
+
+class StripeService:
+    """Core Stripe operations for payments"""
+
+    @staticmethod
+    def get_or_create_customer(user):
+        """Get or create Stripe customer for buyer"""
+        profile = user.profile
+        if profile.stripe_customer_id:
+            try:
+                return stripe.Customer.retrieve(profile.stripe_customer_id)
+            except stripe.error.InvalidRequestError:
+                # Customer was deleted in Stripe, create new one
+                pass
+
+        customer = stripe.Customer.create(
+            email=user.email,
+            name=f"{user.first_name} {user.last_name}".strip() or user.username,
+            metadata={'user_id': user.id}
+        )
+        profile.stripe_customer_id = customer.id
+        profile.save(update_fields=['stripe_customer_id'])
+        return customer
+
+    @staticmethod
+    def get_seller_commission_rate(seller):
+        """Get seller's commission rate based on subscription tier"""
+        from seller_tools.models import SellerSubscription
+        try:
+            sub = SellerSubscription.objects.get(user=seller)
+            # Commission rates are stored as percentages (e.g., 12.95)
+            return sub.commission_rate / 100
+        except SellerSubscription.DoesNotExist:
+            # Default to starter tier commission
+            return Decimal('0.1295')
+
+    @staticmethod
+    def create_payment_intent(order, payment_method_id=None, save_card=False):
+        """Create PaymentIntent for order checkout"""
+        customer = StripeService.get_or_create_customer(order.buyer)
+        seller_profile = order.seller.profile
+
+        # Calculate amounts in cents
+        total_cents = int(order.amount * 100)
+
+        # Get commission rate based on seller tier
+        commission_rate = StripeService.get_seller_commission_rate(order.seller)
+        platform_fee_cents = int(order.item_price * commission_rate * 100)
+
+        # Build PaymentIntent params
+        params = {
+            'amount': total_cents,
+            'currency': 'usd',
+            'customer': customer.id,
+            'metadata': {
+                'order_id': order.id,
+                'listing_id': order.listing_id if order.listing else '',
+                'buyer_id': order.buyer.id,
+                'seller_id': order.seller.id,
+            },
+            'description': f"Order #{order.id} - {order.listing.title[:50] if order.listing else 'Order'}",
+            'automatic_payment_methods': {'enabled': True},
+        }
+
+        # If seller has connected account, set up destination charge
+        if seller_profile.stripe_account_id and seller_profile.stripe_charges_enabled:
+            params['transfer_data'] = {
+                'destination': seller_profile.stripe_account_id,
+            }
+            params['application_fee_amount'] = platform_fee_cents
+
+        # Attach payment method if provided (for confirming payment)
+        if payment_method_id:
+            params['payment_method'] = payment_method_id
+            params['confirm'] = True
+            params['return_url'] = f"{settings.SITE_URL}/marketplace/order/{order.id}/complete/"
+
+            if save_card:
+                params['setup_future_usage'] = 'off_session'
+
+        intent = stripe.PaymentIntent.create(**params)
+
+        # Update order with payment intent details
+        order.stripe_payment_intent = intent.id
+        order.platform_fee = Decimal(platform_fee_cents) / 100
+        order.seller_payout = order.item_price - order.platform_fee
+        order.save(update_fields=['stripe_payment_intent', 'platform_fee', 'seller_payout'])
+
+        return intent
+
+    @staticmethod
+    def confirm_payment_intent(payment_intent_id, payment_method_id):
+        """Confirm a PaymentIntent with a payment method"""
+        return stripe.PaymentIntent.confirm(
+            payment_intent_id,
+            payment_method=payment_method_id,
+            return_url=f"{settings.SITE_URL}/marketplace/checkout/complete/"
+        )
+
+    @staticmethod
+    def retrieve_payment_intent(payment_intent_id):
+        """Get PaymentIntent status"""
+        return stripe.PaymentIntent.retrieve(payment_intent_id)
+
+    @staticmethod
+    def create_refund(order, amount=None, reason='requested_by_customer'):
+        """Create refund for an order"""
+        from marketplace.models import Refund
+
+        if not order.stripe_payment_intent:
+            raise ValueError("Order has no payment intent")
+
+        refund_params = {
+            'payment_intent': order.stripe_payment_intent,
+            'reason': reason,
+            'metadata': {'order_id': order.id}
+        }
+
+        if amount:
+            refund_params['amount'] = int(amount * 100)
+
+        stripe_refund = stripe.Refund.create(**refund_params)
+
+        # Create refund record
+        refund = Refund.objects.create(
+            order=order,
+            stripe_refund_id=stripe_refund.id,
+            amount=Decimal(stripe_refund.amount) / 100,
+            reason=reason,
+            status=stripe_refund.status,
+        )
+
+        # Update order refund tracking
+        order.refund_amount = (order.refund_amount or 0) + refund.amount
+        order.stripe_refund_id = stripe_refund.id
+
+        if order.refund_amount >= order.amount:
+            order.refund_status = 'full'
+            order.status = 'refunded'
+        else:
+            order.refund_status = 'partial'
+
+        order.save(update_fields=['refund_amount', 'refund_status', 'stripe_refund_id', 'status'])
+
+        return stripe_refund
+
+    @staticmethod
+    def list_payment_methods(user):
+        """List saved payment methods for a customer"""
+        profile = user.profile
+        if not profile.stripe_customer_id:
+            return []
+
+        try:
+            methods = stripe.PaymentMethod.list(
+                customer=profile.stripe_customer_id,
+                type='card'
+            )
+            return methods.data
+        except stripe.error.InvalidRequestError:
+            return []
+
+    @staticmethod
+    def attach_payment_method(user, payment_method_id, set_default=False):
+        """Attach a payment method to customer"""
+        customer = StripeService.get_or_create_customer(user)
+
+        pm = stripe.PaymentMethod.attach(
+            payment_method_id,
+            customer=customer.id
+        )
+
+        if set_default:
+            stripe.Customer.modify(
+                customer.id,
+                invoice_settings={'default_payment_method': payment_method_id}
+            )
+            user.profile.default_payment_method_id = payment_method_id
+            user.profile.save(update_fields=['default_payment_method_id'])
+
+        # Sync to our PaymentMethod model
+        from marketplace.models import PaymentMethod
+        PaymentMethod.objects.update_or_create(
+            user=user,
+            stripe_payment_method_id=pm.id,
+            defaults={
+                'card_brand': pm.card.brand,
+                'card_last4': pm.card.last4,
+                'card_exp_month': pm.card.exp_month,
+                'card_exp_year': pm.card.exp_year,
+                'is_default': set_default,
+            }
+        )
+
+        # If setting as default, unset others
+        if set_default:
+            PaymentMethod.objects.filter(user=user).exclude(
+                stripe_payment_method_id=pm.id
+            ).update(is_default=False)
+
+        return pm
+
+    @staticmethod
+    def detach_payment_method(payment_method_id):
+        """Remove a saved payment method"""
+        result = stripe.PaymentMethod.detach(payment_method_id)
+
+        # Remove from our database
+        from marketplace.models import PaymentMethod
+        PaymentMethod.objects.filter(stripe_payment_method_id=payment_method_id).delete()
+
+        return result
+
+    @staticmethod
+    def create_setup_intent(user):
+        """Create SetupIntent for saving card without payment"""
+        customer = StripeService.get_or_create_customer(user)
+        return stripe.SetupIntent.create(
+            customer=customer.id,
+            payment_method_types=['card'],
+            metadata={'user_id': user.id}
+        )

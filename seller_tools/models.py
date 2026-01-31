@@ -49,6 +49,14 @@ class SellerSubscription(models.Model):
         },
     }
 
+    STATUS_CHOICES = [
+        ('inactive', 'Inactive'),
+        ('active', 'Active'),
+        ('past_due', 'Past Due'),
+        ('canceled', 'Canceled'),
+        ('suspended', 'Suspended'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='seller_subscription')
     tier = models.CharField(max_length=20, choices=TIERS, default='starter')
 
@@ -57,11 +65,14 @@ class SellerSubscription(models.Model):
     commission_rate = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('12.95'))
     featured_slots = models.IntegerField(default=0)
 
-    # Billing via Stripe
-    stripe_subscription_id = models.CharField(max_length=100, blank=True)
+    # Stripe Billing
     stripe_customer_id = models.CharField(max_length=100, blank=True)
+    stripe_subscription_id = models.CharField(max_length=100, blank=True)
+    stripe_price_id = models.CharField(max_length=100, blank=True)
+    subscription_status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='inactive')
     current_period_start = models.DateTimeField(null=True, blank=True)
     current_period_end = models.DateTimeField(null=True, blank=True)
+    cancel_at_period_end = models.BooleanField(default=False)
 
     is_active = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)

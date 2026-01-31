@@ -10,7 +10,13 @@ urlpatterns = [
     # Subscription management
     path('subscription/', views.subscription_manage, name='subscription'),
     path('subscription/upgrade/<str:tier>/', views.subscription_upgrade, name='subscription_upgrade'),
+    path('subscription/success/', views.subscription_success, name='subscription_success'),
     path('subscription/cancel/', views.subscription_cancel, name='subscription_cancel'),
+    path('subscription/reactivate/', views.subscription_reactivate, name='subscription_reactivate'),
+    path('subscription/billing/', views.subscription_billing_portal, name='subscription_billing_portal'),
+
+    # Payout settings
+    path('payouts/', views.payout_settings, name='payout_settings'),
 
     # Bulk import
     path('import/', views.bulk_import_list, name='import_list'),

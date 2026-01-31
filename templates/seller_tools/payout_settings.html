@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Payout Settings - Seller Tools - HeroesAndMore{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb mb-0" style="font-size: 0.875rem;">
+                <li class="breadcrumb-item"><a href="{% url 'seller_tools:dashboard' %}" class="text-muted">Seller Tools</a></li>
+                <li class="breadcrumb-item active">Payout Settings</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 1.75rem; margin-bottom: 0;">Payout Settings</h1>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Account Status -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0">Stripe Account Status</h6>
+                    <a href="{% url 'marketplace:seller_stripe_dashboard' %}" class="btn btn-sm btn-outline-dark" target="_blank">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> Stripe Dashboard
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Payouts</small>
+                            {% if account.payouts_enabled %}
+                            <span class="badge bg-success">Enabled</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Setup Required</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <small class="text-muted d-block">Charges</small>
+                            {% if account.charges_enabled %}
+                            <span class="badge bg-success">Enabled</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Setup Required</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if account.requirements.currently_due %}
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Action Required:</strong> Please complete your account setup to enable payouts.
+                        <a href="{% url 'marketplace:seller_setup' %}" class="alert-link ms-2">Complete Setup</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Balance -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Current Balance</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3 mb-md-0">
+                            <small class="text-muted d-block">Available</small>
+                            <h4 class="mb-0">
+                                {% for amount in balance.available %}
+                                    ${{ amount.amount|divisibleby:100|intcomma }}
+                                {% empty %}
+                                    $0
+                                {% endfor %}
+                            </h4>
+                        </div>
+                        <div class="col-md-4 mb-3 mb-md-0">
+                            <small class="text-muted d-block">Pending</small>
+                            <h4 class="mb-0 text-muted">
+                                {% for amount in balance.pending %}
+                                    ${{ amount.amount|divisibleby:100|intcomma }}
+                                {% empty %}
+                                    $0
+                                {% endfor %}
+                            </h4>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted d-block mb-2">Payout Schedule</small>
+                            <span class="text-muted">Automatic (Daily)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Transfers -->
+            <div class="card">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Recent Payouts</h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if transfers %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Order</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transfer in transfers %}
+                                <tr>
+                                    <td>{{ transfer.created|date:"M d, Y" }}</td>
+                                    <td>${{ transfer.amount|divisibleby:100|intcomma }}</td>
+                                    <td>
+                                        {% if transfer.reversed %}
+                                        <span class="badge bg-danger">Reversed</span>
+                                        {% else %}
+                                        <span class="badge bg-success">Completed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transfer.metadata.order_id %}
+                                        <a href="{% url 'marketplace:order_detail' pk=transfer.metadata.order_id %}">#{{ transfer.metadata.order_id }}</a>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-wallet2" style="font-size: 2rem; color: var(--gray-400);"></i>
+                        <p class="text-muted mt-2 mb-0">No payouts yet</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">How Payouts Work</h6>
+                    <ul class="text-muted small ps-3 mb-0">
+                        <li class="mb-2">Funds are available immediately after a sale</li>
+                        <li class="mb-2">Stripe transfers to your bank automatically</li>
+                        <li class="mb-2">Bank deposits typically arrive in 2 business days</li>
+                        <li>You can manage payout settings in your Stripe Dashboard</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Your Commission Rate</h6>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Current Tier</span>
+                        <span class="fw-semibold">{{ request.user.seller_subscription.get_tier_display }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Commission</span>
+                        <span class="fw-semibold">{{ request.user.seller_subscription.commission_rate }}%</span>
+                    </div>
+                    <hr>
+                    <a href="{% url 'seller_tools:subscription' %}" class="btn btn-outline-dark btn-sm w-100">
+                        View Subscription Plans
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

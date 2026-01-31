@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import webhooks
 
 app_name = 'marketplace'
 
@@ -21,6 +22,12 @@ urlpatterns = [
     # Checkout
     path('<int:pk>/checkout/', views.checkout, name='checkout'),
     path('order/<int:pk>/payment/', views.payment, name='payment'),
+    path('order/<int:pk>/complete/', views.checkout_complete, name='checkout_complete'),
+    path('checkout/process/<int:pk>/', views.process_payment, name='process_payment'),
+
+    # Payment methods
+    path('payment-methods/', views.payment_methods, name='payment_methods'),
+    path('payment-methods/add/', views.add_payment_method, name='add_payment_method'),
 
     # Orders
     path('order/<int:pk>/', views.order_detail, name='order_detail'),
@@ -32,5 +39,13 @@ urlpatterns = [
     path('saved/', views.saved_listings, name='saved_listings'),
     path('my-listings/', views.my_listings, name='my_listings'),
     path('my-orders/', views.my_orders, name='my_orders'),
+
+    # Seller Setup (Stripe Connect)
     path('seller-setup/', views.seller_setup, name='seller_setup'),
+    path('seller-setup/return/', views.seller_setup_return, name='seller_setup_return'),
+    path('seller/stripe-dashboard/', views.seller_stripe_dashboard, name='seller_stripe_dashboard'),
+
+    # Webhooks
+    path('webhooks/stripe/', webhooks.stripe_webhook, name='stripe_webhook'),
+    path('webhooks/stripe-connect/', webhooks.stripe_connect_webhook, name='stripe_connect_webhook'),
 ]

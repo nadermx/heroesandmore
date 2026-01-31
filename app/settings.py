@@ -175,11 +175,27 @@ CACHES = {
     }
 }
 
-# Stripe
+# Stripe Configuration
 STRIPE_PUBLIC_KEY = getattr(config, 'STRIPE_PUBLIC_KEY', '')
 STRIPE_SECRET_KEY = getattr(config, 'STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = getattr(config, 'STRIPE_WEBHOOK_SECRET', '')
-PLATFORM_FEE_PERCENT = 3  # 3% platform fee
+STRIPE_CONNECT_WEBHOOK_SECRET = getattr(config, 'STRIPE_CONNECT_WEBHOOK_SECRET', '')
+
+# Stripe subscription price IDs (from Stripe Dashboard)
+STRIPE_PRICE_IDS = {
+    'basic': getattr(config, 'STRIPE_PRICE_BASIC', ''),
+    'featured': getattr(config, 'STRIPE_PRICE_FEATURED', ''),
+    'premium': getattr(config, 'STRIPE_PRICE_PREMIUM', ''),
+}
+
+# Platform fee (3% base, adjusted per seller tier)
+from decimal import Decimal
+PLATFORM_FEE_PERCENT = Decimal('0.03')
+
+# Site URL for callbacks
+SITE_URL = getattr(config, 'SITE_URL', 'http://localhost:8000')
+if not DEBUG:
+    SITE_URL = 'https://www.heroesandmore.com'
 
 # DigitalOcean Spaces (for production)
 USE_SPACES = getattr(config, 'USE_SPACES', False)

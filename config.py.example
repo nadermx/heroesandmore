@@ -14,7 +14,17 @@ REDIS_URL = 'redis://localhost:6379/0'
 # Stripe (from dashboard.stripe.com)
 STRIPE_PUBLIC_KEY = 'pk_test_...'
 STRIPE_SECRET_KEY = 'sk_test_...'
-STRIPE_WEBHOOK_SECRET = 'whsec_...'
+STRIPE_WEBHOOK_SECRET = 'whsec_...'  # Main webhook for payments
+STRIPE_CONNECT_WEBHOOK_SECRET = 'whsec_...'  # Connect webhook for seller accounts
+
+# Stripe subscription price IDs (create in Stripe Dashboard)
+# Products > Create Product > Add Price > Copy price ID
+STRIPE_PRICE_BASIC = 'price_...'  # $9.99/month Basic tier
+STRIPE_PRICE_FEATURED = 'price_...'  # $29.99/month Featured tier
+STRIPE_PRICE_PREMIUM = 'price_...'  # $99.99/month Premium tier
+
+# Site URL (for Stripe callbacks)
+SITE_URL = 'http://localhost:8000'
 
 # DigitalOcean Spaces (S3-compatible storage)
 DO_SPACES_KEY = ''

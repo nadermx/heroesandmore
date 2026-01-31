@@ -305,6 +305,7 @@ class Offer(models.Model):
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending Payment'),
+        ('payment_failed', 'Payment Failed'),
         ('paid', 'Paid'),
         ('shipped', 'Shipped'),
         ('delivered', 'Delivered'),
@@ -323,11 +324,19 @@ class Order(models.Model):
     shipping_price = models.DecimalField(max_digits=6, decimal_places=2)
     amount = models.DecimalField(max_digits=10, decimal_places=2)  # Total
     platform_fee = models.DecimalField(max_digits=8, decimal_places=2)
+    stripe_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     seller_payout = models.DecimalField(max_digits=10, decimal_places=2)
 
-    # Payment
+    # Stripe Payment
     stripe_payment_intent = models.CharField(max_length=100, blank=True)
+    stripe_payment_status = models.CharField(max_length=30, default='pending')
     stripe_transfer_id = models.CharField(max_length=100, blank=True)
+    stripe_transfer_status = models.CharField(max_length=30, blank=True)
+
+    # Refund tracking
+    refund_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    refund_status = models.CharField(max_length=30, blank=True)
+    stripe_refund_id = models.CharField(max_length=100, blank=True)
 
     # Shipping
     shipping_address = models.TextField()
@@ -338,6 +347,7 @@ class Order(models.Model):
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
     shipped_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
 
@@ -382,3 +392,72 @@ class SavedListing(models.Model):
 
     def __str__(self):
         return f"{self.user.username} saved {self.listing.title}"
+
+
+class PaymentMethod(models.Model):
+    """Saved payment methods for buyers"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payment_methods')
+    stripe_payment_method_id = models.CharField(max_length=100)
+    card_brand = models.CharField(max_length=20)  # visa, mastercard, amex
+    card_last4 = models.CharField(max_length=4)
+    card_exp_month = models.PositiveSmallIntegerField()
+    card_exp_year = models.PositiveSmallIntegerField()
+    is_default = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_default', '-created']
+
+    def __str__(self):
+        return f"{self.card_brand} ****{self.card_last4}"
+
+
+class StripeEvent(models.Model):
+    """Track processed Stripe webhooks for idempotency"""
+    stripe_event_id = models.CharField(max_length=100, unique=True, db_index=True)
+    event_type = models.CharField(max_length=100)
+    processed = models.BooleanField(default=False)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    error_message = models.TextField(blank=True)
+    raw_data = models.JSONField(default=dict)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created']
+
+    def __str__(self):
+        return f"{self.event_type} - {self.stripe_event_id[:20]}..."
+
+
+class Refund(models.Model):
+    """Track refunds for orders"""
+    REASON_CHOICES = [
+        ('requested_by_customer', 'Customer Request'),
+        ('duplicate', 'Duplicate Payment'),
+        ('fraudulent', 'Fraudulent'),
+        ('item_not_received', 'Item Not Received'),
+        ('item_not_as_described', 'Item Not As Described'),
+        ('other', 'Other'),
+    ]
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('succeeded', 'Succeeded'),
+        ('failed', 'Failed'),
+        ('canceled', 'Canceled'),
+    ]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='refunds')
+    stripe_refund_id = models.CharField(max_length=100)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    reason = models.CharField(max_length=30, choices=REASON_CHOICES)
+    notes = models.TextField(blank=True)
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created']
+
+    def __str__(self):
+        return f"Refund ${self.amount} for Order #{self.order_id}"

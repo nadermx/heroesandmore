@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Methods - HeroesAndMore{% endblock %}
+
+{% block extra_css %}
+<style>
+    #card-element {
+        padding: 12px;
+        border: 1px solid var(--gray-300);
+        border-radius: 6px;
+        background: white;
+    }
+    #card-element.StripeElement--focus {
+        border-color: var(--gray-900);
+    }
+    #card-element.StripeElement--invalid {
+        border-color: var(--accent-danger);
+    }
+    #card-errors {
+        color: var(--accent-danger);
+        margin-top: 8px;
+        font-size: 0.875rem;
+    }
+    .payment-card {
+        transition: border-color 0.2s;
+    }
+    .payment-card:hover {
+        border-color: var(--gray-400);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb mb-0" style="font-size: 0.875rem;">
+                <li class="breadcrumb-item"><a href="{% url 'accounts:profile' username=request.user.username %}" class="text-muted">Account</a></li>
+                <li class="breadcrumb-item active">Payment Methods</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 1.75rem; margin-bottom: 0;">Payment Methods</h1>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Saved Cards -->
+            {% if payment_methods %}
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Saved Cards</h6>
+                </div>
+                <div class="card-body p-0">
+                    {% for pm in payment_methods %}
+                    <div class="payment-card d-flex justify-content-between align-items-center p-3 {% if not forloop.last %}border-bottom{% endif %}">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-credit-card me-3" style="font-size: 1.5rem; color: var(--gray-500);"></i>
+                            <div>
+                                <span class="text-capitalize fw-semibold">{{ pm.card.brand }}</span>
+                                <span class="text-muted mx-1">****</span>
+                                <span>{{ pm.card.last4 }}</span>
+                                {% if pm.id == request.user.profile.default_payment_method_id %}
+                                <span class="badge bg-dark ms-2">Default</span>
+                                {% endif %}
+                                <br>
+                                <small class="text-muted">Expires {{ pm.card.exp_month }}/{{ pm.card.exp_year }}</small>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            {% if pm.id != request.user.profile.default_payment_method_id %}
+                            <form method="post" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="set_default">
+                                <input type="hidden" name="payment_method_id" value="{{ pm.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-dark">Set Default</button>
+                            </form>
+                            {% endif %}
+                            <form method="post" class="d-inline" onsubmit="return confirm('Remove this card?')">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="payment_method_id" value="{{ pm.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info mb-4">
+                <i class="bi bi-info-circle me-2"></i>
+                You don't have any saved payment methods yet. Add one below for faster checkout.
+            </div>
+            {% endif %}
+
+            <!-- Add New Card -->
+            <div class="card">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Add New Card</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Card Details</label>
+                        <div id="card-element"></div>
+                        <div id="card-errors" role="alert"></div>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="set-default" checked>
+                        <label class="form-check-label" for="set-default">Set as default payment method</label>
+                    </div>
+
+                    <button type="button" id="add-card-button" class="btn btn-dark">
+                        <span id="button-text">Add Card</span>
+                        <span id="spinner" class="spinner-border spinner-border-sm d-none ms-2" role="status"></span>
+                    </button>
+
+                    <div id="success-message" class="alert alert-success mt-3 d-none">
+                        <i class="bi bi-check-circle me-2"></i>
+                        Card added successfully!
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Secure Payments</h6>
+                    <p class="text-muted small mb-3">
+                        <i class="bi bi-shield-check me-2"></i>
+                        Your payment information is securely stored by Stripe. We never store your full card number.
+                    </p>
+                    <p class="text-muted small mb-0">
+                        <i class="bi bi-lock me-2"></i>
+                        All transactions are encrypted using industry-standard SSL.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+const stripe = Stripe('{{ stripe_public_key }}');
+const elements = stripe.elements();
+const cardElement = elements.create('card', {
+    style: {
+        base: {
+            fontSize: '16px',
+            color: '#333',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            '::placeholder': { color: '#aab7c4' }
+        }
+    }
+});
+cardElement.mount('#card-element');
+
+cardElement.on('change', function(event) {
+    const errorEl = document.getElementById('card-errors');
+    errorEl.textContent = event.error ? event.error.message : '';
+});
+
+document.getElementById('add-card-button').addEventListener('click', async function() {
+    const button = this;
+    const spinner = document.getElementById('spinner');
+    const buttonText = document.getElementById('button-text');
+    const setDefault = document.getElementById('set-default').checked;
+
+    button.disabled = true;
+    spinner.classList.remove('d-none');
+    buttonText.textContent = 'Adding...';
+
+    try {
+        // Create setup intent confirmation
+        const { setupIntent, error } = await stripe.confirmCardSetup(
+            '{{ client_secret }}',
+            {
+                payment_method: {
+                    card: cardElement,
+                }
+            }
+        );
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        // Save the payment method to our backend
+        const response = await fetch('{% url "marketplace:add_payment_method" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: `payment_method_id=${setupIntent.payment_method}&set_default=${setDefault}`
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('success-message').classList.remove('d-none');
+            // Reload page to show new card
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            throw new Error(data.error || 'Failed to save card');
+        }
+
+    } catch (error) {
+        document.getElementById('card-errors').textContent = error.message;
+        button.disabled = false;
+        spinner.classList.add('d-none');
+        buttonText.textContent = 'Add Card';
+    }
+});
+</script>
+{% endblock %}
