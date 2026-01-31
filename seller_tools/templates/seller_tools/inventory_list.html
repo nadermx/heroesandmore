@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventory - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Inventory</h1>
+                <p class="text-muted mb-0">Track your items before listing them</p>
+            </div>
+            <a href="{% url 'seller_tools:inventory_add' %}" class="btn btn-dark">
+                <i class="bi bi-plus-lg me-1"></i> Add Item
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <!-- Filters -->
+        <div class="col-lg-3 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Filters</h6>
+                    <form method="get">
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">Status</label>
+                            <select name="listed" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="">All Items</option>
+                                <option value="no" {% if request.GET.listed == 'no' %}selected{% endif %}>Not Listed</option>
+                                <option value="yes" {% if request.GET.listed == 'yes' %}selected{% endif %}>Listed</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">Category</label>
+                            <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="">All Categories</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat.slug }}" {% if request.GET.category == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory List -->
+        <div class="col-lg-9">
+            {% if items %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Item</th>
+                            <th>Cost</th>
+                            <th>Target Price</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    {% if item.image1 %}
+                                    <img src="{{ item.image1.url }}" class="rounded" style="width: 50px; height: 50px; object-fit: cover;">
+                                    {% else %}
+                                    <div class="rounded bg-light d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                        <i class="bi bi-image text-muted"></i>
+                                    </div>
+                                    {% endif %}
+                                    <div>
+                                        <a href="{% url 'seller_tools:inventory_detail' pk=item.pk %}" class="fw-semibold text-decoration-none text-dark">
+                                            {{ item.title|truncatewords:6 }}
+                                        </a>
+                                        {% if item.grade %}
+                                        <div class="small text-muted">{{ item.grading_company|upper }} {{ item.grade }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if item.purchase_price %}
+                                ${{ item.purchase_price }}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.target_price %}
+                                ${{ item.target_price }}
+                                {% if item.purchase_price %}
+                                <div class="small {% if item.get_estimated_profit > 0 %}text-success{% else %}text-danger{% endif %}">
+                                    {% if item.get_estimated_profit > 0 %}+{% endif %}${{ item.get_estimated_profit }}
+                                </div>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.is_listed %}
+                                <span class="badge bg-success">Listed</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark">Not Listed</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="dropdown">
+                                    <button class="btn btn-ghost btn-sm" data-bs-toggle="dropdown">
+                                        <i class="bi bi-three-dots"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="{% url 'seller_tools:inventory_detail' pk=item.pk %}"><i class="bi bi-eye me-2"></i>View</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'seller_tools:inventory_edit' pk=item.pk %}"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+                                        {% if not item.is_listed %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-success" href="{% url 'seller_tools:inventory_create_listing' pk=item.pk %}"><i class="bi bi-tag me-2"></i>Create Listing</a></li>
+                                        {% endif %}
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <div class="mb-4">
+                    <i class="bi bi-box-seam display-1" style="color: var(--gray-300);"></i>
+                </div>
+                <h4>No inventory items yet</h4>
+                <p class="text-muted mb-4">Track your items before listing them for sale.</p>
+                <a href="{% url 'seller_tools:inventory_add' %}" class="btn btn-dark">
+                    <i class="bi bi-plus-lg me-1"></i> Add Your First Item
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

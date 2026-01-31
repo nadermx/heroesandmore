@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0">Complete Payment</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Order Summary -->
+                    <div class="d-flex gap-3 mb-4 pb-4 border-bottom">
+                        {% if order.listing.image %}
+                        <img src="{{ order.listing.image.url }}" class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
+                        {% endif %}
+                        <div>
+                            <h6 class="mb-1">{{ order.listing.title }}</h6>
+                            <p class="text-muted small mb-0">Seller: {{ order.seller.username }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Price Breakdown -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Item Price</span>
+                            <span>${{ order.item_price }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Shipping</span>
+                            <span>${{ order.shipping_price }}</span>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between">
+                            <strong>Total</strong>
+                            <strong class="fs-5">${{ order.amount }}</strong>
+                        </div>
+                    </div>
+
+                    <!-- Stripe Payment Form -->
+                    <form id="payment-form">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Card Details</label>
+                            <div id="card-element" class="form-control" style="padding: 12px;">
+                                <!-- Stripe Elements will be inserted here -->
+                            </div>
+                            <div id="card-errors" class="text-danger small mt-2"></div>
+                        </div>
+
+                        <button type="submit" id="submit-button" class="btn btn-dark w-100 btn-lg">
+                            <span id="button-text">Pay ${{ order.amount }}</span>
+                            <span id="spinner" class="d-none">
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                Processing...
+                            </span>
+                        </button>
+                    </form>
+
+                    <p class="text-muted small text-center mt-3 mb-0">
+                        <i class="bi bi-lock me-1"></i>
+                        Payments are securely processed by Stripe
+                    </p>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <a href="{% url 'marketplace:order_detail' pk=order.pk %}" class="text-muted">Cancel and return to order</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+    const stripe = Stripe('{{ stripe_public_key }}');
+    const elements = stripe.elements();
+    const cardElement = elements.create('card', {
+        style: {
+            base: {
+                fontSize: '16px',
+                color: '#171717',
+                '::placeholder': { color: '#A3A3A3' }
+            }
+        }
+    });
+    cardElement.mount('#card-element');
+
+    const form = document.getElementById('payment-form');
+    const submitButton = document.getElementById('submit-button');
+    const buttonText = document.getElementById('button-text');
+    const spinner = document.getElementById('spinner');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        submitButton.disabled = true;
+        buttonText.classList.add('d-none');
+        spinner.classList.remove('d-none');
+
+        // In production, create PaymentIntent on server and confirm here
+        // This is a placeholder for the Stripe integration
+        alert('Stripe payment integration needed. Contact developer.');
+
+        submitButton.disabled = false;
+        buttonText.classList.remove('d-none');
+        spinner.classList.add('d-none');
+    });
+</script>
+{% endblock %}

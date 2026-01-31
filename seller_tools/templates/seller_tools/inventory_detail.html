@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ item.title }} - Inventory - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'seller_tools:dashboard' %}">Seller Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'seller_tools:inventory_list' %}">Inventory</a></li>
+                <li class="breadcrumb-item active">Item Details</li>
+            </ol>
+        </nav>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <h1 style="font-size: 1.75rem; margin-bottom: 0;">{{ item.title }}</h1>
+            <div class="d-flex gap-2">
+                <a href="{% url 'seller_tools:inventory_edit' pk=item.pk %}" class="btn btn-outline-dark">
+                    <i class="bi bi-pencil me-1"></i> Edit
+                </a>
+                {% if not item.is_listed %}
+                <a href="{% url 'seller_tools:inventory_create_listing' pk=item.pk %}" class="btn btn-dark">
+                    <i class="bi bi-tag me-1"></i> Create Listing
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <!-- Images -->
+        <div class="col-lg-5 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    {% if item.image1 %}
+                    <img src="{{ item.image1.url }}" class="img-fluid rounded mb-3" alt="{{ item.title }}">
+                    {% else %}
+                    <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 300px;">
+                        <i class="bi bi-image text-muted display-1"></i>
+                    </div>
+                    {% endif %}
+
+                    {% if item.image2 or item.image3 %}
+                    <div class="row g-2">
+                        {% if item.image2 %}
+                        <div class="col-6">
+                            <img src="{{ item.image2.url }}" class="img-fluid rounded" alt="Image 2">
+                        </div>
+                        {% endif %}
+                        {% if item.image3 %}
+                        <div class="col-6">
+                            <img src="{{ item.image3.url }}" class="img-fluid rounded" alt="Image 3">
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Details -->
+        <div class="col-lg-7">
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Item Details</h6>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 text-muted">Category</dt>
+                        <dd class="col-sm-8">{{ item.category.name|default:"Not set" }}</dd>
+
+                        <dt class="col-sm-4 text-muted">Condition</dt>
+                        <dd class="col-sm-8">{{ item.get_condition_display|default:item.condition|default:"Not set" }}</dd>
+
+                        {% if item.grading_company %}
+                        <dt class="col-sm-4 text-muted">Grading</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-dark">{{ item.grading_company|upper }} {{ item.grade }}</span>
+                            {% if item.cert_number %}
+                            <span class="text-muted small ms-2">Cert: {{ item.cert_number }}</span>
+                            {% endif %}
+                        </dd>
+                        {% endif %}
+
+                        <dt class="col-sm-4 text-muted">Status</dt>
+                        <dd class="col-sm-8">
+                            {% if item.is_listed %}
+                            <span class="badge bg-success">Listed</span>
+                            {% if item.listing %}
+                            <a href="{% url 'marketplace:listing_detail' pk=item.listing.pk %}" class="ms-2 small">View Listing</a>
+                            {% endif %}
+                            {% else %}
+                            <span class="badge bg-secondary">Not Listed</span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Purchase & Pricing</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="text-muted small">Purchase Price</div>
+                            <div class="fs-5 fw-bold">
+                                {% if item.purchase_price %}${{ item.purchase_price }}{% else %}-{% endif %}
+                            </div>
+                            {% if item.purchase_date %}
+                            <div class="small text-muted">{{ item.purchase_date|date:"M d, Y" }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">Target Price</div>
+                            <div class="fs-5 fw-bold">
+                                {% if item.target_price %}${{ item.target_price }}{% else %}-{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">Est. Profit</div>
+                            <div class="fs-5 fw-bold {% if item.get_estimated_profit %}{% if item.get_estimated_profit > 0 %}text-success{% else %}text-danger{% endif %}{% endif %}">
+                                {% if item.get_estimated_profit %}
+                                {% if item.get_estimated_profit > 0 %}+{% endif %}${{ item.get_estimated_profit }}
+                                {% else %}-{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if item.purchase_source %}
+                    <hr>
+                    <div class="text-muted small">Purchase Source</div>
+                    <div>{{ item.purchase_source }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if item.notes %}
+            <div class="card">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Notes</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ item.notes|linebreaks }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

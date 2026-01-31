@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Sales Analytics</h1>
+                <p class="text-muted mb-0">Track your selling performance</p>
+            </div>
+            <div class="d-flex gap-2">
+                <select class="form-select form-select-sm" style="width: auto;" onchange="window.location.href='?days=' + this.value">
+                    <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+                    <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+                    <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+                    <option value="365" {% if days == 365 %}selected{% endif %}>Last year</option>
+                </select>
+                <a href="{% url 'seller_tools:export_analytics' %}" class="btn btn-outline-dark btn-sm">
+                    <i class="bi bi-download me-1"></i> Export CSV
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <!-- Summary Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold">${{ totals.revenue|floatformat:0|default:0 }}</div>
+                    <div class="text-muted small">Total Revenue</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold">{{ totals.orders|default:0 }}</div>
+                    <div class="text-muted small">Orders</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold text-danger">${{ totals.fees|floatformat:0|default:0 }}</div>
+                    <div class="text-muted small">Platform Fees</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold text-success">
+                        {% if totals.revenue and totals.fees %}
+                        ${{ totals.revenue|add:totals.fees|floatformat:0 }}
+                        {% else %}
+                        $0
+                        {% endif %}
+                    </div>
+                    <div class="text-muted small">Net Earnings</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Sales Chart -->
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Sales Over Time</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="salesChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Items -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Top Selling Items</h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if top_items %}
+                    <div class="list-group list-group-flush">
+                        {% for item in top_items %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-semibold small">{{ item.listing__title|truncatewords:4 }}</div>
+                                <div class="text-muted small">{{ item.count }} sold</div>
+                            </div>
+                            <span class="fw-bold">${{ item.total|floatformat:0 }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        No sales data yet
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sales by Day Table -->
+    <div class="card">
+        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold mb-0">Daily Sales</h6>
+            <a href="{% url 'seller_tools:sales_report' %}" class="btn btn-sm btn-outline-dark">View Full Report</a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th class="text-end">Orders</th>
+                            <th class="text-end">Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day in sales_by_day %}
+                        <tr>
+                            <td>{{ day.day|date:"M d, Y" }}</td>
+                            <td class="text-end">{{ day.count }}</td>
+                            <td class="text-end">${{ day.total|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">No sales in this period</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    const salesData = {{ sales_by_day|safe }};
+    const labels = salesData.map(d => {
+        const date = new Date(d.day);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+    const values = salesData.map(d => parseFloat(d.total) || 0);
+
+    new Chart(document.getElementById('salesChart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Revenue',
+                data: values,
+                borderColor: '#171717',
+                backgroundColor: 'rgba(23, 23, 23, 0.1)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: value => '$' + value
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

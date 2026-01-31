@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Saved Listings - HeroesAndMore{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Saved Listings</h1>
+                <p class="text-muted mb-0">{{ saved.paginator.count|default:0 }} saved items</p>
+            </div>
+            <a href="{% url 'marketplace:listing_list' %}" class="btn btn-outline-dark">
+                <i class="bi bi-search me-1"></i> Browse More
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    {% if saved %}
+    <div class="row g-4">
+        {% for item in saved %}
+        <div class="col-6 col-md-4 col-lg-3">
+            {% include 'components/listing_card.html' with listing=item.listing %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if saved.has_other_pages %}
+    <nav class="mt-5">
+        <ul class="pagination justify-content-center">
+            {% if saved.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ saved.previous_page_number }}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            {% endif %}
+
+            {% for num in saved.paginator.page_range %}
+                {% if saved.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > saved.number|add:'-3' and num < saved.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if saved.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ saved.next_page_number }}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-5">
+        <div class="mb-4">
+            <i class="bi bi-heart display-1" style="color: var(--gray-300);"></i>
+        </div>
+        <h4>No saved listings yet</h4>
+        <p class="text-muted mb-4">Click the heart icon on any listing to save it for later.</p>
+        <a href="{% url 'marketplace:listing_list' %}" class="btn btn-dark">
+            <i class="bi bi-search me-1"></i> Browse Marketplace
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

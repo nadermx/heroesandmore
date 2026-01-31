@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Seller Setup - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-5">
+                <h1 class="mb-3">Start Selling on HeroesAndMore</h1>
+                <p class="text-muted lead">Complete your seller profile to start listing items</p>
+            </div>
+
+            <!-- Progress Steps -->
+            <div class="d-flex justify-content-center mb-5">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        <i class="bi bi-check"></i>
+                    </div>
+                    <span class="ms-2 me-4 fw-semibold">Account</span>
+                </div>
+                <div class="border-top" style="width: 50px; margin-top: 20px;"></div>
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle {% if profile.stripe_account_complete %}bg-dark text-white{% else %}bg-light text-muted{% endif %} d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        {% if profile.stripe_account_complete %}
+                        <i class="bi bi-check"></i>
+                        {% else %}
+                        2
+                        {% endif %}
+                    </div>
+                    <span class="ms-2 me-4 {% if profile.stripe_account_complete %}fw-semibold{% else %}text-muted{% endif %}">Payments</span>
+                </div>
+                <div class="border-top" style="width: 50px; margin-top: 20px;"></div>
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-light text-muted d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        3
+                    </div>
+                    <span class="ms-2 text-muted">Sell</span>
+                </div>
+            </div>
+
+            <!-- Stripe Connect Setup -->
+            <div class="card">
+                <div class="card-body p-4">
+                    {% if profile.stripe_account_complete %}
+                    <div class="text-center py-4">
+                        <div class="mb-3">
+                            <i class="bi bi-check-circle-fill text-success display-3"></i>
+                        </div>
+                        <h4>Payment Setup Complete!</h4>
+                        <p class="text-muted mb-4">You're all set to start selling on HeroesAndMore.</p>
+                        <a href="{% url 'marketplace:listing_create' %}" class="btn btn-dark btn-lg">
+                            <i class="bi bi-plus-lg me-2"></i>Create Your First Listing
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <div class="mb-4">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" style="height: 40px;">
+                        </div>
+                        <h4 class="mb-3">Set Up Payments with Stripe</h4>
+                        <p class="text-muted mb-4">
+                            We use Stripe to securely process payments and send your earnings directly to your bank account.
+                            Stripe is trusted by millions of businesses worldwide.
+                        </p>
+
+                        <div class="bg-light rounded p-4 mb-4 text-start">
+                            <h6 class="fw-bold mb-3">What you'll need:</h6>
+                            <ul class="mb-0">
+                                <li class="mb-2">Your bank account information</li>
+                                <li class="mb-2">Government-issued ID for verification</li>
+                                <li class="mb-2">Your business or personal tax information</li>
+                            </ul>
+                        </div>
+
+                        <a href="#" class="btn btn-dark btn-lg" id="stripe-connect-btn">
+                            <i class="bi bi-link-45deg me-2"></i>Connect with Stripe
+                        </a>
+
+                        <p class="text-muted small mt-4 mb-0">
+                            By connecting, you agree to Stripe's <a href="https://stripe.com/connect-account/legal" target="_blank">Connected Account Agreement</a>
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Benefits -->
+            <div class="row mt-5 g-4">
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
+                            <i class="bi bi-shield-check fs-4"></i>
+                        </div>
+                        <h6>Secure Payments</h6>
+                        <p class="text-muted small mb-0">Stripe handles all payment security and fraud protection</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
+                            <i class="bi bi-lightning-charge fs-4"></i>
+                        </div>
+                        <h6>Fast Payouts</h6>
+                        <p class="text-muted small mb-0">Get paid directly to your bank account within days</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
+                            <i class="bi bi-graph-up fs-4"></i>
+                        </div>
+                        <h6>Sales Dashboard</h6>
+                        <p class="text-muted small mb-0">Track your sales, earnings, and customer insights</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // In production, this would redirect to Stripe Connect OAuth
+    document.getElementById('stripe-connect-btn')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        alert('Stripe Connect integration needed. Contact developer to set up OAuth flow.');
+    });
+</script>
+{% endblock %}
