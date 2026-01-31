@@ -200,3 +200,40 @@ def search(request):
         'categories': categories,
     }
     return render(request, 'items/search.html', context)
+
+
+def autocomplete(request):
+    """AJAX endpoint for search autocomplete suggestions"""
+    from django.http import JsonResponse
+
+    query = request.GET.get('q', '').strip()
+    if len(query) < 2:
+        return JsonResponse({'suggestions': []})
+
+    suggestions = []
+
+    # Search listings
+    listings = Listing.objects.filter(
+        status='active',
+        title__icontains=query
+    ).values_list('title', flat=True).distinct()[:5]
+    suggestions.extend([{'text': t, 'type': 'listing'} for t in listings])
+
+    # Search categories
+    categories = Category.objects.filter(
+        is_active=True,
+        name__icontains=query
+    ).values('name', 'slug')[:3]
+    suggestions.extend([{'text': c['name'], 'type': 'category', 'slug': c['slug']} for c in categories])
+
+    # Search price guide items if available
+    try:
+        from pricing.models import PriceGuideItem
+        price_items = PriceGuideItem.objects.filter(
+            name__icontains=query
+        ).values('name', 'slug')[:3]
+        suggestions.extend([{'text': p['name'], 'type': 'price_guide', 'slug': p['slug']} for p in price_items])
+    except Exception:
+        pass
+
+    return JsonResponse({'suggestions': suggestions[:10]})
