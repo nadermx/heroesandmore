@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Messages - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Messages</h1>
+                <p class="text-muted mb-0">Your conversations</p>
+            </div>
+            <a href="{% url 'social:compose' %}" class="btn btn-dark">
+                <i class="bi bi-pencil me-1"></i> New Message
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link {% if not is_sent %}active{% endif %}" href="{% url 'social:inbox' %}">Inbox</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if is_sent %}active{% endif %}" href="{% url 'social:sent_messages' %}">Sent</a>
+        </li>
+    </ul>
+
+    {% if messages_list %}
+    <div class="list-group">
+        {% for msg in messages_list %}
+        <a href="{% url 'social:message_detail' pk=msg.pk %}" class="list-group-item list-group-item-action {% if not msg.is_read and not is_sent %}bg-light{% endif %}">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="fw-semibold">
+                        {% if is_sent %}
+                        To: {{ msg.recipient.username }}
+                        {% else %}
+                        From: {{ msg.sender.username }}
+                        {% endif %}
+                    </div>
+                    <div class="text-muted small">{{ msg.subject|truncatechars:50 }}</div>
+                </div>
+                <small class="text-muted">{{ msg.created|timesince }} ago</small>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-envelope display-1 text-muted mb-3 d-block"></i>
+        <h4>No Messages</h4>
+        <p class="text-muted mb-4">{% if is_sent %}You haven't sent any messages yet{% else %}Your inbox is empty{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

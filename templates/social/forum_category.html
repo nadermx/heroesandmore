@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}{{ category.name }} - Forums - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'social:forum_index' %}">Forums</a></li>
+                <li class="breadcrumb-item active">{{ category.name }}</li>
+            </ol>
+        </nav>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{{ category.name }}</h1>
+                <p class="text-muted mb-0">{{ category.description }}</p>
+            </div>
+            {% if user.is_authenticated %}
+            <a href="{% url 'social:create_thread' slug=category.slug %}" class="btn btn-dark">
+                <i class="bi bi-plus-lg me-1"></i> New Thread
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    {% if threads %}
+    <div class="list-group">
+        {% for thread in threads %}
+        <a href="{% url 'social:thread_detail' pk=thread.pk %}" class="list-group-item list-group-item-action">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="mb-1">{{ thread.title }}</h6>
+                    <small class="text-muted">
+                        Started by {{ thread.author.username }} &bull; {{ thread.created|timesince }} ago
+                    </small>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-secondary">{{ thread.reply_count }} replies</span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-chat-left-text display-1 text-muted mb-3 d-block"></i>
+        <h4>No Threads Yet</h4>
+        <p class="text-muted mb-4">Be the first to start a discussion</p>
+        {% if user.is_authenticated %}
+        <a href="{% url 'social:create_thread' slug=category.slug %}" class="btn btn-dark">Start a Thread</a>
+        {% else %}
+        <a href="{% url 'account_login' %}?next={{ request.path }}" class="btn btn-dark">Log in to Post</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

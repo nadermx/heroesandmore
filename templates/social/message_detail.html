@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ message.subject }} - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'social:inbox' %}">Messages</a></li>
+                <li class="breadcrumb-item active">{{ message.subject|truncatechars:30 }}</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 1.75rem; margin-bottom: 0;">{{ message.subject }}</h1>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="card mb-4">
+        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+            <div>
+                <strong>From:</strong>
+                <a href="{% url 'accounts:profile' username=message.sender.username %}">{{ message.sender.username }}</a>
+            </div>
+            <small class="text-muted">{{ message.created|date:"M d, Y g:i A" }}</small>
+        </div>
+        <div class="card-body">
+            {{ message.body|linebreaks }}
+        </div>
+    </div>
+
+    {% if message.sender != request.user %}
+    <a href="{% url 'social:reply_message' pk=message.pk %}" class="btn btn-dark">
+        <i class="bi bi-reply me-1"></i> Reply
+    </a>
+    {% endif %}
+    <a href="{% url 'social:inbox' %}" class="btn btn-outline-dark">Back to Inbox</a>
+</div>
+{% endblock %}

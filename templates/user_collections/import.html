@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Import Collection - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'collections:my_collections' %}">My Collections</a></li>
+                <li class="breadcrumb-item active">Import</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 1.75rem; margin-bottom: 0;">Import Collection</h1>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5>Import from CSV</h5>
+                    <p class="text-muted">Upload a CSV file with your collection items. The file should have columns for: name, condition, purchase_price, current_value, notes.</p>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Collection</label>
+                            <select name="collection" class="form-select" required>
+                                <option value="">Select collection</option>
+                                {% for col in collections %}
+                                <option value="{{ col.pk }}">{{ col.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">CSV File</label>
+                            <input type="file" name="file" class="form-control" accept=".csv" required>
+                        </div>
+                        <button type="submit" class="btn btn-dark">
+                            <i class="bi bi-upload me-1"></i> Import
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">CSV Format</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-2">Your CSV file should have the following columns:</p>
+                    <pre class="bg-light p-3 rounded small">name,condition,grading_company,grade,purchase_price,current_value,notes
+"1999 Charizard Base Set",near_mint,psa,9,500.00,1200.00,"Holo, 1st Edition"
+"1993 Michael Jordan Topps",excellent,bgs,8.5,75.00,150.00,""</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

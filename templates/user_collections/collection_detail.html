@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}{{ collection.name }} - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'collections:my_collections' %}">My Collections</a></li>
+                <li class="breadcrumb-item active">{{ collection.name }}</li>
+            </ol>
+        </nav>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{{ collection.name }}</h1>
+                {% if collection.description %}
+                <p class="text-muted mb-0">{{ collection.description }}</p>
+                {% endif %}
+            </div>
+            {% if collection.user == request.user %}
+            <div class="d-flex gap-2">
+                <a href="{% url 'collections:item_add' pk=collection.pk %}" class="btn btn-dark">
+                    <i class="bi bi-plus-lg me-1"></i> Add Item
+                </a>
+                <a href="{% url 'collections:collection_edit' pk=collection.pk %}" class="btn btn-outline-dark">Edit</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <!-- Value summary -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold">{{ items|length }}</div>
+                    <div class="text-muted small">Items</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold text-success">${{ collection.total_value|default:0|intcomma }}</div>
+                    <div class="text-muted small">Total Value</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold">${{ collection.total_cost|default:0|intcomma }}</div>
+                    <div class="text-muted small">Total Cost</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    {% with gain=collection.total_gain %}
+                    <div class="display-6 fw-bold {% if gain > 0 %}text-success{% elif gain < 0 %}text-danger{% endif %}">
+                        {% if gain > 0 %}+{% endif %}${{ gain|default:0|intcomma }}
+                    </div>
+                    {% endwith %}
+                    <div class="text-muted small">Gain/Loss</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items list -->
+    {% if items %}
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Item</th>
+                            <th>Condition</th>
+                            <th class="text-end">Cost</th>
+                            <th class="text-end">Value</th>
+                            <th class="text-end">Gain</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{ item.name }}</div>
+                                {% if item.notes %}<small class="text-muted">{{ item.notes|truncatechars:30 }}</small>{% endif %}
+                            </td>
+                            <td>{{ item.condition|default:"-" }}</td>
+                            <td class="text-end">${{ item.purchase_price|default:0 }}</td>
+                            <td class="text-end text-success">${{ item.current_value|default:0 }}</td>
+                            <td class="text-end">
+                                {% with gain=item.gain %}
+                                <span class="{% if gain > 0 %}text-success{% elif gain < 0 %}text-danger{% endif %}">
+                                    {% if gain > 0 %}+{% endif %}${{ gain|default:0 }}
+                                </span>
+                                {% endwith %}
+                            </td>
+                            <td class="text-end">
+                                {% if collection.user == request.user %}
+                                <a href="{% url 'collections:item_edit' pk=item.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                <a href="{% url 'collections:item_delete' pk=item.pk %}" class="btn btn-sm btn-outline-danger">Remove</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-box display-1 text-muted mb-3 d-block"></i>
+        <h4>No Items Yet</h4>
+        <p class="text-muted mb-4">Start adding items to your collection</p>
+        {% if collection.user == request.user %}
+        <a href="{% url 'collections:item_add' pk=collection.pk %}" class="btn btn-dark">Add First Item</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

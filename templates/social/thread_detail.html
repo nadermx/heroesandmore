@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}{{ thread.title }} - Forums - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'social:forum_index' %}">Forums</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'social:forum_category' slug=thread.category.slug %}">{{ thread.category.name }}</a></li>
+                <li class="breadcrumb-item active">{{ thread.title|truncatechars:30 }}</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 1.75rem; margin-bottom: 0;">{{ thread.title }}</h1>
+    </div>
+</div>
+
+<div class="container py-4">
+    <!-- Original post -->
+    <div class="card mb-3">
+        <div class="card-header bg-transparent d-flex justify-content-between">
+            <div>
+                <a href="{% url 'accounts:profile' username=thread.author.username %}" class="fw-semibold text-decoration-none">
+                    {{ thread.author.username }}
+                </a>
+                <span class="text-muted small ms-2">{{ thread.created|date:"M d, Y g:i A" }}</span>
+            </div>
+            {% if thread.author == request.user %}
+            <a href="{% url 'social:edit_post' pk=thread.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {{ thread.content|linebreaks }}
+        </div>
+    </div>
+
+    <!-- Replies -->
+    {% for post in posts %}
+    <div class="card mb-3">
+        <div class="card-header bg-transparent d-flex justify-content-between">
+            <div>
+                <a href="{% url 'accounts:profile' username=post.author.username %}" class="fw-semibold text-decoration-none">
+                    {{ post.author.username }}
+                </a>
+                <span class="text-muted small ms-2">{{ post.created|date:"M d, Y g:i A" }}</span>
+            </div>
+            {% if post.author == request.user %}
+            <a href="{% url 'social:edit_post' pk=post.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {{ post.content|linebreaks }}
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Reply form -->
+    {% if user.is_authenticated %}
+    <div class="card">
+        <div class="card-header bg-transparent">
+            <h6 class="fw-bold mb-0">Post a Reply</h6>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <textarea name="content" class="form-control" rows="4" required placeholder="Write your reply..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-dark">Post Reply</button>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center">
+            <a href="{% url 'account_login' %}?next={{ request.path }}" class="btn btn-dark">Log in to Reply</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

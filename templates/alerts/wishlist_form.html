@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}{% if wishlist %}Edit{% else %}Create{% endif %} Wishlist - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'alerts:wishlist_list' %}">Wishlists</a></li>
+                <li class="breadcrumb-item active">{% if wishlist %}Edit{% else %}New{% endif %}</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 1.75rem; margin-bottom: 0;">{% if wishlist %}Edit Wishlist{% else %}Create Wishlist{% endif %}</h1>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Name *</label>
+                            <input type="text" name="name" class="form-control" required
+                                   value="{{ wishlist.name|default:'' }}" placeholder="e.g., Pokemon Cards">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" class="form-control" rows="3" placeholder="Optional description">{{ wishlist.description|default:'' }}</textarea>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" name="is_public" class="form-check-input" id="is_public"
+                                   {% if wishlist.is_public %}checked{% endif %}>
+                            <label class="form-check-label" for="is_public">Make this wishlist public</label>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-dark">{% if wishlist %}Save{% else %}Create{% endif %}</button>
+                            <a href="{% url 'alerts:wishlist_list' %}" class="btn btn-outline-dark">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

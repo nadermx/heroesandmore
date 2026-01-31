@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ wishlist.name }} - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'alerts:wishlist_list' %}">Wishlists</a></li>
+                <li class="breadcrumb-item active">{{ wishlist.name }}</li>
+            </ol>
+        </nav>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">{{ wishlist.name }}</h1>
+                {% if wishlist.description %}
+                <p class="text-muted mb-0">{{ wishlist.description }}</p>
+                {% endif %}
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'alerts:wishlist_item_add' pk=wishlist.pk %}" class="btn btn-dark">
+                    <i class="bi bi-plus-lg me-1"></i> Add Item
+                </a>
+                <a href="{% url 'alerts:wishlist_edit' pk=wishlist.pk %}" class="btn btn-outline-dark">Edit</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    {% if items %}
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Item</th>
+                            <th>Max Price</th>
+                            <th>Notes</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.name }}</td>
+                            <td>{% if item.max_price %}${{ item.max_price }}{% else %}-{% endif %}</td>
+                            <td class="text-muted small">{{ item.notes|truncatechars:50 }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'alerts:wishlist_item_edit' pk=item.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                <a href="{% url 'alerts:wishlist_item_delete' pk=item.pk %}" class="btn btn-sm btn-outline-danger">Remove</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-list-ul display-1 text-muted mb-3 d-block"></i>
+        <h4>No Items Yet</h4>
+        <p class="text-muted mb-4">Add items to track what you're looking for</p>
+        <a href="{% url 'alerts:wishlist_item_add' pk=wishlist.pk %}" class="btn btn-dark">Add Item</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

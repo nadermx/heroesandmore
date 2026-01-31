@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}My Wishlists - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">My Wishlists</h1>
+                <p class="text-muted mb-0">Track items you're looking for</p>
+            </div>
+            <a href="{% url 'alerts:wishlist_create' %}" class="btn btn-dark">
+                <i class="bi bi-plus-lg me-1"></i> New Wishlist
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    {% if wishlists %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+        {% for wishlist in wishlists %}
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <a href="{% url 'alerts:wishlist_detail' pk=wishlist.pk %}" class="text-decoration-none">
+                            {{ wishlist.name }}
+                        </a>
+                    </h5>
+                    <p class="card-text text-muted small">{{ wishlist.item_count }} items</p>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{% url 'alerts:wishlist_edit' pk=wishlist.pk %}" class="btn btn-sm btn-outline-dark">Edit</a>
+                    <a href="{% url 'alerts:wishlist_delete' pk=wishlist.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-heart display-1 text-muted mb-3 d-block"></i>
+        <h4>No Wishlists Yet</h4>
+        <p class="text-muted mb-4">Create a wishlist to track items you want</p>
+        <a href="{% url 'alerts:wishlist_create' %}" class="btn btn-dark">Create Wishlist</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

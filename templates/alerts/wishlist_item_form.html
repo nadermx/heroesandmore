@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{% if item %}Edit{% else %}Add{% endif %} Wishlist Item - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <h1 style="font-size: 1.75rem; margin-bottom: 0;">{% if item %}Edit Item{% else %}Add Item{% endif %}</h1>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Item Name *</label>
+                            <input type="text" name="name" class="form-control" required
+                                   value="{{ item.name|default:'' }}" placeholder="e.g., 1999 Charizard Base Set">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Max Price</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" name="max_price" class="form-control" step="0.01"
+                                       value="{{ item.max_price|default:'' }}" placeholder="0.00">
+                            </div>
+                            <small class="text-muted">You'll be notified when items are listed below this price</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea name="notes" class="form-control" rows="3" placeholder="Any specific requirements">{{ item.notes|default:'' }}</textarea>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-dark">{% if item %}Save{% else %}Add{% endif %}</button>
+                            <a href="javascript:history.back()" class="btn btn-outline-dark">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
