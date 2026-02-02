@@ -85,8 +85,8 @@ class ConnectService:
         except (stripe.error.InvalidRequestError, stripe.error.PermissionError) as e:
             # Account doesn't exist or not accessible (e.g., test account with live keys)
             logger.warning(f"Stripe account {profile.stripe_account_id} invalid/inaccessible: {e}. Clearing account ID.")
-            profile.stripe_account_id = None
-            profile.stripe_account_type = None
+            profile.stripe_account_id = ''
+            profile.stripe_account_type = ''
             profile.stripe_charges_enabled = False
             profile.stripe_payouts_enabled = False
             profile.stripe_account_complete = False
