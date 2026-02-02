@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied - HeroesAndMore</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: #FAFAFA;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .error-container {
+            text-align: center;
+            padding: 2rem;
+            max-width: 500px;
+        }
+        .error-icon {
+            font-size: 5rem;
+            color: #F59E0B;
+            margin-bottom: 1rem;
+        }
+        .error-code {
+            font-size: 6rem;
+            font-weight: 800;
+            color: #171717;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+        .error-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #171717;
+            margin-bottom: 1rem;
+        }
+        .error-message {
+            color: #525252;
+            margin-bottom: 2rem;
+        }
+        .btn-dark {
+            background: #171717;
+            border-color: #171717;
+            padding: 0.75rem 2rem;
+        }
+        .btn-dark:hover {
+            background: #262626;
+            border-color: #262626;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <i class="bi bi-shield-lock error-icon"></i>
+        <div class="error-code">403</div>
+        <h1 class="error-title">Access Denied</h1>
+        <p class="error-message">
+            You don't have permission to access this page.
+            If you believe this is an error, please sign in or contact support.
+        </p>
+        <div class="d-flex gap-3 justify-content-center">
+            <a href="/" class="btn btn-dark">
+                <i class="bi bi-house me-2"></i>Go Home
+            </a>
+            <a href="/auth/login/" class="btn btn-outline-dark">
+                <i class="bi bi-person me-2"></i>Sign In
+            </a>
+        </div>
+    </div>
+</body>
+</html>

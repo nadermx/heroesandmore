@@ -692,37 +692,53 @@ def seller_setup(request):
     """Stripe Connect onboarding - start or continue"""
     from marketplace.services.connect_service import ConnectService
     import logging
+    import stripe
 
     logger = logging.getLogger('marketplace')
     profile = request.user.profile
 
-    # Check current status first (may clear invalid account IDs)
-    if profile.stripe_account_id:
-        account = ConnectService.update_account_status(request.user)
-        # Refresh profile in case account was cleared
-        profile.refresh_from_db()
-
-    # Create new account if needed (or if previous one was invalid)
-    if not profile.stripe_account_id:
-        logger.info(f"Creating new Stripe Connect account for user {request.user.id}")
-        ConnectService.create_express_account(request.user)
-        profile.refresh_from_db()
-
-    if profile.stripe_account_complete:
-        messages.success(request, 'Your seller account is ready to receive payments!')
-        return redirect('seller_tools:dashboard')
-
-    # Create onboarding link
     try:
+        # Check current status first (may clear invalid account IDs)
+        if profile.stripe_account_id:
+            account = ConnectService.update_account_status(request.user)
+            # Refresh profile in case account was cleared
+            profile.refresh_from_db()
+
+        # Create new account if needed (or if previous one was invalid)
+        if not profile.stripe_account_id:
+            logger.info(f"Creating new Stripe Connect account for user {request.user.id}")
+            ConnectService.create_express_account(request.user)
+            profile.refresh_from_db()
+
+        if profile.stripe_account_complete:
+            messages.success(request, 'Your seller account is ready to receive payments!')
+            return redirect('seller_tools:dashboard')
+
+        # Create onboarding link
         account_link = ConnectService.create_account_link(
             profile.stripe_account_id,
             return_url=request.build_absolute_uri('/marketplace/seller-setup/return/'),
             refresh_url=request.build_absolute_uri('/marketplace/seller-setup/')
         )
         return redirect(account_link.url)
+
+    except stripe.error.InvalidRequestError as e:
+        logger.error(f"Stripe Connect setup error for user {request.user.id}: {e}")
+        # Check if it's the platform profile issue
+        if 'platform profile' in str(e).lower():
+            messages.error(request, 'Payment setup is temporarily unavailable. Our team has been notified and is working on it.')
+        else:
+            messages.error(request, f'Unable to set up payments: {e.user_message or "Please try again later."}')
+        return redirect('seller_tools:dashboard')
+
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error during seller setup for user {request.user.id}: {e}")
+        messages.error(request, 'Payment service is temporarily unavailable. Please try again later.')
+        return redirect('seller_tools:dashboard')
+
     except Exception as e:
-        logger.error(f"Failed to create Stripe account link for user {request.user.id}: {e}")
-        messages.error(request, 'There was an error setting up your seller account. Please try again.')
+        logger.error(f"Unexpected error in seller setup for user {request.user.id}: {e}", exc_info=True)
+        messages.error(request, 'An unexpected error occurred. Please try again.')
         return redirect('seller_tools:dashboard')
 
 
