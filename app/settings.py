@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'django_filters',
     # Local apps
+    'api',
     'accounts',
     'user_collections',
     'items',
