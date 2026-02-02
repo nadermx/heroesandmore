@@ -3,12 +3,26 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 from items.views import home
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home, name='home'),
+
+    # REST API v1
+    path('api/v1/', include('api.urls')),
+
+    # JWT Authentication
+    path('api/v1/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/v1/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # API Documentation
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     path('accounts/', include('accounts.urls')),
     path('auth/', include('allauth.urls')),
     path('collections/', include('user_collections.urls')),
