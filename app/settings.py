@@ -143,7 +143,7 @@ AUTHENTICATION_BACKENDS = [
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
-ACCOUNT_EMAIL_VERIFICATION = 'optional'
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE = True
 ACCOUNT_UNIQUE_EMAIL = True
 LOGIN_URL = '/auth/login/'
@@ -181,12 +181,11 @@ STRIPE_SECRET_KEY = getattr(config, 'STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = getattr(config, 'STRIPE_WEBHOOK_SECRET', '')
 STRIPE_CONNECT_WEBHOOK_SECRET = getattr(config, 'STRIPE_CONNECT_WEBHOOK_SECRET', '')
 
-# Stripe subscription price IDs (from Stripe Dashboard)
-STRIPE_PRICE_IDS = {
-    'basic': getattr(config, 'STRIPE_PRICE_BASIC', ''),
-    'featured': getattr(config, 'STRIPE_PRICE_FEATURED', ''),
-    'premium': getattr(config, 'STRIPE_PRICE_PREMIUM', ''),
-}
+# Internal Subscription Billing Settings
+# Subscription billing is handled internally via PaymentIntents (not Stripe Billing)
+SUBSCRIPTION_GRACE_PERIOD_DAYS = 7  # Days before downgrading after failed payment
+SUBSCRIPTION_MAX_RETRY_ATTEMPTS = 4  # Max payment retry attempts
+SUBSCRIPTION_RETRY_INTERVALS = [1, 3, 5, 7]  # Days between retry attempts
 
 # Platform fee (3% base, adjusted per seller tier)
 from decimal import Decimal

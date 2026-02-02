@@ -8,8 +8,6 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 
 from marketplace.models import Order, StripeEvent
-from seller_tools.models import SellerSubscription
-from marketplace.services.subscription_service import SubscriptionService
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +69,21 @@ def stripe_webhook(request):
 def handle_payment_intent_succeeded(event):
     """Handle successful payment"""
     payment_intent = event.data.object
+    payment_type = payment_intent.metadata.get('type', '')
+
+    # Handle subscription payments (logged for audit, actual update done in service)
+    if payment_type in ['subscription', 'subscription_renewal', 'subscription_proration']:
+        subscription_id = payment_intent.metadata.get('subscription_id')
+        user_id = payment_intent.metadata.get('user_id')
+        tier = payment_intent.metadata.get('tier', '')
+        logger.info(
+            f"Subscription payment succeeded: type={payment_type}, "
+            f"subscription_id={subscription_id}, user_id={user_id}, tier={tier}, "
+            f"pi={payment_intent.id}"
+        )
+        return
+
+    # Handle marketplace order payments
     order_id = payment_intent.metadata.get('order_id')
 
     if not order_id:
@@ -98,8 +111,25 @@ def handle_payment_intent_succeeded(event):
 
 
 def handle_payment_intent_failed(event):
-    """Handle failed payment"""
+    """Handle failed payment for both orders and subscriptions"""
     payment_intent = event.data.object
+    payment_type = payment_intent.metadata.get('type', '')
+
+    # Handle subscription payment failures (logged for audit)
+    if payment_type in ['subscription', 'subscription_renewal']:
+        subscription_id = payment_intent.metadata.get('subscription_id')
+        user_id = payment_intent.metadata.get('user_id')
+        error = payment_intent.last_payment_error
+        error_msg = error.message if error else 'Unknown error'
+
+        logger.warning(
+            f"Subscription payment failed: subscription_id={subscription_id}, "
+            f"user_id={user_id}, error={error_msg}, pi={payment_intent.id}"
+        )
+        # Note: Retry scheduling is handled in SubscriptionService._handle_failed_payment
+        return
+
+    # Handle order payment failures
     order_id = payment_intent.metadata.get('order_id')
 
     if not order_id:
@@ -216,126 +246,9 @@ def handle_transfer_created(event):
         pass
 
 
-def handle_customer_subscription_updated(event):
-    """Handle subscription status change"""
-    subscription = event.data.object
-    user_id = subscription.metadata.get('user_id')
-
-    if not user_id:
-        logger.warning(f"Subscription {subscription.id} has no user_id in metadata")
-        return
-
-    try:
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        user = User.objects.get(id=user_id)
-        SubscriptionService.sync_subscription(user, subscription)
-        logger.info(f"Synced subscription {subscription.id} for user {user_id}")
-    except Exception as e:
-        logger.error(f"Failed to sync subscription {subscription.id}: {e}")
-
-
-def handle_customer_subscription_deleted(event):
-    """Handle subscription canceled"""
-    subscription = event.data.object
-    user_id = subscription.metadata.get('user_id')
-
-    if user_id:
-        try:
-            from django.contrib.auth import get_user_model
-            User = get_user_model()
-            user = User.objects.get(id=user_id)
-            SubscriptionService.sync_subscription(user, subscription)
-        except Exception as e:
-            logger.error(f"Failed to handle subscription deletion: {e}")
-            return
-
-    # Also try by subscription ID
-    try:
-        sub = SellerSubscription.objects.get(stripe_subscription_id=subscription.id)
-        sub.subscription_status = 'canceled'
-        sub.tier = 'starter'
-        sub.max_active_listings = 50
-        sub.commission_rate = SellerSubscription.TIER_DETAILS['starter']['commission_rate']
-        sub.featured_slots = 0
-        sub.save()
-        logger.info(f"Subscription {subscription.id} canceled, user downgraded to starter")
-    except SellerSubscription.DoesNotExist:
-        pass
-
-
-def handle_invoice_payment_failed(event):
-    """Handle failed subscription payment"""
-    invoice = event.data.object
-    subscription_id = invoice.subscription
-
-    if not subscription_id:
-        return
-
-    try:
-        sub = SellerSubscription.objects.get(stripe_subscription_id=subscription_id)
-        sub.subscription_status = 'past_due'
-        sub.save(update_fields=['subscription_status', 'updated'])
-
-        logger.warning(f"Subscription payment failed for user {sub.user_id}")
-
-        # Notify seller
-        try:
-            from alerts.tasks import send_subscription_alert
-            send_subscription_alert.delay(sub.user_id, 'payment_failed')
-        except ImportError:
-            pass
-
-    except SellerSubscription.DoesNotExist:
-        pass
-
-
-def handle_invoice_paid(event):
-    """Handle successful subscription invoice payment"""
-    invoice = event.data.object
-    subscription_id = invoice.subscription
-
-    if not subscription_id:
-        return
-
-    try:
-        sub = SellerSubscription.objects.get(stripe_subscription_id=subscription_id)
-        if sub.subscription_status == 'past_due':
-            sub.subscription_status = 'active'
-            sub.save(update_fields=['subscription_status', 'updated'])
-            logger.info(f"Subscription {subscription_id} reactivated after payment")
-    except SellerSubscription.DoesNotExist:
-        pass
-
-
-def handle_checkout_session_completed(event):
-    """Handle Checkout Session completed (for subscription signup)"""
-    session = event.data.object
-
-    if session.mode != 'subscription':
-        return
-
-    user_id = session.metadata.get('user_id')
-    tier = session.metadata.get('tier')
-
-    if not user_id or not tier:
-        logger.warning(f"Checkout session {session.id} missing user_id or tier")
-        return
-
-    try:
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        user = User.objects.get(id=user_id)
-
-        # Get the subscription from the session
-        subscription = stripe.Subscription.retrieve(session.subscription)
-        SubscriptionService.sync_subscription(user, subscription)
-        logger.info(f"User {user_id} subscribed to {tier} tier")
-    except Exception as e:
-        logger.error(f"Failed to process checkout session {session.id}: {e}")
-
-
 # Webhook handler registry
+# Note: Stripe Billing handlers (subscription.*, invoice.*) removed.
+# Subscription billing is now handled internally via PaymentIntents and Celery tasks.
 WEBHOOK_HANDLERS = {
     'payment_intent.succeeded': handle_payment_intent_succeeded,
     'payment_intent.payment_failed': handle_payment_intent_failed,
@@ -343,11 +256,6 @@ WEBHOOK_HANDLERS = {
     'charge.refunded': handle_charge_refunded,
     'charge.dispute.created': handle_charge_dispute_created,
     'transfer.created': handle_transfer_created,
-    'customer.subscription.updated': handle_customer_subscription_updated,
-    'customer.subscription.deleted': handle_customer_subscription_deleted,
-    'invoice.payment_failed': handle_invoice_payment_failed,
-    'invoice.paid': handle_invoice_paid,
-    'checkout.session.completed': handle_checkout_session_completed,
 }
 
 

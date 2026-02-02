@@ -1,0 +1,16 @@
+Hi {{ user.first_name|default:user.username }},
+
+Your seller subscription has expired.
+
+Due to continued payment issues, your {{ old_tier|title }} subscription has been downgraded to the Starter tier.
+
+With the Starter tier, you have:
+- 50 active listings
+- 12.95% commission rate
+- No featured slots
+
+To upgrade your subscription again, visit:
+{{ subscription_url }}
+
+Thanks,
+The HeroesAndMore Team

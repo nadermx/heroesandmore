@@ -1,10 +1,13 @@
-# HeroesAndMore - Collectibles Marketplace
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-A full-featured collectibles marketplace and community platform built with Django.
+
+HeroesAndMore is a collectibles marketplace and community platform built with Django. Features include listings (fixed price and auctions), collections, price guide, image scanner, seller tools, and social features.
 
 ## Tech Stack
-- **Backend**: Django 6.0, Python 3.12
+- **Backend**: Django 5.x, Python 3.12
 - **Database**: PostgreSQL (SQLite for local dev)
 - **Cache/Queue**: Redis, Celery
 - **Frontend**: Bootstrap 5, HTMX
@@ -50,10 +53,10 @@ celery -A app worker -l info
 celery -A app beat -l info
 ```
 
-### Create initial categories
+### Management Commands
 ```bash
-python manage.py shell
-# Then run the seed script or add via admin
+python manage.py seed_categories          # Populate initial categories
+python manage.py import_market_data       # Import price data (--source ebay|heritage|gocollect --verbose)
 ```
 
 ## Key URLs
@@ -163,134 +166,37 @@ Copy `config.py.example` to `config.py` and set:
 
 For Ansible deploys, these go in `ansible/group_vars/vault.yml`.
 
-## Common Tasks
-
-### Add New Category
-Go to `/admin/items/category/` and add via Django admin.
-
-### Check Pending Orders
-```bash
-ansible -i ansible/servers all -m shell -a "cd /home/www/heroesandmore && venv/bin/python manage.py shell -c \"from marketplace.models import Order; print(Order.objects.filter(status='pending').count())\"" --become --become-user=www
-```
-
-### Database Backup
-```bash
-ansible -i ansible/servers all -m shell -a "sudo -u postgres pg_dump herosandmore > /tmp/herosandmore_backup.sql" --become
-```
-
-## New Features (Added 2026-01)
-
-### Price Guide System
-- Comprehensive price tracking for collectibles
-- Prices by grade (PSA, BGS, CGC, SGC, Raw)
-- Historical sales data and trends
-- Price suggestions when creating listings
-- Price alerts for target prices
-
-### Image Scanner
-- Upload photos to identify collectibles
-- OCR for graded slabs (cert numbers, grades)
-- Match to price guide for instant valuation
-- Create listings or add to collection from scans
-
-### Auction Events
-- Scheduled auction events (weekly, themed, elite)
-- Extended bidding (anti-sniping)
-- Auto-bidding (proxy bidding)
-- Live auction room (via WebSocket when implemented)
-
-### Seller Tools
-- Subscription tiers with varying commission rates:
-  - Starter: Free, 50 listings, 12.95% commission
-  - Basic: $9.99/mo, 200 listings, 9.95% commission
-  - Featured: $29.99/mo, 1000 listings, 7.95% commission
-  - Premium: $99.99/mo, unlimited listings, 5.95% commission
-- Bulk import from CSV
-- Inventory management (track items before listing)
-- Sales analytics and reports
-
-### Collection Value Tracking
-- Automatic valuation from price guide
-- Daily value snapshots for charts
-- Portfolio gain/loss tracking
+## Seller Subscription Tiers
+- Starter (Free): 50 listings, 12.95% commission
+- Basic ($9.99/mo): 200 listings, 9.95% commission
+- Featured ($29.99/mo): 1000 listings, 7.95% commission
+- Premium ($99.99/mo): unlimited listings, 5.95% commission
 
 ## Celery Tasks
+
+### Pricing Tasks
 - `pricing.tasks.update_price_guide_stats` - Update cached price stats
 - `pricing.tasks.record_sale_from_order` - Record sales in price guide
-- `pricing.tasks.check_price_alerts` - Check and trigger price alerts
+- `pricing.tasks.check_price_alerts` - Check and trigger price alerts (hourly)
+- `pricing.tasks.import_all_market_data` - Import market data (6 AM and 6 PM)
+
+### Collection Tasks
 - `user_collections.tasks.update_collection_values` - Update collection valuations
 - `user_collections.tasks.create_daily_snapshots` - Create daily value snapshots
 
-## Market Data Scraping (TODO)
+### Subscription Billing Tasks (seller_tools.tasks)
+- `process_subscription_renewals` - Process due renewals (daily 2 AM)
+- `retry_failed_payments` - Retry past_due subscriptions (hourly :30)
+- `expire_grace_periods` - Downgrade expired subscriptions (daily 3:30 AM)
+- `send_renewal_reminders` - Email 3 days before renewal (daily 10 AM)
 
-The price guide needs real market data from external sources. Currently using sample data.
+## Market Data Architecture
 
-### Data Sources to Scrape
-
-**1. eBay Sold Listings**
-- URL: `https://www.ebay.com/sch/i.html?_nkw={query}&LH_Complete=1&LH_Sold=1`
-- Data: title, sale price, sale date, condition
-- Challenge: eBay blocks scrapers with CAPTCHA (returns 307 redirect to `/splashui/challenge`)
-- Solutions:
-  - eBay Browse API (free developer account): https://developer.ebay.com/
-  - Proxy service like ScraperAPI, Bright Data (~$50/mo)
-  - Third-party data: Terapeak, 130point.com
-
-**2. Heritage Auctions**
-- URL: `https://www.ha.com/{category}/search-results.s?type=surl-sold`
-- Categories: sports-collectibles, comics-comic-art, trading-card-games
-- Data: lot title, hammer price, auction date, grade info
-- Challenge: Also blocks scrapers (403 Forbidden)
-- Solutions: Proxy service or their official API (requires partnership)
-
-**3. GoCollect (Comics)**
-- URL: `https://www.gocollect.com/search?q={query}`
-- Data: fair market value by grade, recent sales
-- Challenge: Requires login for detailed data
-- Best for: CGC/CBCS graded comics price history
-
-**4. PSA/BGS Price Guides**
-- PSA: https://www.psacard.com/auctionprices
-- BGS: https://www.beckett.com/grading/bgs-graded-card-values
-- Challenge: Both require subscriptions for full data
-
-**5. TCGPlayer (Trading Cards)**
-- URL: `https://www.tcgplayer.com/`
-- API available for partners
-- Good for: Pokemon, Magic, Yu-Gi-Oh current market prices
-
-### Current Implementation
-
-Located in: `pricing/services/market_data.py`
-
-Classes:
-- `EbayMarketData` - Scrapes eBay sold listings (blocked without proxy)
-- `HeritageAuctionsData` - Scrapes Heritage completed auctions (blocked)
-- `GoCollectData` - Scrapes GoCollect for comics
-- `MarketDataImporter` - Coordinates imports, matches to price guide items
-
-Celery tasks in `pricing/tasks.py`:
-- `import_all_market_data` - Runs at 6 AM and 6 PM daily
-- `import_ebay_market_data`
-- `import_heritage_market_data`
-- `import_gocollect_market_data`
-
-Management command: `python manage.py import_market_data --source ebay --verbose`
-
-### Recommended Next Steps
-
-1. **Short term**: Use proxy service (ScraperAPI) for eBay scraping
-2. **Medium term**: Apply for eBay Browse API access
-3. **Long term**: Partner with data providers or build user-submitted sales
-
-### Recent Sales Ticker
-
-The listing detail page shows a "Recent Sales" ticker below the price when:
-- The listing has a `price_guide_item` linked
-- The price guide item has `SaleRecord` entries
-
-Template: `templates/marketplace/listing_detail.html`
-View: `marketplace/views.py:listing_detail()` passes `recent_sales` context
+Price guide data is imported via `pricing/services/market_data.py`:
+- `EbayMarketData`, `HeritageAuctionsData`, `GoCollectData` - scraper classes
+- `MarketDataImporter` - coordinates imports, matches to price guide items
+- Celery task `import_all_market_data` runs at 6 AM and 6 PM daily
+- External sources require proxy service (eBay, Heritage block direct requests)
 
 ## REST API (Added 2026-01)
 
@@ -384,38 +290,10 @@ api/                            # Central API app
 └── urls.py                     # App-specific API routes
 ```
 
-### Dependencies (requirements.txt)
-```
-djangorestframework>=3.15.0
-djangorestframework-simplejwt>=5.3.0
-django-cors-headers>=4.3.0
-drf-spectacular>=0.27.0
-django-filter>=24.0
-firebase-admin>=6.4.0           # Push notifications
-```
-
 ### Push Notifications
-- `accounts.DeviceToken` model stores FCM tokens
+- `accounts.DeviceToken` model stores FCM tokens (Firebase)
 - Register device: POST `/api/v1/accounts/me/device/`
 - Notification types: new_bid, outbid, offer, order_shipped, message, price_alert
-
-### Testing API
-```bash
-# Get token
-curl -X POST https://heroesandmore.com/api/v1/auth/token/ \
-  -H "Content-Type: application/json" \
-  -d '{"username":"test","password":"test123"}'
-
-# List listings
-curl https://heroesandmore.com/api/v1/marketplace/listings/ \
-  -H "Authorization: Bearer <token>"
-
-# Create listing
-curl -X POST https://heroesandmore.com/api/v1/marketplace/listings/ \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Test Item","price":"99.99","category":1,"condition":"mint"}'
-```
 
 ## Stripe Payment Integration
 
@@ -423,76 +301,122 @@ curl -X POST https://heroesandmore.com/api/v1/marketplace/listings/ \
 Full Stripe integration for marketplace payments:
 - **Stripe Payments**: PaymentIntents for checkout with saved cards support
 - **Stripe Connect**: Express accounts for seller payouts
-- **Stripe Billing**: Subscriptions for seller tiers
-
-### Configuration
-Required settings in `config.py`:
-```python
-STRIPE_PUBLIC_KEY = 'pk_test_...'
-STRIPE_SECRET_KEY = 'sk_test_...'
-STRIPE_WEBHOOK_SECRET = 'whsec_...'  # Main webhook
-STRIPE_CONNECT_WEBHOOK_SECRET = 'whsec_...'  # Connect webhook
-STRIPE_PRICE_BASIC = 'price_...'  # $9.99/month
-STRIPE_PRICE_FEATURED = 'price_...'  # $29.99/month
-STRIPE_PRICE_PREMIUM = 'price_...'  # $99.99/month
-SITE_URL = 'https://www.heroesandmore.com'
-```
+- **Internal Subscription Billing**: PaymentIntents for seller tier subscriptions (not Stripe Billing)
 
 ### Webhook Endpoints
-Register these in Stripe Dashboard:
-- **Main**: `https://heroesandmore.com/marketplace/webhooks/stripe/`
-  - Events: payment_intent.*, charge.refunded, charge.dispute.*, customer.subscription.*, invoice.*
-- **Connect**: `https://heroesandmore.com/marketplace/webhooks/stripe-connect/`
-  - Events: account.updated
+- Main: `/marketplace/webhooks/stripe/` - payment_intent.*, charge.*
+- Connect: `/marketplace/webhooks/stripe-connect/` - account.updated
 
-### Local Testing with Stripe CLI
-```bash
-# Install Stripe CLI
-brew install stripe/stripe-cli/stripe
-
-# Login
-stripe login
-
-# Forward webhooks
-stripe listen --forward-to localhost:8000/marketplace/webhooks/stripe/
-
-# Test events
-stripe trigger payment_intent.succeeded
-```
-
-### Service Layer
-Located in `marketplace/services/`:
+### Service Layer (`marketplace/services/`)
 - `stripe_service.py` - Payment intents, payment methods, refunds
 - `connect_service.py` - Seller account onboarding, transfers
-- `subscription_service.py` - Seller tier subscriptions
+- `subscription_service.py` - Internal subscription billing via PaymentIntents
 
-### Key Models
-- `Order` - Has `stripe_payment_intent`, `stripe_transfer_id`, refund tracking
-- `PaymentMethod` - Saved cards for buyers
-- `StripeEvent` - Webhook event tracking for idempotency
-- `Refund` - Order refund records
-- `Profile` - Has `stripe_account_id` (Connect), `stripe_customer_id` (buyer)
-- `SellerSubscription` - Has `stripe_subscription_id`, tier info
+### Local Testing
+```bash
+stripe listen --forward-to localhost:8000/marketplace/webhooks/stripe/
+```
 
-### Commission Rates by Tier
-- Starter (Free): 12.95% commission, 50 listings
-- Basic ($9.99/mo): 9.95% commission, 200 listings
-- Featured ($29.99/mo): 7.95% commission, 1000 listings
-- Premium ($99.99/mo): 5.95% commission, unlimited listings
-
-### Payment Flow
+### Payment Flow (Marketplace)
 1. Buyer clicks "Buy Now" -> creates pending Order
-2. Checkout page shows Stripe Elements
-3. PaymentIntent created with seller's Connect account as destination
-4. On success, webhook updates Order status, listing marked sold
-5. Funds automatically transferred to seller (minus commission)
+2. Checkout shows Stripe Elements, creates PaymentIntent with seller's Connect account as destination
+3. Webhook updates Order status, listing marked sold
+4. Funds transferred to seller minus commission
 
-### Seller Onboarding Flow
-1. Seller visits `/marketplace/seller-setup/`
-2. Express account created if needed
-3. Redirect to Stripe-hosted onboarding
-4. Return to `/marketplace/seller-setup/return/`
-5. Account status synced from webhook
+### Subscription Billing (Internal)
+Subscription billing is handled internally using PaymentIntents instead of Stripe Billing:
+- Uses unified `Profile.stripe_customer_id` for all payments
+- Charges via PaymentIntent with `off_session=True` for renewals
+- Celery tasks handle renewals, retries, and grace period expiry
+- Benefits: Single customer record, no Stripe dashboard management, full local control
+
+#### Key Models
+- `SellerSubscription` - Subscription state, payment method FK, billing tracking
+- `SubscriptionBillingHistory` - Audit trail for all billing events
+
+#### Subscription Service Methods
+- `subscribe(user, tier, payment_method_id)` - Initial subscription with immediate charge
+- `charge_renewal(subscription)` - Charge renewal (called by Celery)
+- `change_tier(user, new_tier)` - Upgrade/downgrade with proration
+- `cancel(user, at_period_end=True)` - Cancel gracefully or immediately
+
+#### Settings
+```python
+SUBSCRIPTION_GRACE_PERIOD_DAYS = 7      # Days before downgrading
+SUBSCRIPTION_MAX_RETRY_ATTEMPTS = 4     # Max payment retries
+SUBSCRIPTION_RETRY_INTERVALS = [1, 3, 5, 7]  # Days between retries
+```
+
+## Email (Self-Hosted)
+
+Email is self-hosted on the server using Postfix with OpenDKIM.
+
+### Domain Setup
+- **mail.heroesandmore.com** - SENDING domain (outbound emails, e.g., noreply@mail.heroesandmore.com)
+- **heroesandmore.com** - RECEIVING domain (inbound, forwards to team members)
+
+### DNS Records (managed via DigitalOcean API)
+- SPF: `v=spf1 ip4:174.138.33.140 a ~all`
+- DKIM: `mail._domainkey.mail.heroesandmore.com`
+- DMARC: `v=DMARC1; p=none; rua=mailto:postmaster@mail.heroesandmore.com; fo=1`
+
+### Credentials
+API keys are stored in `~/.credentials/`:
+- `digitalocean_api_key` - DNS management
+- Other keys: aws, github, linode, vultr, etc.
+
+### Email Aliases (Forwarding)
+Config file: `/etc/postfix/virtual`
+
+```
+# Group forwards (to all team members)
+hello@heroesandmore.com     john@nader.mx, tmgormond@gmail.com, jim@sickboys.com
+support@heroesandmore.com   john@nader.mx, tmgormond@gmail.com, jim@sickboys.com
+auctions@heroesandmore.com  john@nader.mx, tmgormond@gmail.com, jim@sickboys.com
+sales@heroesandmore.com     john@nader.mx, tmgormond@gmail.com, jim@sickboys.com
+
+# Individual forwards
+john@heroesandmore.com      john@nader.mx
+jim@heroesandmore.com       jim@sickboys.com
+tony@heroesandmore.com      tmgormond@gmail.com
+
+# System addresses
+info@heroesandmore.com      john@nader.mx
+postmaster@heroesandmore.com john@nader.mx
+```
+
+### Adding New Email Alias
+```bash
+ssh heroesandmore@174.138.33.140
+sudo nano /etc/postfix/virtual
+# Add: newemail@heroesandmore.com    recipient@example.com
+sudo postmap /etc/postfix/virtual
+sudo systemctl reload postfix
+```
+
+### Sending Test Email
+```bash
+ssh heroesandmore@174.138.33.140
+echo "Test message" | mail -s "Subject" -a "From: HeroesAndMore <noreply@mail.heroesandmore.com>" recipient@example.com
+```
+
+## GitHub Repositories
+
+Project is split across three repositories:
+
+| Repo | URL | Description |
+|------|-----|-------------|
+| Web | https://github.com/nadermx/heroesandmore | Django web app (this repo) |
+| Android | https://github.com/nadermx/heroesandmore-android | Native Android app (Kotlin) |
+| iOS | https://github.com/nadermx/heroesandmore-ios | Native iOS app (Swift/SwiftUI) |
+
+## Team
+
+| Name | Email | Role |
+|------|-------|------|
+| John | john@nader.mx | Owner |
+| Tony | tmgormond@gmail.com | Collaborator |
+| Jim | jim@sickboys.com | Collaborator |
 
 ## Notes
 - The `collections` app uses `item_collections` as the related_name to avoid conflicts with Django's built-in collections module

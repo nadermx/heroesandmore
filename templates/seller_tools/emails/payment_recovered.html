@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #27ae60;">Payment Successful</h2>
+
+    <p>Hi {{ user.first_name|default:user.username }},</p>
+
+    <p>Great news! Your <strong>{{ tier_info.name }}</strong> subscription payment was successful.</p>
+
+    <div style="background-color: #eafaf1; border-left: 4px solid #27ae60; padding: 12px 16px; margin: 20px 0;">
+        Your subscription is now active and your selling benefits have been restored.
+    </div>
+
+    <p>Thanks for being a seller on HeroesAndMore!</p>
+
+    <p style="color: #7f8c8d; font-size: 14px; margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
+        The HeroesAndMore Team
+    </p>
+</body>
+</html>

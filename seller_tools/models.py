@@ -5,7 +5,8 @@ from decimal import Decimal
 
 class SellerSubscription(models.Model):
     """
-    Seller subscription tiers with varying commission rates and limits
+    Seller subscription tiers with varying commission rates and limits.
+    Billing is handled internally using PaymentIntents (not Stripe Billing).
     """
     TIERS = [
         ('starter', 'Starter'),
@@ -65,14 +66,27 @@ class SellerSubscription(models.Model):
     commission_rate = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('12.95'))
     featured_slots = models.IntegerField(default=0)
 
-    # Stripe Billing
-    stripe_customer_id = models.CharField(max_length=100, blank=True)
-    stripe_subscription_id = models.CharField(max_length=100, blank=True)
-    stripe_price_id = models.CharField(max_length=100, blank=True)
+    # Internal Billing (uses Profile.stripe_customer_id for payment)
+    default_payment_method = models.ForeignKey(
+        'marketplace.PaymentMethod',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='subscriptions'
+    )
     subscription_status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='inactive')
     current_period_start = models.DateTimeField(null=True, blank=True)
     current_period_end = models.DateTimeField(null=True, blank=True)
     cancel_at_period_end = models.BooleanField(default=False)
+
+    # Billing tracking
+    last_billed_at = models.DateTimeField(null=True, blank=True)
+    last_payment_intent_id = models.CharField(max_length=100, blank=True)
+    failed_payment_attempts = models.IntegerField(default=0)
+    next_retry_at = models.DateTimeField(null=True, blank=True)
+    grace_period_end = models.DateTimeField(null=True, blank=True)
+
+    # Deprecated - kept for migration, use Profile.stripe_customer_id
+    stripe_customer_id = models.CharField(max_length=100, blank=True)
 
     is_active = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -96,6 +110,65 @@ class SellerSubscription(models.Model):
     def get_remaining_listings(self):
         active_count = self.user.listings.filter(status='active').count()
         return max(0, self.max_active_listings - active_count)
+
+    def is_in_grace_period(self):
+        """Check if subscription is in grace period after failed payment"""
+        from django.utils import timezone
+        if not self.grace_period_end:
+            return False
+        return timezone.now() < self.grace_period_end
+
+    def needs_renewal(self):
+        """Check if subscription needs to be renewed"""
+        from django.utils import timezone
+        if self.tier == 'starter':
+            return False
+        if not self.current_period_end:
+            return False
+        return timezone.now() >= self.current_period_end
+
+
+class SubscriptionBillingHistory(models.Model):
+    """
+    Audit trail for all subscription billing events.
+    Records charges, refunds, prorations, and failures.
+    """
+    TRANSACTION_TYPES = [
+        ('charge', 'Charge'),
+        ('refund', 'Refund'),
+        ('proration_credit', 'Proration Credit'),
+        ('proration_charge', 'Proration Charge'),
+    ]
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('succeeded', 'Succeeded'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded'),
+    ]
+
+    subscription = models.ForeignKey(
+        SellerSubscription,
+        on_delete=models.CASCADE,
+        related_name='billing_history'
+    )
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    tier = models.CharField(max_length=20)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    stripe_payment_intent_id = models.CharField(max_length=100, blank=True)
+    period_start = models.DateTimeField()
+    period_end = models.DateTimeField()
+    failure_reason = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created']
+        verbose_name = 'Subscription Billing History'
+        verbose_name_plural = 'Subscription Billing History'
+
+    def __str__(self):
+        return f"{self.subscription.user.username} - {self.transaction_type} ${self.amount} ({self.status})"
 
 
 class BulkImport(models.Model):

@@ -1,0 +1,17 @@
+Hi {{ user.first_name|default:user.username }},
+
+We were unable to charge your payment method for your {{ tier_info.name }} subscription.
+
+Error: {{ error_message }}
+
+Your subscription is still active, but please update your payment method to avoid service interruption.
+
+{% if grace_period_end %}
+You have until {{ grace_period_end|date:"F j, Y" }} to update your payment method before your subscription is downgraded.
+{% endif %}
+
+Update your payment method at:
+{{ update_payment_url }}
+
+Thanks,
+The HeroesAndMore Team

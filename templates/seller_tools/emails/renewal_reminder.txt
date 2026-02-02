@@ -1,0 +1,12 @@
+Hi {{ user.first_name|default:user.username }},
+
+Your {{ tier_info.name }} subscription will renew in 3 days on {{ renewal_date|date:"F j, Y" }}.
+
+Your card on file will be charged ${{ tier_info.price }}.
+
+If you want to make any changes to your subscription, you can do so at:
+{{ request.scheme }}://{{ request.get_host }}/seller/subscription/
+
+Thanks for being a seller on HeroesAndMore!
+
+The HeroesAndMore Team

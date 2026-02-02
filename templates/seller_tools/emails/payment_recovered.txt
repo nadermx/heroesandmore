@@ -1,0 +1,9 @@
+Hi {{ user.first_name|default:user.username }},
+
+Great news! Your {{ tier_info.name }} subscription payment was successful.
+
+Your subscription is now active and your selling benefits have been restored.
+
+Thanks for being a seller on HeroesAndMore!
+
+The HeroesAndMore Team

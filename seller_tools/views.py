@@ -6,12 +6,16 @@ from django.views.decorators.http import require_POST
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncMonth, TruncDay
 from django.utils import timezone
+from django.conf import settings
 from datetime import timedelta
 import csv
+import stripe
 
-from .models import SellerSubscription, BulkImport, BulkImportRow, InventoryItem
-from marketplace.models import Listing, Order
+from .models import SellerSubscription, SubscriptionBillingHistory, BulkImport, BulkImportRow, InventoryItem
+from marketplace.models import Listing, Order, PaymentMethod
 from items.models import Category
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 @login_required
@@ -61,43 +65,68 @@ def subscription_manage(request):
         defaults={'tier': 'starter'}
     )
 
-    # Sync with Stripe if there's an active subscription
-    if subscription.stripe_subscription_id:
-        from marketplace.services.subscription_service import SubscriptionService
-        try:
-            SubscriptionService.get_subscription_status(request.user)
-            subscription.refresh_from_db()
-        except Exception:
-            pass
-
     tiers = SellerSubscription.TIER_DETAILS
+    payment_methods = PaymentMethod.objects.filter(user=request.user)
+
+    # Get recent billing history
+    billing_history = SubscriptionBillingHistory.objects.filter(
+        subscription=subscription
+    ).order_by('-created')[:5]
 
     return render(request, 'seller_tools/subscription.html', {
         'subscription': subscription,
         'tiers': tiers,
+        'payment_methods': payment_methods,
+        'billing_history': billing_history,
+        'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
     })
 
 
 @login_required
 def subscription_upgrade(request, tier):
-    """Upgrade seller subscription via Stripe Checkout"""
+    """Upgrade seller subscription with direct payment"""
     from marketplace.services.subscription_service import SubscriptionService
 
     if tier not in ['basic', 'featured', 'premium']:
         messages.error(request, 'Invalid subscription tier')
         return redirect('seller_tools:subscription')
 
-    try:
-        session = SubscriptionService.create_checkout_session(
-            request.user,
-            tier,
-            success_url=request.build_absolute_uri('/seller/subscription/success/'),
-            cancel_url=request.build_absolute_uri('/seller/subscription/')
-        )
-        return redirect(session.url)
-    except Exception as e:
-        messages.error(request, f'Unable to start subscription: {e}')
-        return redirect('seller_tools:subscription')
+    subscription, _ = SellerSubscription.objects.get_or_create(
+        user=request.user,
+        defaults={'tier': 'starter'}
+    )
+    tier_info = SellerSubscription.TIER_DETAILS[tier]
+
+    # Calculate proration if upgrading from another paid tier
+    proration = SubscriptionService.calculate_proration(subscription, tier)
+
+    if request.method == 'POST':
+        payment_method_id = request.POST.get('payment_method_id')
+        if not payment_method_id:
+            messages.error(request, 'Please provide a payment method')
+            return redirect('seller_tools:subscription_upgrade', tier=tier)
+
+        try:
+            SubscriptionService.subscribe(request.user, tier, payment_method_id)
+            messages.success(request, f'Successfully subscribed to {tier_info["name"]}!')
+            return redirect('seller_tools:subscription')
+        except stripe.error.CardError as e:
+            messages.error(request, f'Payment failed: {e.user_message}')
+        except Exception as e:
+            messages.error(request, f'Unable to process subscription: {e}')
+            return redirect('seller_tools:subscription')
+
+    # GET - show payment form
+    payment_methods = PaymentMethod.objects.filter(user=request.user)
+
+    return render(request, 'seller_tools/subscription_upgrade.html', {
+        'subscription': subscription,
+        'tier': tier,
+        'tier_info': tier_info,
+        'proration': proration,
+        'payment_methods': payment_methods,
+        'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
+    })
 
 
 @login_required
@@ -115,22 +144,16 @@ def subscription_cancel(request):
 
     subscription = get_object_or_404(SellerSubscription, user=request.user)
 
-    if subscription.stripe_subscription_id:
-        try:
-            # Cancel at period end (graceful cancellation)
-            SubscriptionService.cancel_subscription(request.user, at_period_end=True)
-            messages.success(request, 'Your subscription will be cancelled at the end of the billing period.')
-        except Exception as e:
-            messages.error(request, f'Unable to cancel subscription: {e}')
-    else:
-        # No Stripe subscription, just downgrade
-        starter_info = SellerSubscription.TIER_DETAILS['starter']
-        subscription.tier = 'starter'
-        subscription.max_active_listings = starter_info['max_listings']
-        subscription.commission_rate = starter_info['commission_rate']
-        subscription.featured_slots = starter_info['featured_slots']
-        subscription.save()
-        messages.success(request, 'You are now on the Starter tier.')
+    if subscription.tier == 'starter':
+        messages.info(request, 'You are already on the Starter tier.')
+        return redirect('seller_tools:subscription')
+
+    try:
+        # Cancel at period end (graceful cancellation)
+        SubscriptionService.cancel(request.user, at_period_end=True)
+        messages.success(request, 'Your subscription will be cancelled at the end of the billing period.')
+    except Exception as e:
+        messages.error(request, f'Unable to cancel subscription: {e}')
 
     return redirect('seller_tools:subscription')
 
@@ -142,7 +165,7 @@ def subscription_reactivate(request):
     from marketplace.services.subscription_service import SubscriptionService
 
     try:
-        SubscriptionService.reactivate_subscription(request.user)
+        SubscriptionService.reactivate(request.user)
         messages.success(request, 'Your subscription has been reactivated.')
     except Exception as e:
         messages.error(request, f'Unable to reactivate subscription: {e}')
@@ -151,19 +174,111 @@ def subscription_reactivate(request):
 
 
 @login_required
-def subscription_billing_portal(request):
-    """Redirect to Stripe Billing Portal"""
+def subscription_payment_methods(request):
+    """Manage payment methods for subscription"""
     from marketplace.services.subscription_service import SubscriptionService
 
-    try:
-        session = SubscriptionService.create_billing_portal_session(
-            request.user,
-            return_url=request.build_absolute_uri('/seller/subscription/')
-        )
-        return redirect(session.url)
-    except Exception as e:
-        messages.error(request, f'Unable to access billing portal: {e}')
-        return redirect('seller_tools:subscription')
+    subscription, _ = SellerSubscription.objects.get_or_create(
+        user=request.user,
+        defaults={'tier': 'starter'}
+    )
+    payment_methods = PaymentMethod.objects.filter(user=request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'add':
+            payment_method_id = request.POST.get('payment_method_id')
+            if payment_method_id:
+                try:
+                    # Get or create Stripe customer
+                    customer = SubscriptionService.get_or_create_stripe_customer(request.user)
+
+                    # Attach payment method
+                    stripe.PaymentMethod.attach(payment_method_id, customer=customer.id)
+
+                    # Get payment method details
+                    pm = stripe.PaymentMethod.retrieve(payment_method_id)
+
+                    # Save locally
+                    new_pm = PaymentMethod.objects.create(
+                        user=request.user,
+                        stripe_payment_method_id=payment_method_id,
+                        card_brand=pm.card.brand,
+                        card_last4=pm.card.last4,
+                        card_exp_month=pm.card.exp_month,
+                        card_exp_year=pm.card.exp_year,
+                        is_default=not payment_methods.exists(),
+                    )
+
+                    # Set as default for subscription if it's the only one
+                    if new_pm.is_default and subscription.tier != 'starter':
+                        subscription.default_payment_method = new_pm
+                        subscription.save(update_fields=['default_payment_method'])
+
+                    messages.success(request, 'Payment method added successfully.')
+                except stripe.error.CardError as e:
+                    messages.error(request, f'Card error: {e.user_message}')
+                except Exception as e:
+                    messages.error(request, f'Error adding payment method: {e}')
+
+        elif action == 'set_default':
+            pm_id = request.POST.get('payment_method_id')
+            try:
+                pm = PaymentMethod.objects.get(id=pm_id, user=request.user)
+                PaymentMethod.objects.filter(user=request.user).update(is_default=False)
+                pm.is_default = True
+                pm.save(update_fields=['is_default'])
+
+                # Update subscription default
+                subscription.default_payment_method = pm
+                subscription.save(update_fields=['default_payment_method'])
+
+                messages.success(request, 'Default payment method updated.')
+            except PaymentMethod.DoesNotExist:
+                messages.error(request, 'Payment method not found.')
+
+        elif action == 'delete':
+            pm_id = request.POST.get('payment_method_id')
+            try:
+                pm = PaymentMethod.objects.get(id=pm_id, user=request.user)
+
+                # Don't delete if it's the subscription's payment method
+                if subscription.default_payment_method_id == pm.id:
+                    messages.error(request, 'Cannot delete the payment method used for your subscription. Set a different default first.')
+                else:
+                    # Detach from Stripe
+                    try:
+                        stripe.PaymentMethod.detach(pm.stripe_payment_method_id)
+                    except Exception:
+                        pass
+                    pm.delete()
+                    messages.success(request, 'Payment method removed.')
+            except PaymentMethod.DoesNotExist:
+                messages.error(request, 'Payment method not found.')
+
+        return redirect('seller_tools:subscription_payment_methods')
+
+    return render(request, 'seller_tools/subscription_payment_methods.html', {
+        'subscription': subscription,
+        'payment_methods': payment_methods,
+        'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
+    })
+
+
+@login_required
+def subscription_billing_history(request):
+    """View subscription billing history"""
+    subscription = get_object_or_404(SellerSubscription, user=request.user)
+
+    billing_history = SubscriptionBillingHistory.objects.filter(
+        subscription=subscription
+    ).order_by('-created')
+
+    return render(request, 'seller_tools/subscription_billing_history.html', {
+        'subscription': subscription,
+        'billing_history': billing_history,
+    })
 
 
 @login_required

@@ -13,7 +13,8 @@ urlpatterns = [
     path('subscription/success/', views.subscription_success, name='subscription_success'),
     path('subscription/cancel/', views.subscription_cancel, name='subscription_cancel'),
     path('subscription/reactivate/', views.subscription_reactivate, name='subscription_reactivate'),
-    path('subscription/billing/', views.subscription_billing_portal, name='subscription_billing_portal'),
+    path('subscription/payment-methods/', views.subscription_payment_methods, name='subscription_payment_methods'),
+    path('subscription/billing-history/', views.subscription_billing_history, name='subscription_billing_history'),
 
     # Payout settings
     path('payouts/', views.payout_settings, name='payout_settings'),
