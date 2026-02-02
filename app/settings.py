@@ -235,43 +235,187 @@ if not DEBUG:
         SECURE_HSTS_INCLUDE_SUBDOMAINS = True
         SECURE_HSTS_PRELOAD = True
 
-# Logging
+# Logging - Comprehensive setup for debugging
+LOG_DIR = BASE_DIR / 'logs'
+LOG_DIR.mkdir(exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
+            'format': '{levelname} {asctime} {name} {module}:{lineno} {message}',
             'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
+        'json': {
+            'format': '{"time": "%(asctime)s", "level": "%(levelname)s", "logger": "%(name)s", "module": "%(module)s", "line": %(lineno)d, "message": "%(message)s"}',
+        },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
         },
     },
     'handlers': {
-        'file': {
-            'level': 'ERROR',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
-            'formatter': 'verbose',
-        },
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
+        # Main application log
+        'app_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'app.log',
+            'maxBytes': 10 * 1024 * 1024,  # 10MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        # Errors only - quick access to problems
+        'error_file': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'errors.log',
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
+        # Stripe/payment logging
+        'stripe_file': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'stripe.log',
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        # Security events (auth, permissions)
+        'security_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'security.log',
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
+        # Celery tasks
+        'celery_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'celery_tasks.log',
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        # Database queries (slow queries)
+        'db_file': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'db.log',
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 3,
+            'formatter': 'verbose',
+        },
+        # API requests
+        'api_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'api.log',
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
     },
     'root': {
-        'handlers': ['console'],
+        'handlers': ['console', 'app_file', 'error_file'],
         'level': 'INFO',
     },
     'loggers': {
+        # Django core
         'django': {
-            'handlers': ['console'],
+            'handlers': ['console', 'app_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console', 'error_file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['console', 'security_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Database - only log slow queries in production
+        'django.db.backends': {
+            'handlers': ['db_file'],
+            'level': 'WARNING',  # Change to DEBUG to log all queries
+            'propagate': False,
+        },
+        # Stripe SDK logging
+        'stripe': {
+            'handlers': ['console', 'stripe_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Our Stripe services
+        'marketplace.services': {
+            'handlers': ['console', 'stripe_file', 'error_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        # Seller tools (subscriptions)
+        'seller_tools': {
+            'handlers': ['console', 'stripe_file', 'celery_file', 'error_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        # Celery
+        'celery': {
+            'handlers': ['console', 'celery_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Our app loggers
+        'accounts': {
+            'handlers': ['console', 'app_file', 'security_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'marketplace': {
+            'handlers': ['console', 'app_file', 'error_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'pricing': {
+            'handlers': ['console', 'app_file', 'celery_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'alerts': {
+            'handlers': ['console', 'app_file', 'celery_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'scanner': {
+            'handlers': ['console', 'app_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'api': {
+            'handlers': ['console', 'api_file', 'error_file'],
             'level': 'INFO',
             'propagate': False,
         },
     },
 }
-
-# Create logs directory
-(BASE_DIR / 'logs').mkdir(exist_ok=True)
 
 # Django REST Framework
 from datetime import timedelta

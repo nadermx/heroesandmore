@@ -3,7 +3,7 @@ import logging
 from django.conf import settings
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('marketplace.services')
 
 
 class ConnectService:
@@ -13,24 +13,30 @@ class ConnectService:
     def create_express_account(user):
         """Create Express connected account for seller"""
         profile = user.profile
+        logger.info(f"Creating Stripe Express account for user {user.id} ({user.email})")
 
-        account = stripe.Account.create(
-            type='express',
-            country='US',
-            email=user.email,
-            capabilities={
-                'card_payments': {'requested': True},
-                'transfers': {'requested': True},
-            },
-            business_type='individual',
-            metadata={'user_id': user.id}
-        )
+        try:
+            account = stripe.Account.create(
+                type='express',
+                country='US',
+                email=user.email,
+                capabilities={
+                    'card_payments': {'requested': True},
+                    'transfers': {'requested': True},
+                },
+                business_type='individual',
+                metadata={'user_id': user.id}
+            )
 
-        profile.stripe_account_id = account.id
-        profile.stripe_account_type = 'express'
-        profile.save(update_fields=['stripe_account_id', 'stripe_account_type'])
+            profile.stripe_account_id = account.id
+            profile.stripe_account_type = 'express'
+            profile.save(update_fields=['stripe_account_id', 'stripe_account_type'])
 
-        return account
+            logger.info(f"Created Stripe account {account.id} for user {user.id}")
+            return account
+        except stripe.error.StripeError as e:
+            logger.error(f"Failed to create Stripe account for user {user.id}: {e}")
+            raise
 
     @staticmethod
     def create_account_link(account_id, return_url, refresh_url):
@@ -76,8 +82,24 @@ class ConnectService:
             ])
 
             return account
-        except stripe.error.InvalidRequestError as e:
-            logger.error(f"Error retrieving Stripe account {profile.stripe_account_id}: {e}")
+        except (stripe.error.InvalidRequestError, stripe.error.PermissionError) as e:
+            # Account doesn't exist or not accessible (e.g., test account with live keys)
+            logger.warning(f"Stripe account {profile.stripe_account_id} invalid/inaccessible: {e}. Clearing account ID.")
+            profile.stripe_account_id = None
+            profile.stripe_account_type = None
+            profile.stripe_charges_enabled = False
+            profile.stripe_payouts_enabled = False
+            profile.stripe_account_complete = False
+            profile.save(update_fields=[
+                'stripe_account_id',
+                'stripe_account_type',
+                'stripe_charges_enabled',
+                'stripe_payouts_enabled',
+                'stripe_account_complete'
+            ])
+            return None
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe API error for account {profile.stripe_account_id}: {e}")
             return None
 
     @staticmethod

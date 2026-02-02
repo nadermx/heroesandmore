@@ -691,28 +691,39 @@ def my_orders(request):
 def seller_setup(request):
     """Stripe Connect onboarding - start or continue"""
     from marketplace.services.connect_service import ConnectService
+    import logging
 
+    logger = logging.getLogger('marketplace')
     profile = request.user.profile
 
-    # Create account if needed
-    if not profile.stripe_account_id:
-        ConnectService.create_express_account(request.user)
+    # Check current status first (may clear invalid account IDs)
+    if profile.stripe_account_id:
+        account = ConnectService.update_account_status(request.user)
+        # Refresh profile in case account was cleared
+        profile.refresh_from_db()
 
-    # Check current status
-    account = ConnectService.update_account_status(request.user)
+    # Create new account if needed (or if previous one was invalid)
+    if not profile.stripe_account_id:
+        logger.info(f"Creating new Stripe Connect account for user {request.user.id}")
+        ConnectService.create_express_account(request.user)
+        profile.refresh_from_db()
 
     if profile.stripe_account_complete:
         messages.success(request, 'Your seller account is ready to receive payments!')
         return redirect('seller_tools:dashboard')
 
     # Create onboarding link
-    account_link = ConnectService.create_account_link(
-        profile.stripe_account_id,
-        return_url=request.build_absolute_uri('/marketplace/seller-setup/return/'),
-        refresh_url=request.build_absolute_uri('/marketplace/seller-setup/')
-    )
-
-    return redirect(account_link.url)
+    try:
+        account_link = ConnectService.create_account_link(
+            profile.stripe_account_id,
+            return_url=request.build_absolute_uri('/marketplace/seller-setup/return/'),
+            refresh_url=request.build_absolute_uri('/marketplace/seller-setup/')
+        )
+        return redirect(account_link.url)
+    except Exception as e:
+        logger.error(f"Failed to create Stripe account link for user {request.user.id}: {e}")
+        messages.error(request, 'There was an error setting up your seller account. Please try again.')
+        return redirect('seller_tools:dashboard')
 
 
 @login_required
