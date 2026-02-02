@@ -61,11 +61,19 @@ python manage.py import_market_data       # Import price data (--source ebay|her
 
 ### Running Tests
 ```bash
-python manage.py test                              # Run all tests
-python manage.py test marketplace                  # Run single app tests
-python manage.py test marketplace.tests.test_views # Run specific test module
-python manage.py test --keepdb                     # Reuse test DB (faster)
+python manage.py test                                           # Run all 272 tests
+python manage.py test marketplace                               # Run single app tests
+python manage.py test marketplace.tests.test_listings           # Run specific test module
+python manage.py test marketplace.tests.test_listings.BiddingTests  # Run specific test class
+python manage.py test marketplace.tests.test_listings.BiddingTests.test_bid_on_auction  # Single test
+python manage.py test --keepdb                                  # Reuse test DB (faster)
+python manage.py test --verbosity=2                             # Verbose output
 ```
+
+**Test Structure**: Each app has `tests/` directory with test files:
+- `test_models.py` - Model and basic view tests
+- `test_views.py` - View-specific tests
+- API tests are in `api/tests/` covering all endpoints
 
 ## Key URLs
 - `/` - Homepage
@@ -293,13 +301,19 @@ Main resource endpoints under `/api/v1/`:
 - `auth/` - JWT token auth
 - `accounts/` - User profiles, registration, devices
 - `marketplace/` - Listings, offers, orders, auctions
-- `collections/` - User collections and values
+- `collections/` - User collections (`/mine/` for user's own, `/public/` for browsing)
 - `pricing/` - Price guide items, grades, sales history
 - `alerts/` - Notifications, wishlists, saved searches
 - `social/` - Feed, follows, messages, forums
 - `scanner/` - Image scanning
 - `seller/` - Dashboard, analytics, inventory
 - `items/` - Categories, search
+
+### Nested Routes
+Uses `drf-nested-routers` for nested resources:
+- `/api/v1/collections/{id}/items/` - Items within a collection
+- `/api/v1/pricing/items/{id}/grades/` - Grades for a price guide item
+- `/api/v1/pricing/items/{id}/sales/` - Sales history for a price guide item
 
 ### Key API Files
 ```
@@ -435,9 +449,16 @@ Project is split across three repositories:
 | Tony | tmgormond@gmail.com | Collaborator |
 | Jim | jim@sickboys.com | Collaborator |
 
+## Testing Notes
+- Rate limiting is automatically disabled during tests (`TESTING` flag in settings.py)
+- Stripe API calls should be mocked in tests - see `marketplace/tests/test_orders.py` for examples
+- API tests use `rest_framework.test.APIClient` with JWT authentication
+- Test database uses SQLite in-memory for speed
+
 ## Notes
 - The `collections` app uses `item_collections` as the related_name to avoid conflicts with Django's built-in collections module
 - All listing images are stored in `media/listings/`
 - User avatars are stored in `media/avatars/`
 - Platform fee is tier-based (see commission rates above)
 - Image scanner requires Google Cloud Vision API (configure credentials)
+- Custom template tags in `seller_tools/templatetags/seller_tools_tags.py` (e.g., `get_item` filter)
