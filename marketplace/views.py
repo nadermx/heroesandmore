@@ -689,7 +689,7 @@ def my_orders(request):
 
 @login_required
 def seller_setup(request):
-    """Stripe Connect onboarding - start or continue"""
+    """Stripe Connect embedded onboarding"""
     from marketplace.services.connect_service import ConnectService
     import logging
     import stripe
@@ -714,17 +714,14 @@ def seller_setup(request):
             messages.success(request, 'Your seller account is ready to receive payments!')
             return redirect('seller_tools:dashboard')
 
-        # Create onboarding link
-        account_link = ConnectService.create_account_link(
-            profile.stripe_account_id,
-            return_url=request.build_absolute_uri('/marketplace/seller-setup/return/'),
-            refresh_url=request.build_absolute_uri('/marketplace/seller-setup/')
-        )
-        return redirect(account_link.url)
+        # Render embedded onboarding page
+        context = {
+            'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
+        }
+        return render(request, 'marketplace/seller_setup.html', context)
 
     except stripe.error.InvalidRequestError as e:
         logger.error(f"Stripe Connect setup error for user {request.user.id}: {e}")
-        # Check if it's the platform profile issue
         if 'platform profile' in str(e).lower():
             messages.error(request, 'Payment setup is temporarily unavailable. Our team has been notified and is working on it.')
         else:
@@ -740,6 +737,36 @@ def seller_setup(request):
         logger.error(f"Unexpected error in seller setup for user {request.user.id}: {e}", exc_info=True)
         messages.error(request, 'An unexpected error occurred. Please try again.')
         return redirect('seller_tools:dashboard')
+
+
+@login_required
+def seller_setup_session(request):
+    """Create Account Session for embedded onboarding"""
+    from django.http import JsonResponse
+    import stripe
+    import logging
+
+    logger = logging.getLogger('marketplace.services')
+    profile = request.user.profile
+
+    if not profile.stripe_account_id:
+        return JsonResponse({'error': 'No Stripe account'}, status=400)
+
+    try:
+        account_session = stripe.AccountSession.create(
+            account=profile.stripe_account_id,
+            components={
+                "account_onboarding": {
+                    "enabled": True,
+                },
+            },
+        )
+        logger.info(f"Created account session for user {request.user.id}")
+        return JsonResponse({'client_secret': account_session.client_secret})
+
+    except stripe.error.StripeError as e:
+        logger.error(f"Failed to create account session for user {request.user.id}: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @login_required

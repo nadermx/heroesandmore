@@ -1,131 +1,157 @@
 {% extends 'base.html' %}
 
-{% block title %}Seller Setup - HeroesAndMore{% endblock %}
+{% block title %}Set Up Payments - HeroesAndMore{% endblock %}
 
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-lg-8">
-            <div class="text-center mb-5">
-                <h1 class="mb-3">Start Selling on HeroesAndMore</h1>
-                <p class="text-muted lead">Complete your seller profile to start listing items</p>
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <h1 class="h2 fw-bold">Set Up Your Seller Account</h1>
+                <p class="text-muted">Complete the form below to start receiving payments. Your information is securely processed by Stripe.</p>
             </div>
 
-            <!-- Progress Steps -->
-            <div class="d-flex justify-content-center mb-5">
-                <div class="d-flex align-items-center">
-                    <div class="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                        <i class="bi bi-check"></i>
+            <!-- Progress indicator -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="bi bi-shield-check"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-1">Secure & Private</h6>
+                            <p class="text-muted small mb-0">Your financial information is encrypted and securely stored by Stripe. We never see your bank details.</p>
+                        </div>
                     </div>
-                    <span class="ms-2 me-4 fw-semibold">Account</span>
-                </div>
-                <div class="border-top" style="width: 50px; margin-top: 20px;"></div>
-                <div class="d-flex align-items-center">
-                    <div class="rounded-circle {% if profile.stripe_account_complete %}bg-dark text-white{% else %}bg-light text-muted{% endif %} d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                        {% if profile.stripe_account_complete %}
-                        <i class="bi bi-check"></i>
-                        {% else %}
-                        2
-                        {% endif %}
-                    </div>
-                    <span class="ms-2 me-4 {% if profile.stripe_account_complete %}fw-semibold{% else %}text-muted{% endif %}">Payments</span>
-                </div>
-                <div class="border-top" style="width: 50px; margin-top: 20px;"></div>
-                <div class="d-flex align-items-center">
-                    <div class="rounded-circle bg-light text-muted d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                        3
-                    </div>
-                    <span class="ms-2 text-muted">Sell</span>
                 </div>
             </div>
 
-            <!-- Stripe Connect Setup -->
+            <!-- Stripe Embedded Onboarding Container -->
             <div class="card">
                 <div class="card-body p-4">
-                    {% if profile.stripe_account_complete %}
-                    <div class="text-center py-4">
-                        <div class="mb-3">
-                            <i class="bi bi-check-circle-fill text-success display-3"></i>
+                    <div id="onboarding-container">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-dark" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted mt-3">Loading payment setup...</p>
                         </div>
-                        <h4>Payment Setup Complete!</h4>
-                        <p class="text-muted mb-4">You're all set to start selling on HeroesAndMore.</p>
-                        <a href="{% url 'marketplace:listing_create' %}" class="btn btn-dark btn-lg">
-                            <i class="bi bi-plus-lg me-2"></i>Create Your First Listing
-                        </a>
                     </div>
-                    {% else %}
-                    <div class="text-center py-4">
-                        <div class="mb-4">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" style="height: 40px;">
-                        </div>
-                        <h4 class="mb-3">Set Up Payments with Stripe</h4>
-                        <p class="text-muted mb-4">
-                            We use Stripe to securely process payments and send your earnings directly to your bank account.
-                            Stripe is trusted by millions of businesses worldwide.
-                        </p>
 
-                        <div class="bg-light rounded p-4 mb-4 text-start">
-                            <h6 class="fw-bold mb-3">What you'll need:</h6>
-                            <ul class="mb-0">
-                                <li class="mb-2">Your bank account information</li>
-                                <li class="mb-2">Government-issued ID for verification</li>
-                                <li class="mb-2">Your business or personal tax information</li>
-                            </ul>
-                        </div>
-
-                        <a href="#" class="btn btn-dark btn-lg" id="stripe-connect-btn">
-                            <i class="bi bi-link-45deg me-2"></i>Connect with Stripe
-                        </a>
-
-                        <p class="text-muted small mt-4 mb-0">
-                            By connecting, you agree to Stripe's <a href="https://stripe.com/connect-account/legal" target="_blank">Connected Account Agreement</a>
-                        </p>
+                    <!-- Error state (hidden by default) -->
+                    <div id="onboarding-error" class="text-center py-5" style="display: none;">
+                        <i class="bi bi-exclamation-triangle text-danger display-4"></i>
+                        <h5 class="mt-3">Unable to Load Payment Setup</h5>
+                        <p class="text-muted" id="error-message">Please try again or contact support.</p>
+                        <button onclick="location.reload()" class="btn btn-dark">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Try Again
+                        </button>
                     </div>
-                    {% endif %}
                 </div>
             </div>
 
-            <!-- Benefits -->
-            <div class="row mt-5 g-4">
-                <div class="col-md-4">
-                    <div class="text-center">
-                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
-                            <i class="bi bi-shield-check fs-4"></i>
+            <!-- Help section -->
+            <div class="mt-4">
+                <div class="card bg-light border-0">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-question-circle me-2"></i>Need Help?</h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <p class="small mb-1"><strong>What do I need?</strong></p>
+                                <ul class="small text-muted mb-0">
+                                    <li>Bank account or debit card</li>
+                                    <li>SSN (for tax purposes)</li>
+                                    <li>Valid ID (if requested)</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="small mb-1"><strong>When will I get paid?</strong></p>
+                                <p class="small text-muted mb-0">Payouts are sent automatically 2-3 business days after a sale completes.</p>
+                            </div>
                         </div>
-                        <h6>Secure Payments</h6>
-                        <p class="text-muted small mb-0">Stripe handles all payment security and fraud protection</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="text-center">
-                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
-                            <i class="bi bi-lightning-charge fs-4"></i>
-                        </div>
-                        <h6>Fast Payouts</h6>
-                        <p class="text-muted small mb-0">Get paid directly to your bank account within days</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="text-center">
-                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
-                            <i class="bi bi-graph-up fs-4"></i>
-                        </div>
-                        <h6>Sales Dashboard</h6>
-                        <p class="text-muted small mb-0">Track your sales, earnings, and customer insights</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<!-- Stripe Connect.js -->
+<script src="https://connect-js.stripe.com/v1.0/connect.js"></script>
+
 <script>
-    // In production, this would redirect to Stripe Connect OAuth
-    document.getElementById('stripe-connect-btn')?.addEventListener('click', function(e) {
-        e.preventDefault();
-        alert('Stripe Connect integration needed. Contact developer to set up OAuth flow.');
-    });
+document.addEventListener('DOMContentLoaded', async function() {
+    const container = document.getElementById('onboarding-container');
+    const errorDiv = document.getElementById('onboarding-error');
+    const errorMessage = document.getElementById('error-message');
+
+    const showError = (message) => {
+        container.style.display = 'none';
+        errorDiv.style.display = 'block';
+        if (message) {
+            errorMessage.textContent = message;
+        }
+    };
+
+    try {
+        // Fetch client secret from our server
+        const fetchClientSecret = async () => {
+            const response = await fetch('{% url "marketplace:seller_setup_session" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to initialize payment setup');
+            }
+
+            const { client_secret } = await response.json();
+            return client_secret;
+        };
+
+        // Initialize Stripe Connect
+        const stripeConnectInstance = await StripeConnect.init({
+            publishableKey: "{{ stripe_public_key }}",
+            fetchClientSecret: fetchClientSecret,
+            appearance: {
+                overlays: 'dialog',
+                variables: {
+                    colorPrimary: '#171717',
+                    colorBackground: '#ffffff',
+                    colorText: '#171717',
+                    colorDanger: '#DC2626',
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    fontSizeBase: '16px',
+                    spacingUnit: '4px',
+                    borderRadius: '8px',
+                },
+            },
+        });
+
+        // Create the onboarding component
+        const onboarding = stripeConnectInstance.create('account-onboarding');
+
+        // Handle exit (user completes or exits onboarding)
+        onboarding.setOnExit(() => {
+            // Redirect to check status
+            window.location.href = '{% url "marketplace:seller_setup_return" %}';
+        });
+
+        // Clear loading state and mount component
+        container.innerHTML = '';
+        container.appendChild(onboarding);
+
+    } catch (error) {
+        console.error('Stripe Connect error:', error);
+        showError(error.message);
+    }
+});
 </script>
 {% endblock %}
