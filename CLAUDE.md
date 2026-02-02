@@ -59,6 +59,14 @@ python manage.py seed_categories          # Populate initial categories
 python manage.py import_market_data       # Import price data (--source ebay|heritage|gocollect --verbose)
 ```
 
+### Running Tests
+```bash
+python manage.py test                              # Run all tests
+python manage.py test marketplace                  # Run single app tests
+python manage.py test marketplace.tests.test_views # Run specific test module
+python manage.py test --keepdb                     # Reuse test DB (faster)
+```
+
 ## Key URLs
 - `/` - Homepage
 - `/items/` - Browse categories
@@ -280,66 +288,18 @@ Full REST API for Android/iOS app support using Django REST Framework.
 - ReDoc: `/api/redoc/`
 - OpenAPI Schema: `/api/schema/`
 
-### API Structure
-```
-api/v1/
-├── auth/
-│   ├── token/                  # Get JWT tokens
-│   └── token/refresh/          # Refresh access token
-├── accounts/
-│   ├── register/               # Create account
-│   ├── me/                     # Current user profile
-│   ├── me/avatar/              # Upload avatar
-│   ├── me/password/            # Change password
-│   ├── me/recently-viewed/     # Recently viewed listings
-│   ├── me/device/              # Register device for push notifications
-│   └── profiles/<username>/    # Public profiles
-├── marketplace/
-│   ├── listings/               # CRUD listings, bid, offer, save
-│   ├── saved/                  # Saved listings
-│   ├── offers/                 # Offers (accept/decline/counter)
-│   ├── orders/                 # Orders (ship/received/review)
-│   └── auctions/               # Auction events
-├── collections/
-│   ├── mine/                   # User's collections
-│   ├── <id>/items/             # Collection items
-│   ├── <id>/value/             # Value summary
-│   └── public/                 # Public collections
-├── pricing/
-│   ├── items/                  # Price guide items
-│   ├── items/<id>/grades/      # Prices by grade
-│   ├── items/<id>/sales/       # Recent sales
-│   ├── items/<id>/history/     # Price history (charts)
-│   └── trending/               # Trending items
-├── alerts/
-│   ├── notifications/          # User notifications
-│   ├── wishlists/              # Wishlists with items
-│   ├── saved-searches/         # Saved searches
-│   └── price-alerts/           # Price alerts
-├── social/
-│   ├── feed/                   # Activity feed
-│   ├── following/              # Users following
-│   ├── followers/              # User's followers
-│   ├── follow/<user_id>/       # Follow/unfollow
-│   ├── messages/               # Conversations
-│   └── forums/                 # Forum categories/threads
-├── scanner/
-│   ├── scan/                   # Upload for scanning
-│   ├── scans/                  # Scan history
-│   └── sessions/               # Bulk scan sessions
-├── seller/
-│   ├── dashboard/              # Seller stats
-│   ├── analytics/              # Sales analytics
-│   ├── subscription/           # Current subscription
-│   ├── inventory/              # Inventory management
-│   ├── imports/                # Bulk imports
-│   ├── orders/                 # Orders to fulfill
-│   └── sales/                  # Sales history
-└── items/
-    ├── categories/             # Category tree
-    ├── search/                 # Global search
-    └── autocomplete/           # Search autocomplete
-```
+### API Endpoints
+Main resource endpoints under `/api/v1/`:
+- `auth/` - JWT token auth
+- `accounts/` - User profiles, registration, devices
+- `marketplace/` - Listings, offers, orders, auctions
+- `collections/` - User collections and values
+- `pricing/` - Price guide items, grades, sales history
+- `alerts/` - Notifications, wishlists, saved searches
+- `social/` - Feed, follows, messages, forums
+- `scanner/` - Image scanning
+- `seller/` - Dashboard, analytics, inventory
+- `items/` - Categories, search
 
 ### Key API Files
 ```
@@ -376,6 +336,13 @@ Full Stripe integration for marketplace payments:
 - `stripe_service.py` - Payment intents, payment methods, refunds
 - `connect_service.py` - Seller account onboarding, transfers
 - `subscription_service.py` - Internal subscription billing via PaymentIntents
+
+### Seller Onboarding (Embedded)
+Uses Stripe Connect embedded components so users stay on-site:
+- Onboarding page: `/marketplace/seller-setup/`
+- Account session API: `/marketplace/seller-setup/session/`
+- Template: `templates/marketplace/seller_setup.html`
+- Uses `StripeConnect.init()` with `account-onboarding` component
 
 ### Local Testing
 ```bash
@@ -430,40 +397,25 @@ API keys are stored in `~/.credentials/`:
 - `digitalocean_api_key` - DNS management
 - Other keys: aws, github, linode, vultr, etc.
 
-### Email Aliases (Forwarding)
-Config file: `/etc/postfix/virtual`
+### Email Aliases
+Config file: `/etc/postfix/virtual` - forwards addresses to team members.
 
-```
-# Group forwards (to all team members)
-hello@heroesandmore.com     john@nader.mx, tmgormond@gmail.com, jim@sickboys.com
-support@heroesandmore.com   john@nader.mx, tmgormond@gmail.com, jim@sickboys.com
-auctions@heroesandmore.com  john@nader.mx, tmgormond@gmail.com, jim@sickboys.com
-sales@heroesandmore.com     john@nader.mx, tmgormond@gmail.com, jim@sickboys.com
-
-# Individual forwards
-john@heroesandmore.com      john@nader.mx
-jim@heroesandmore.com       jim@sickboys.com
-tony@heroesandmore.com      tmgormond@gmail.com
-
-# System addresses
-info@heroesandmore.com      john@nader.mx
-postmaster@heroesandmore.com john@nader.mx
-```
-
-### Adding New Email Alias
 ```bash
+# Add new alias
 ssh heroesandmore@174.138.33.140
 sudo nano /etc/postfix/virtual
 # Add: newemail@heroesandmore.com    recipient@example.com
-sudo postmap /etc/postfix/virtual
-sudo systemctl reload postfix
+sudo postmap /etc/postfix/virtual && sudo systemctl reload postfix
 ```
 
-### Sending Test Email
-```bash
-ssh heroesandmore@174.138.33.140
-echo "Test message" | mail -s "Subject" -a "From: HeroesAndMore <noreply@mail.heroesandmore.com>" recipient@example.com
-```
+## Error Pages
+
+Custom error pages in `templates/`:
+- `404.html` - Page not found
+- `403.html` - Access denied
+- `500.html` - Server error
+
+All are standalone HTML (don't extend base.html) for reliability when errors occur.
 
 ## GitHub Repositories
 
