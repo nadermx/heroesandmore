@@ -461,3 +461,27 @@ class Refund(models.Model):
 
     def __str__(self):
         return f"Refund ${self.amount} for Order #{self.order_id}"
+
+
+class AutoBid(models.Model):
+    """
+    Automatic bidding (proxy bidding) for auctions.
+    System bids on behalf of user up to max amount.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='auto_bids')
+    listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='auto_bids')
+    max_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    is_active = models.BooleanField(default=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'listing']
+        ordering = ['-created']
+
+    def __str__(self):
+        return f"{self.user.username} auto-bid ${self.max_amount} on {self.listing.title}"
+
+    def deactivate(self):
+        self.is_active = False
+        self.save(update_fields=['is_active', 'updated'])

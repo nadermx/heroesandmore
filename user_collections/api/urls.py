@@ -19,8 +19,11 @@ except ImportError:
     nested_urls = []
 
 urlpatterns = [
-    path('', include(router.urls)),
+    # Explicit paths must come before router to take precedence
     path('public/', views.PublicCollectionsView.as_view(), name='public_collections'),
+    path('import/', views.CollectionImportView.as_view(), name='collection_import'),
+    # Router-based routes
+    path('', include(router.urls)),
 ]
 
 # Add nested routes if available

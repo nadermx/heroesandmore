@@ -52,6 +52,14 @@ class Profile(models.Model):
     is_public = models.BooleanField(default=True)
     email_notifications = models.BooleanField(default=True)
 
+    # Push notification settings
+    push_new_bid = models.BooleanField(default=True)
+    push_outbid = models.BooleanField(default=True)
+    push_offer = models.BooleanField(default=True)
+    push_order_shipped = models.BooleanField(default=True)
+    push_message = models.BooleanField(default=True)
+    push_price_alert = models.BooleanField(default=True)
+
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

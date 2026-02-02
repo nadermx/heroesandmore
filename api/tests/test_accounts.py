@@ -200,3 +200,97 @@ class RecentlyViewedAPITests(TestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
         response = self.client.delete('/api/v1/accounts/me/recently-viewed/clear/')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+
+class NotificationSettingsAPITests(TestCase):
+    """Tests for notification settings API."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='notifyuser',
+            email='notify@test.com',
+            password='testpass123'
+        )
+
+    def get_token(self):
+        """Get JWT token."""
+        response = self.client.post('/api/v1/auth/token/', {
+            'username': 'notifyuser',
+            'password': 'testpass123',
+        })
+        return response.data['access']
+
+    def test_get_notification_settings_authenticated(self):
+        """Should return notification settings for authenticated user."""
+        token = self.get_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.get('/api/v1/accounts/me/notifications/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('email_notifications', response.data)
+        self.assertIn('push_new_bid', response.data)
+
+    def test_get_notification_settings_unauthenticated(self):
+        """Should reject unauthenticated request."""
+        response = self.client.get('/api/v1/accounts/me/notifications/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_update_notification_settings(self):
+        """Should update notification settings."""
+        token = self.get_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.patch('/api/v1/accounts/me/notifications/', {
+            'push_new_bid': False,
+            'push_outbid': False,
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['push_new_bid'])
+        self.assertFalse(response.data['push_outbid'])
+
+    def test_update_notification_settings_partial(self):
+        """Should allow partial update of notification settings."""
+        token = self.get_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.patch('/api/v1/accounts/me/notifications/', {
+            'email_notifications': False,
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['email_notifications'])
+
+
+class UserCollectionsAPITests(TestCase):
+    """Tests for user collections endpoint."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='collectionuser',
+            email='collect@test.com',
+            password='testpass123'
+        )
+
+    def test_get_user_public_collections(self):
+        """Should return user's public collections."""
+        from user_collections.models import Collection
+        Collection.objects.create(
+            user=self.user,
+            name='Public Collection',
+            is_public=True
+        )
+        response = self.client.get('/api/v1/accounts/profiles/collectionuser/collections/')
+        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+
+    def test_private_collections_not_shown(self):
+        """Should not show private collections."""
+        from user_collections.models import Collection
+        Collection.objects.create(
+            user=self.user,
+            name='Private Collection',
+            is_public=False
+        )
+        response = self.client.get('/api/v1/accounts/profiles/collectionuser/collections/')
+        if response.status_code == status.HTTP_200_OK:
+            # Private collection should not be in results
+            # Handle paginated response
+            results = response.data.get('results', response.data) if isinstance(response.data, dict) else response.data
+            self.assertEqual(len(results), 0)

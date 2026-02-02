@@ -151,3 +151,49 @@ class DeviceTokenSerializer(serializers.Serializer):
     """Serializer for registering device tokens for push notifications"""
     token = serializers.CharField(max_length=255)
     platform = serializers.ChoiceField(choices=[('android', 'Android'), ('ios', 'iOS')])
+
+
+class GoogleAuthSerializer(serializers.Serializer):
+    """Serializer for Google OAuth authentication"""
+    id_token = serializers.CharField()
+
+
+class PasswordResetSerializer(serializers.Serializer):
+    """Serializer for requesting password reset"""
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        # Don't reveal if email exists or not
+        return value.lower()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Serializer for confirming password reset"""
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    new_password_confirm = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value):
+        validate_password(value)
+        return value
+
+    def validate(self, data):
+        if data['new_password'] != data['new_password_confirm']:
+            raise serializers.ValidationError({'new_password_confirm': "Passwords don't match"})
+        return data
+
+
+class NotificationSettingsSerializer(serializers.ModelSerializer):
+    """Serializer for user notification settings"""
+    class Meta:
+        model = Profile
+        fields = [
+            'email_notifications',
+            'push_new_bid',
+            'push_outbid',
+            'push_offer',
+            'push_order_shipped',
+            'push_message',
+            'push_price_alert',
+        ]

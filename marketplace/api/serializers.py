@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
 from marketplace.models import (
-    Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent
+    Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent, AutoBid
 )
 from accounts.api.serializers import PublicProfileSerializer
 
@@ -299,3 +299,55 @@ class AuctionEventSerializer(serializers.ModelSerializer):
         if remaining:
             return int(remaining.total_seconds())
         return None
+
+
+class AutoBidSerializer(serializers.ModelSerializer):
+    """Serializer for auto-bids"""
+    listing_id = serializers.IntegerField(source='listing.id', read_only=True)
+    listing_title = serializers.CharField(source='listing.title', read_only=True)
+
+    class Meta:
+        model = AutoBid
+        fields = ['id', 'listing_id', 'listing_title', 'max_amount', 'is_active', 'created']
+        read_only_fields = ['is_active', 'created']
+
+
+class AutoBidCreateSerializer(serializers.Serializer):
+    """Serializer for creating auto-bids"""
+    listing_id = serializers.IntegerField()
+    max_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+    def validate_max_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Maximum bid amount must be positive")
+        return value
+
+
+class CheckoutSerializer(serializers.Serializer):
+    """Serializer for checkout request"""
+    shipping_address = serializers.CharField(max_length=500)
+    payment_method_id = serializers.CharField(max_length=100, required=False, allow_blank=True)
+
+
+class PaymentIntentSerializer(serializers.Serializer):
+    """Serializer for creating payment intent"""
+    listing_id = serializers.IntegerField(required=False, allow_null=True)
+    offer_id = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate(self, data):
+        if not data.get('listing_id') and not data.get('offer_id'):
+            raise serializers.ValidationError("Either listing_id or offer_id is required")
+        return data
+
+
+class PaymentIntentResponseSerializer(serializers.Serializer):
+    """Response serializer for payment intent"""
+    client_secret = serializers.CharField()
+    payment_intent_id = serializers.CharField()
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+class ListingImageUploadSerializer(serializers.Serializer):
+    """Serializer for uploading listing images"""
+    image = serializers.ImageField()
+    position = serializers.IntegerField(min_value=1, max_value=5, required=False, default=1)

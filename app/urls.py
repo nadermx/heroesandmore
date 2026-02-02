@@ -7,6 +7,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 from items.views import home
+from accounts.api.views import (
+    GoogleAuthView, PasswordResetView, PasswordResetConfirmView, ChangePasswordView
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -18,6 +21,10 @@ urlpatterns = [
     # JWT Authentication
     path('api/v1/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/v1/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/v1/auth/google/', GoogleAuthView.as_view(), name='google_auth'),
+    path('api/v1/auth/password/reset/', PasswordResetView.as_view(), name='password_reset'),
+    path('api/v1/auth/password/reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('api/v1/auth/password/change/', ChangePasswordView.as_view(), name='password_change'),
 
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

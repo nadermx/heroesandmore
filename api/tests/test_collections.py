@@ -228,3 +228,143 @@ class PublicCollectionsAPITests(TestCase):
         response = self.client.get('/api/v1/collections/public/')
         # Public endpoint may return paginated or list response
         self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND])
+
+
+class CollectionExportAPITests(TestCase):
+    """Tests for collection export API."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='exporter',
+            email='exporter@test.com',
+            password='testpass123'
+        )
+        self.collection = Collection.objects.create(
+            user=self.user,
+            name='Export Test Collection',
+        )
+        CollectionItem.objects.create(
+            collection=self.collection,
+            name='Export Item 1',
+            purchase_price=Decimal('50.00'),
+        )
+        CollectionItem.objects.create(
+            collection=self.collection,
+            name='Export Item 2',
+            purchase_price=Decimal('75.00'),
+        )
+
+    def get_token(self):
+        response = self.client.post('/api/v1/auth/token/', {
+            'username': 'exporter',
+            'password': 'testpass123',
+        })
+        return response.data['access']
+
+    def test_export_collection_csv(self):
+        """Should export collection as CSV."""
+        token = self.get_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.get(f'/api/v1/collections/{self.collection.pk}/export/?export_format=csv')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+
+    def test_export_collection_json(self):
+        """Should export collection as JSON."""
+        token = self.get_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.get(f'/api/v1/collections/{self.collection.pk}/export/?export_format=json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/json')
+
+    def test_export_requires_auth(self):
+        """Export should require authentication."""
+        response = self.client.get(f'/api/v1/collections/{self.collection.pk}/export/')
+        # Returns 404 (not found in queryset) or 401, both are valid security responses
+        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_404_NOT_FOUND])
+
+    def test_cannot_export_others_collection(self):
+        """Cannot export another user's collection."""
+        other_user = User.objects.create_user('other', 'other@test.com', 'pass123')
+        other_collection = Collection.objects.create(user=other_user, name='Other Collection')
+
+        token = self.get_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.get(f'/api/v1/collections/{other_collection.pk}/export/')
+        self.assertIn(response.status_code, [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND])
+
+
+class CollectionImportAPITests(TestCase):
+    """Tests for collection import API."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='importer',
+            email='importer@test.com',
+            password='testpass123'
+        )
+
+    def get_token(self):
+        response = self.client.post('/api/v1/auth/token/', {
+            'username': 'importer',
+            'password': 'testpass123',
+        })
+        return response.data['access']
+
+    def test_import_requires_auth(self):
+        """Import should require authentication."""
+        response = self.client.post('/api/v1/collections/import/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_import_requires_file(self):
+        """Import should require a file."""
+        token = self.get_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.post('/api/v1/collections/import/')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_import_csv(self):
+        """Should import collection from CSV file."""
+        from io import BytesIO
+        csv_content = b"Name,Condition,Purchase Price,Current Value,Notes\nTest Card,Mint,50.00,75.00,Test note"
+        csv_file = BytesIO(csv_content)
+        csv_file.name = 'test.csv'
+
+        token = self.get_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.post(
+            '/api/v1/collections/import/',
+            {'file': csv_file, 'name': 'Imported Collection'},
+            format='multipart'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('collection_id', response.data)
+        self.assertEqual(response.data['items_imported'], 1)
+
+    def test_import_json(self):
+        """Should import collection from JSON file."""
+        import json
+        from io import BytesIO
+
+        json_content = json.dumps({
+            'collection': {'name': 'JSON Import', 'description': 'Test import'},
+            'items': [
+                {'name': 'Card 1', 'purchase_price': '25.00'},
+                {'name': 'Card 2', 'purchase_price': '30.00'},
+            ]
+        }).encode('utf-8')
+        json_file = BytesIO(json_content)
+        json_file.name = 'test.json'
+
+        token = self.get_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.post(
+            '/api/v1/collections/import/',
+            {'file': json_file},
+            format='multipart'
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('collection_id', response.data)
+        self.assertEqual(response.data['items_imported'], 2)

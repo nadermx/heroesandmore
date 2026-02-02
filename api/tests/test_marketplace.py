@@ -462,3 +462,253 @@ class AuctionEventAPITests(TestCase):
         """Should list auction events."""
         response = self.client.get('/api/v1/marketplace/auctions/events/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_ending_soon_auctions(self):
+        """Should list auctions ending soon."""
+        response = self.client.get('/api/v1/marketplace/auctions/ending-soon/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class ListingImageAPITests(TestCase):
+    """Tests for listing image upload/delete API."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.seller = User.objects.create_user('imgseller', 'imgseller@test.com', 'pass123')
+        self.category = Category.objects.create(name='Items', slug='items')
+        self.listing = Listing.objects.create(
+            seller=self.seller,
+            title='Image Test',
+            category=self.category,
+            price=Decimal('50.00'),
+            condition='good',
+            status='draft',
+        )
+
+    def get_token(self):
+        response = self.client.post('/api/v1/auth/token/', {
+            'username': 'imgseller',
+            'password': 'pass123',
+        })
+        return response.data['access']
+
+    def test_image_upload_requires_auth(self):
+        """Image upload should require authentication."""
+        response = self.client.post(f'/api/v1/marketplace/listings/{self.listing.pk}/images/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_image_upload_requires_owner(self):
+        """Image upload should require listing ownership."""
+        other_user = User.objects.create_user('other', 'other@test.com', 'pass123')
+        response = self.client.post('/api/v1/auth/token/', {
+            'username': 'other',
+            'password': 'pass123',
+        })
+        token = response.data['access']
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.post(f'/api/v1/marketplace/listings/{self.listing.pk}/images/')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_image_delete_requires_auth(self):
+        """Image delete should require authentication."""
+        response = self.client.delete(f'/api/v1/marketplace/listings/{self.listing.pk}/images/1/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class CheckoutAPITests(TestCase):
+    """Tests for checkout API."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.seller = User.objects.create_user('checkseller', 'checkseller@test.com', 'pass123')
+        self.buyer = User.objects.create_user('checkbuyer', 'checkbuyer@test.com', 'pass123')
+        self.category = Category.objects.create(name='Checkout Items', slug='checkout-items')
+        self.listing = Listing.objects.create(
+            seller=self.seller,
+            title='Checkout Test',
+            category=self.category,
+            price=Decimal('100.00'),
+            shipping_price=Decimal('10.00'),
+            condition='good',
+            status='active',
+        )
+
+    def get_buyer_token(self):
+        response = self.client.post('/api/v1/auth/token/', {
+            'username': 'checkbuyer',
+            'password': 'pass123',
+        })
+        return response.data['access']
+
+    def get_seller_token(self):
+        response = self.client.post('/api/v1/auth/token/', {
+            'username': 'checkseller',
+            'password': 'pass123',
+        })
+        return response.data['access']
+
+    def test_checkout_requires_auth(self):
+        """Checkout should require authentication."""
+        response = self.client.post(f'/api/v1/marketplace/checkout/{self.listing.pk}/', {
+            'shipping_address': '123 Test St',
+        })
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_cannot_checkout_own_listing(self):
+        """Seller cannot checkout own listing."""
+        token = self.get_seller_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.post(f'/api/v1/marketplace/checkout/{self.listing.pk}/', {
+            'shipping_address': '123 Test St',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_checkout_creates_order(self):
+        """Checkout should create an order."""
+        token = self.get_buyer_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.post(f'/api/v1/marketplace/checkout/{self.listing.pk}/', {
+            'shipping_address': '123 Test St, City, ST 12345',
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('id', response.data)
+        self.assertEqual(response.data['status'], 'pending')
+
+
+class AutoBidAPITests(TestCase):
+    """Tests for auto-bid API."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.seller = User.objects.create_user('autoseller', 'autoseller@test.com', 'pass123')
+        self.bidder = User.objects.create_user('autobidder', 'autobidder@test.com', 'pass123')
+        self.category = Category.objects.create(name='Auction Items', slug='auction-items')
+        self.auction = Listing.objects.create(
+            seller=self.seller,
+            title='Auto Bid Test',
+            category=self.category,
+            listing_type='auction',
+            price=Decimal('100.00'),
+            starting_bid=Decimal('10.00'),
+            auction_end=timezone.now() + timezone.timedelta(days=7),
+            condition='good',
+            status='active',
+        )
+
+    def get_bidder_token(self):
+        response = self.client.post('/api/v1/auth/token/', {
+            'username': 'autobidder',
+            'password': 'pass123',
+        })
+        return response.data['access']
+
+    def get_seller_token(self):
+        response = self.client.post('/api/v1/auth/token/', {
+            'username': 'autoseller',
+            'password': 'pass123',
+        })
+        return response.data['access']
+
+    def test_get_autobids_requires_auth(self):
+        """Getting auto-bids requires authentication."""
+        response = self.client.get('/api/v1/marketplace/auctions/autobid/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_get_autobids_authenticated(self):
+        """Should return auto-bids for authenticated user."""
+        token = self.get_bidder_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.get('/api/v1/marketplace/auctions/autobid/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_create_autobid_requires_auth(self):
+        """Creating auto-bid requires authentication."""
+        response = self.client.post('/api/v1/marketplace/auctions/autobid/', {
+            'listing_id': self.auction.pk,
+            'max_amount': '50.00',
+        })
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_create_autobid_success(self):
+        """Should create auto-bid for valid auction."""
+        token = self.get_bidder_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        # Max amount must be higher than current price (starting_bid is 10.00)
+        response = self.client.post('/api/v1/marketplace/auctions/autobid/', {
+            'listing_id': self.auction.pk,
+            'max_amount': '150.00',  # Must be higher than current price
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['max_amount'], '150.00')
+
+    def test_cannot_autobid_own_listing(self):
+        """Seller cannot auto-bid on own listing."""
+        token = self.get_seller_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.post('/api/v1/marketplace/auctions/autobid/', {
+            'listing_id': self.auction.pk,
+            'max_amount': '50.00',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_delete_autobid(self):
+        """Should be able to cancel auto-bid."""
+        from marketplace.models import AutoBid
+        autobid = AutoBid.objects.create(
+            user=self.bidder,
+            listing=self.auction,
+            max_amount=Decimal('50.00'),
+        )
+        token = self.get_bidder_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.delete(f'/api/v1/marketplace/auctions/autobid/{autobid.pk}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        autobid.refresh_from_db()
+        self.assertFalse(autobid.is_active)
+
+
+class PaymentIntentAPITests(TestCase):
+    """Tests for payment intent API."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.seller = User.objects.create_user('payseller', 'payseller@test.com', 'pass123')
+        self.buyer = User.objects.create_user('paybuyer', 'paybuyer@test.com', 'pass123')
+        self.category = Category.objects.create(name='Payment Items', slug='payment-items')
+        self.listing = Listing.objects.create(
+            seller=self.seller,
+            title='Payment Test',
+            category=self.category,
+            price=Decimal('100.00'),
+            shipping_price=Decimal('10.00'),
+            condition='good',
+            status='active',
+        )
+
+    def get_buyer_token(self):
+        response = self.client.post('/api/v1/auth/token/', {
+            'username': 'paybuyer',
+            'password': 'pass123',
+        })
+        return response.data['access']
+
+    def test_payment_intent_requires_auth(self):
+        """Payment intent requires authentication."""
+        response = self.client.post('/api/v1/marketplace/payment/intent/', {
+            'listing_id': self.listing.pk,
+        })
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_payment_intent_requires_listing_or_offer(self):
+        """Payment intent requires listing_id or offer_id."""
+        token = self.get_buyer_token()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.post('/api/v1/marketplace/payment/intent/', {})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_payment_confirm_requires_auth(self):
+        """Payment confirm requires authentication."""
+        response = self.client.post('/api/v1/marketplace/payment/confirm/', {
+            'payment_intent_id': 'pi_test123',
+        })
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

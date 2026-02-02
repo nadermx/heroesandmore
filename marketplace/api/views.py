@@ -9,7 +9,7 @@ from django.db.models import Q
 from decimal import Decimal
 
 from marketplace.models import (
-    Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent
+    Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent, AutoBid
 )
 from accounts.models import RecentlyViewed
 from api.permissions import IsOwnerOrReadOnly, IsBuyerOrSeller
@@ -20,7 +20,10 @@ from .serializers import (
     OfferSerializer, OfferCreateSerializer, CounterOfferSerializer,
     OrderSerializer, OrderShipSerializer,
     ReviewSerializer, ReviewCreateSerializer,
-    SavedListingSerializer, AuctionEventSerializer
+    SavedListingSerializer, AuctionEventSerializer,
+    AutoBidSerializer, AutoBidCreateSerializer,
+    CheckoutSerializer, PaymentIntentSerializer, PaymentIntentResponseSerializer,
+    ListingImageUploadSerializer
 )
 from .filters import ListingFilter, OrderFilter
 
@@ -407,3 +410,277 @@ class EndingSoonView(generics.ListAPIView):
             auction_end__lte=one_hour,
             auction_end__gt=timezone.now()
         ).order_by('auction_end')
+
+
+class ListingImageUploadView(views.APIView):
+    """Upload image to a listing"""
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, pk):
+        listing = get_object_or_404(Listing, pk=pk, seller=request.user)
+
+        serializer = ListingImageUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        image = serializer.validated_data['image']
+        position = serializer.validated_data.get('position', 1)
+
+        # Find first empty slot or use specified position
+        image_fields = ['image1', 'image2', 'image3', 'image4', 'image5']
+
+        if position:
+            field_name = f'image{position}'
+            setattr(listing, field_name, image)
+        else:
+            # Find first empty slot
+            for field_name in image_fields:
+                if not getattr(listing, field_name):
+                    setattr(listing, field_name, image)
+                    break
+            else:
+                return Response(
+                    {'error': 'All image slots are full'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        listing.save()
+
+        return Response({
+            'message': 'Image uploaded successfully',
+            'position': position or image_fields.index(field_name) + 1
+        }, status=status.HTTP_201_CREATED)
+
+
+class ListingImageDeleteView(views.APIView):
+    """Delete image from a listing"""
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk, image_id):
+        listing = get_object_or_404(Listing, pk=pk, seller=request.user)
+
+        # image_id is 1-5
+        if image_id < 1 or image_id > 5:
+            return Response(
+                {'error': 'Invalid image position'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        field_name = f'image{image_id}'
+        image_field = getattr(listing, field_name)
+
+        if not image_field:
+            return Response(
+                {'error': 'No image at this position'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Delete the image file
+        image_field.delete(save=False)
+        setattr(listing, field_name, None)
+        listing.save()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CheckoutView(views.APIView):
+    """Create an order and initiate checkout"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        listing = get_object_or_404(Listing, pk=pk, status='active')
+
+        if listing.seller == request.user:
+            return Response(
+                {'error': 'Cannot purchase your own listing'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = CheckoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Calculate fees
+        from django.conf import settings
+        platform_fee_percent = getattr(settings, 'PLATFORM_FEE_PERCENT', Decimal('10'))
+        price = listing.get_current_price()
+        platform_fee = price * platform_fee_percent / 100
+        total = price + listing.shipping_price
+
+        # Create pending order
+        order = Order.objects.create(
+            listing=listing,
+            buyer=request.user,
+            seller=listing.seller,
+            item_price=price,
+            shipping_price=listing.shipping_price,
+            amount=total,
+            platform_fee=platform_fee,
+            seller_payout=price - platform_fee,
+            shipping_address=serializer.validated_data['shipping_address'],
+            status='pending'
+        )
+
+        # Mark listing as pending sale
+        listing.status = 'sold'
+        listing.save()
+
+        return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+
+
+class PaymentIntentView(views.APIView):
+    """Create a Stripe PaymentIntent for an order"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = PaymentIntentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        listing_id = serializer.validated_data.get('listing_id')
+        offer_id = serializer.validated_data.get('offer_id')
+
+        if listing_id:
+            listing = get_object_or_404(Listing, pk=listing_id, status='active')
+            price = listing.get_current_price()
+            total = price + listing.shipping_price
+        elif offer_id:
+            offer = get_object_or_404(
+                Offer, pk=offer_id, buyer=request.user, status='accepted'
+            )
+            listing = offer.listing
+            total = offer.amount + listing.shipping_price
+        else:
+            return Response(
+                {'error': 'listing_id or offer_id required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create Stripe PaymentIntent
+        try:
+            from marketplace.services.stripe_service import StripeService
+            intent = StripeService.create_payment_intent_for_amount(
+                amount=total,
+                user=request.user,
+                seller=listing.seller,
+                metadata={
+                    'listing_id': listing.id,
+                    'offer_id': offer_id,
+                }
+            )
+            return Response({
+                'client_secret': intent.client_secret,
+                'payment_intent_id': intent.id,
+                'amount': str(total),
+            })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class PaymentConfirmView(views.APIView):
+    """Confirm a payment and complete the order"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        payment_intent_id = request.data.get('payment_intent_id')
+        if not payment_intent_id:
+            return Response(
+                {'error': 'payment_intent_id required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Find the order by payment intent
+        order = get_object_or_404(
+            Order, stripe_payment_intent=payment_intent_id, buyer=request.user
+        )
+
+        # Verify payment status with Stripe
+        try:
+            from marketplace.services.stripe_service import StripeService
+            intent = StripeService.retrieve_payment_intent(payment_intent_id)
+
+            if intent.status == 'succeeded':
+                order.status = 'paid'
+                order.paid_at = timezone.now()
+                order.save()
+                return Response(OrderSerializer(order).data)
+            else:
+                return Response(
+                    {'error': f'Payment status: {intent.status}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class AutoBidListView(views.APIView):
+    """List and create auto-bids"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get user's active auto-bids"""
+        auto_bids = AutoBid.objects.filter(
+            user=request.user,
+            is_active=True
+        ).select_related('listing')
+        serializer = AutoBidSerializer(auto_bids, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        """Create or update an auto-bid"""
+        serializer = AutoBidCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        listing_id = serializer.validated_data['listing_id']
+        max_amount = serializer.validated_data['max_amount']
+
+        listing = get_object_or_404(
+            Listing, pk=listing_id, status='active', listing_type='auction'
+        )
+
+        if listing.seller == request.user:
+            return Response(
+                {'error': 'Cannot auto-bid on your own listing'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check auction is still active
+        if listing.is_auction_ended():
+            return Response(
+                {'error': 'Auction has ended'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Must be higher than current price
+        current_price = listing.get_current_price()
+        if max_amount <= current_price:
+            return Response(
+                {'error': f'Max amount must be higher than current price ${current_price}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create or update auto-bid
+        auto_bid, created = AutoBid.objects.update_or_create(
+            user=request.user,
+            listing=listing,
+            defaults={'max_amount': max_amount, 'is_active': True}
+        )
+
+        return Response(
+            AutoBidSerializer(auto_bid).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        )
+
+
+class AutoBidDeleteView(views.APIView):
+    """Delete/cancel an auto-bid"""
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        auto_bid = get_object_or_404(AutoBid, pk=pk, user=request.user)
+        auto_bid.deactivate()
+        return Response(status=status.HTTP_204_NO_CONTENT)
