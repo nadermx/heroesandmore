@@ -200,10 +200,10 @@ class Listing(models.Model):
         return reverse('marketplace:listing_detail', kwargs={'pk': self.pk})
 
     def get_images(self):
-        """Return list of all images"""
-        images = [self.image1]
-        for img in [self.image2, self.image3, self.image4, self.image5]:
-            if img:
+        """Return list of all images that have files"""
+        images = []
+        for img in [self.image1, self.image2, self.image3, self.image4, self.image5]:
+            if img and img.name:  # Check if image has a file
                 images.append(img)
         return images
 
