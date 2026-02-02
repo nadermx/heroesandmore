@@ -1,0 +1,301 @@
+from rest_framework import serializers
+from django.utils import timezone
+from marketplace.models import (
+    Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent
+)
+from accounts.api.serializers import PublicProfileSerializer
+
+
+class ListingImageSerializer(serializers.Serializer):
+    """Serialize listing images"""
+    url = serializers.SerializerMethodField()
+    order = serializers.IntegerField()
+
+    def get_url(self, obj):
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.url)
+        return obj.url
+
+
+class ListingListSerializer(serializers.ModelSerializer):
+    """Compact serializer for listing lists/browse"""
+    seller_username = serializers.CharField(source='seller.username', read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_slug = serializers.CharField(source='category.slug', read_only=True)
+    primary_image = serializers.SerializerMethodField()
+    current_price = serializers.SerializerMethodField()
+    time_remaining = serializers.SerializerMethodField()
+    bid_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Listing
+        fields = [
+            'id', 'title', 'price', 'current_price', 'listing_type',
+            'condition', 'grading_service', 'grade', 'seller_username',
+            'category_name', 'category_slug', 'primary_image',
+            'auction_end', 'time_remaining', 'bid_count',
+            'shipping_price', 'views', 'created'
+        ]
+
+    def get_primary_image(self, obj):
+        if obj.image1:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image1.url)
+            return obj.image1.url
+        return None
+
+    def get_current_price(self, obj):
+        return str(obj.get_current_price())
+
+    def get_time_remaining(self, obj):
+        remaining = obj.time_remaining()
+        if remaining:
+            return int(remaining.total_seconds())
+        return None
+
+    def get_bid_count(self, obj):
+        if obj.listing_type == 'auction':
+            return obj.bids.count()
+        return 0
+
+
+class ListingDetailSerializer(serializers.ModelSerializer):
+    """Full serializer for listing detail view"""
+    seller = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_slug = serializers.CharField(source='category.slug', read_only=True)
+    current_price = serializers.SerializerMethodField()
+    bid_count = serializers.SerializerMethodField()
+    high_bidder = serializers.SerializerMethodField()
+    is_saved = serializers.SerializerMethodField()
+    recent_sales = serializers.SerializerMethodField()
+    time_remaining = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Listing
+        fields = [
+            'id', 'title', 'description', 'price', 'current_price',
+            'listing_type', 'condition', 'grading_service', 'grade',
+            'cert_number', 'is_graded', 'seller', 'category_name',
+            'category_slug', 'images', 'allow_offers', 'minimum_offer_percent',
+            'shipping_price', 'ships_from', 'auction_end', 'time_remaining',
+            'reserve_price', 'no_reserve', 'starting_bid',
+            'bid_count', 'high_bidder', 'is_saved', 'recent_sales',
+            'views', 'status', 'created'
+        ]
+
+    def get_seller(self, obj):
+        return PublicProfileSerializer(
+            obj.seller.profile,
+            context=self.context
+        ).data
+
+    def get_images(self, obj):
+        images = []
+        for i, img in enumerate(obj.get_images(), 1):
+            request = self.context.get('request')
+            url = request.build_absolute_uri(img.url) if request else img.url
+            images.append({'url': url, 'order': i})
+        return images
+
+    def get_current_price(self, obj):
+        return str(obj.get_current_price())
+
+    def get_bid_count(self, obj):
+        return obj.bids.count() if obj.listing_type == 'auction' else 0
+
+    def get_high_bidder(self, obj):
+        if obj.listing_type == 'auction':
+            high_bid = obj.bids.order_by('-amount').first()
+            if high_bid:
+                return high_bid.bidder.username
+        return None
+
+    def get_is_saved(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return SavedListing.objects.filter(
+                user=request.user, listing=obj
+            ).exists()
+        return False
+
+    def get_recent_sales(self, obj):
+        if obj.price_guide_item:
+            sales = obj.price_guide_item.sales.order_by('-sale_date')[:6]
+            return [{
+                'source': sale.get_source_display(),
+                'price': str(sale.sale_price),
+                'date': sale.sale_date.isoformat()
+            } for sale in sales]
+        return []
+
+    def get_time_remaining(self, obj):
+        remaining = obj.time_remaining()
+        if remaining:
+            return int(remaining.total_seconds())
+        return None
+
+
+class ListingCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating listings"""
+    class Meta:
+        model = Listing
+        fields = [
+            'title', 'description', 'category', 'condition', 'price',
+            'listing_type', 'auction_end', 'reserve_price', 'no_reserve',
+            'starting_bid', 'allow_offers', 'minimum_offer_percent',
+            'grading_service', 'grade', 'cert_number',
+            'shipping_price', 'ships_from',
+            'image1', 'image2', 'image3', 'image4', 'image5'
+        ]
+
+    def validate(self, data):
+        if data.get('listing_type') == 'auction':
+            if not data.get('auction_end'):
+                raise serializers.ValidationError({
+                    'auction_end': 'Auction end time is required for auctions'
+                })
+            if data['auction_end'] <= timezone.now():
+                raise serializers.ValidationError({
+                    'auction_end': 'Auction end time must be in the future'
+                })
+        return data
+
+    def create(self, validated_data):
+        validated_data['seller'] = self.context['request'].user
+        validated_data['status'] = 'draft'
+        return super().create(validated_data)
+
+
+class BidSerializer(serializers.ModelSerializer):
+    """Serializer for bids"""
+    bidder_username = serializers.CharField(source='bidder.username', read_only=True)
+
+    class Meta:
+        model = Bid
+        fields = ['id', 'amount', 'bidder_username', 'is_winning', 'created']
+        read_only_fields = ['bidder_username', 'is_winning', 'created']
+
+
+class BidCreateSerializer(serializers.Serializer):
+    """Serializer for placing a bid"""
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    max_bid_amount = serializers.DecimalField(
+        max_digits=10, decimal_places=2, required=False, allow_null=True
+    )
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Bid amount must be positive")
+        return value
+
+
+class OfferSerializer(serializers.ModelSerializer):
+    """Serializer for offers"""
+    buyer_username = serializers.CharField(source='buyer.username', read_only=True)
+    listing_title = serializers.CharField(source='listing.title', read_only=True)
+    listing_id = serializers.IntegerField(source='listing.id', read_only=True)
+
+    class Meta:
+        model = Offer
+        fields = [
+            'id', 'listing_id', 'listing_title', 'amount', 'message',
+            'buyer_username', 'status', 'counter_amount', 'counter_message',
+            'expires_at', 'created'
+        ]
+        read_only_fields = [
+            'status', 'counter_amount', 'counter_message',
+            'buyer_username', 'expires_at'
+        ]
+
+
+class OfferCreateSerializer(serializers.Serializer):
+    """Serializer for making an offer"""
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    message = serializers.CharField(max_length=500, required=False, allow_blank=True)
+
+
+class CounterOfferSerializer(serializers.Serializer):
+    """Serializer for counter offers"""
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    message = serializers.CharField(max_length=500, required=False, allow_blank=True)
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    """Serializer for orders"""
+    listing = ListingListSerializer(read_only=True)
+    buyer_username = serializers.CharField(source='buyer.username', read_only=True)
+    seller_username = serializers.CharField(source='seller.username', read_only=True)
+
+    class Meta:
+        model = Order
+        fields = [
+            'id', 'listing', 'buyer_username', 'seller_username',
+            'item_price', 'shipping_price', 'amount', 'platform_fee',
+            'seller_payout', 'status', 'shipping_address',
+            'tracking_number', 'tracking_carrier',
+            'shipped_at', 'delivered_at', 'created'
+        ]
+
+
+class OrderShipSerializer(serializers.Serializer):
+    """Serializer for marking order as shipped"""
+    tracking_number = serializers.CharField(max_length=100)
+    tracking_carrier = serializers.CharField(max_length=50)
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    """Serializer for reviews"""
+    reviewer_username = serializers.CharField(source='reviewer.username', read_only=True)
+    seller_username = serializers.CharField(source='seller.username', read_only=True)
+
+    class Meta:
+        model = Review
+        fields = ['id', 'order', 'rating', 'text', 'reviewer_username', 'seller_username', 'created']
+        read_only_fields = ['reviewer_username', 'seller_username', 'order']
+
+
+class ReviewCreateSerializer(serializers.Serializer):
+    """Serializer for creating reviews"""
+    rating = serializers.IntegerField(min_value=1, max_value=5)
+    text = serializers.CharField(max_length=1000, required=False, allow_blank=True)
+
+
+class SavedListingSerializer(serializers.ModelSerializer):
+    """Serializer for saved listings"""
+    listing = ListingListSerializer(read_only=True)
+
+    class Meta:
+        model = SavedListing
+        fields = ['id', 'listing', 'created']
+
+
+class AuctionEventSerializer(serializers.ModelSerializer):
+    """Serializer for auction events"""
+    lot_count = serializers.SerializerMethodField()
+    is_live = serializers.SerializerMethodField()
+    time_remaining = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AuctionEvent
+        fields = [
+            'id', 'name', 'slug', 'event_type', 'description',
+            'cover_image', 'preview_start', 'bidding_start', 'bidding_end',
+            'is_featured', 'status', 'lot_count', 'total_bids', 'total_value',
+            'is_live', 'time_remaining'
+        ]
+
+    def get_lot_count(self, obj):
+        return obj.listings.count()
+
+    def get_is_live(self, obj):
+        return obj.is_live()
+
+    def get_time_remaining(self, obj):
+        remaining = obj.time_remaining()
+        if remaining:
+            return int(remaining.total_seconds())
+        return None
