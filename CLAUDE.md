@@ -138,7 +138,20 @@ cd ansible
 ansible-playbook -i servers backup.yml
 ```
 
-### Check Logs
+### Check Logs & Debug
+Use the debug script for easy log access:
+```bash
+cd ansible
+./debug.sh help           # Show all commands
+./debug.sh errors         # Check error log
+./debug.sh stripe         # Check Stripe/payment issues
+./debug.sh all            # Quick overview of all logs
+./debug.sh tail errors    # Live tail error log
+./debug.sh grep "pattern" # Search all logs
+./debug.sh status         # Check service status
+```
+
+Or manually:
 ```bash
 ansible -i servers all -m shell -a "tail -100 /var/log/heroesandmore/heroesandmore.log" --become
 ```
@@ -146,6 +159,7 @@ ansible -i servers all -m shell -a "tail -100 /var/log/heroesandmore/heroesandmo
 ### Restart Services
 ```bash
 ansible -i servers all -m shell -a "supervisorctl restart heroesandmore:*" --become
+# Or use: ./debug.sh restart
 ```
 
 ### SSH to Server
@@ -153,6 +167,57 @@ ansible -i servers all -m shell -a "supervisorctl restart heroesandmore:*" --bec
 ssh heroesandmore@174.138.33.140
 cd /home/www/heroesandmore
 ```
+
+## Logging & Debugging
+
+### Log Files
+Application logs in `/home/www/heroesandmore/logs/`:
+
+| File | Purpose | When to Check |
+|------|---------|---------------|
+| `errors.log` | All ERROR level logs | First place to look for issues |
+| `stripe.log` | Stripe API calls, payments, Connect | Payment failures, webhook issues |
+| `app.log` | General application activity | Flow debugging |
+| `security.log` | Auth failures, permission issues | Login problems, suspicious activity |
+| `celery_tasks.log` | Background task execution | Scheduled jobs failing |
+| `api.log` | REST API requests | Mobile app issues |
+| `db.log` | Database warnings | Performance issues |
+
+System logs in `/var/log/heroesandmore/`:
+
+| File | Purpose |
+|------|---------|
+| `heroesandmore.log` | Gunicorn web server output |
+| `celery.log` | Celery worker process |
+| `celerybeat.log` | Celery beat scheduler |
+
+### Quick Debug Commands
+```bash
+# Check recent errors
+ssh heroesandmore@174.138.33.140 "sudo tail -50 /home/www/heroesandmore/logs/errors.log"
+
+# Check Stripe issues
+ssh heroesandmore@174.138.33.140 "sudo tail -50 /home/www/heroesandmore/logs/stripe.log"
+
+# Live tail errors
+ssh heroesandmore@174.138.33.140 "sudo tail -f /home/www/heroesandmore/logs/errors.log"
+
+# Search for specific error
+ssh heroesandmore@174.138.33.140 "sudo grep 'PermissionError' /home/www/heroesandmore/logs/*.log"
+```
+
+### Adding Logging in Code
+```python
+import logging
+logger = logging.getLogger('marketplace')  # Use app name
+
+logger.debug('Detailed info for debugging')
+logger.info('General information')
+logger.warning('Something unexpected')
+logger.error('Error occurred', exc_info=True)  # Include traceback
+```
+
+Available loggers: `accounts`, `marketplace`, `pricing`, `alerts`, `scanner`, `api`, `seller_tools`
 
 ## Config Values Needed (config.py)
 Copy `config.py.example` to `config.py` and set:
