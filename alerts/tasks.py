@@ -501,6 +501,147 @@ def send_refund_notification(order_id, refund_amount):
 
 
 @shared_task
+def send_new_offer_notification(offer_id):
+    """
+    Notify seller that they received a new offer on their listing.
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Offer
+    from .models import Alert
+
+    try:
+        offer = Offer.objects.select_related(
+            'listing', 'listing__seller', 'buyer'
+        ).get(id=offer_id)
+    except Offer.DoesNotExist:
+        return
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'offer': offer, 'site_url': site_url}
+
+    seller = offer.listing.seller
+
+    # Email to seller
+    if seller.email:
+        html_content = render_to_string('marketplace/emails/new_offer.html', context)
+        try:
+            send_mail(
+                subject=f'New Offer on {offer.listing.title}',
+                message=f'{offer.buyer.username} made an offer of ${offer.amount} on your listing "{offer.listing.title}".',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[seller.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+    # In-app alert
+    Alert.objects.create(
+        user=seller,
+        alert_type='new_offer',
+        title=f'New Offer: ${offer.amount}',
+        message=f'{offer.buyer.username} made an offer of ${offer.amount} on "{offer.listing.title}".',
+        link=f'/accounts/seller/',
+        listing=offer.listing,
+    )
+
+
+@shared_task
+def send_counter_offer_notification(offer_id):
+    """
+    Notify buyer that seller made a counter-offer.
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Offer
+    from .models import Alert
+
+    try:
+        offer = Offer.objects.select_related(
+            'listing', 'listing__seller', 'buyer'
+        ).get(id=offer_id)
+    except Offer.DoesNotExist:
+        return
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'offer': offer, 'site_url': site_url}
+
+    buyer = offer.buyer
+
+    # Email to buyer
+    if buyer.email:
+        html_content = render_to_string('marketplace/emails/counter_offer.html', context)
+        try:
+            send_mail(
+                subject=f'Counter Offer on {offer.listing.title}',
+                message=f'The seller has countered your offer with ${offer.counter_amount} for "{offer.listing.title}".',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[buyer.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+    # In-app alert
+    Alert.objects.create(
+        user=buyer,
+        alert_type='counter_offer',
+        title=f'Counter Offer: ${offer.counter_amount}',
+        message=f'The seller countered with ${offer.counter_amount} on "{offer.listing.title}". Respond within 48 hours.',
+        link=f'/marketplace/{offer.listing.id}/',
+        listing=offer.listing,
+    )
+
+
+@shared_task
+def send_counter_offer_accepted_notification(offer_id, order_id):
+    """
+    Notify seller that buyer accepted their counter-offer.
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Offer, Order
+    from .models import Alert
+
+    try:
+        offer = Offer.objects.select_related(
+            'listing', 'listing__seller', 'buyer'
+        ).get(id=offer_id)
+        order = Order.objects.get(id=order_id)
+    except (Offer.DoesNotExist, Order.DoesNotExist):
+        return
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'offer': offer, 'order': order, 'site_url': site_url}
+
+    seller = offer.listing.seller
+
+    # Email to seller
+    if seller.email:
+        html_content = render_to_string('marketplace/emails/counter_offer_accepted.html', context)
+        try:
+            send_mail(
+                subject=f'Counter Offer Accepted - {offer.listing.title}',
+                message=f'{offer.buyer.username} accepted your counter-offer of ${offer.counter_amount} for "{offer.listing.title}".',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[seller.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+    # In-app alert
+    Alert.objects.create(
+        user=seller,
+        alert_type='offer_accepted',
+        title=f'Counter Offer Accepted!',
+        message=f'{offer.buyer.username} accepted your counter-offer of ${offer.counter_amount}.',
+        link=f'/marketplace/order/{order.id}/',
+    )
+
+
+@shared_task
 def send_cancellation_notification(order_id, cancelled_by):
     """
     Notify both parties that an order was cancelled.

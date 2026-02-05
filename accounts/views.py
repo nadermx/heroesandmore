@@ -104,6 +104,9 @@ def dashboard_view(request):
 
 @login_required
 def seller_dashboard(request):
+    from marketplace.models import Offer
+    from django.utils import timezone
+
     user = request.user
 
     # Get seller stats
@@ -122,12 +125,20 @@ def seller_dashboard(request):
     # Recent orders needing attention
     pending_orders = orders.filter(status='pending').order_by('-created')[:10]
 
+    # Pending offers (waiting for seller response)
+    pending_offers = Offer.objects.filter(
+        listing__seller=user,
+        status='pending',
+        expires_at__gt=timezone.now()
+    ).select_related('listing', 'buyer').order_by('-created')[:10]
+
     # Recent reviews
     reviews = Review.objects.filter(seller=user).order_by('-created')[:5]
 
     context = {
         'stats': stats,
         'pending_orders': pending_orders,
+        'pending_offers': pending_offers,
         'reviews': reviews,
         'profile': user.profile,
     }

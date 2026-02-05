@@ -258,6 +258,44 @@
                 </div>
             </div>
 
+            <!-- Counter-Offer Response -->
+            {% if pending_counter %}
+            <div class="card mb-4" style="border: 2px solid #2563eb;">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-tag-fill" style="color: #2563eb;"></i>
+                        <h6 class="fw-bold mb-0" style="color: #2563eb;">Counter Offer Received</h6>
+                    </div>
+                    <p class="text-muted mb-2">The seller has responded to your offer:</p>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="text-muted">Your offer:</span>
+                            <span class="text-decoration-line-through ms-1">${{ pending_counter.amount }}</span>
+                        </div>
+                        <div>
+                            <span class="text-muted">Counter:</span>
+                            <span class="fs-4 fw-bold ms-1" style="color: #2563eb;">${{ pending_counter.counter_amount }}</span>
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">
+                        <i class="bi bi-clock me-1"></i>
+                        Expires in {{ pending_counter.time_remaining }}
+                    </p>
+                    <form method="post" action="{% url 'marketplace:respond_counter_offer' pk=pending_counter.pk %}">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" name="action" value="accept" class="btn btn-dark">
+                                <i class="bi bi-check-circle me-1"></i> Accept Counter Offer
+                            </button>
+                            <button type="submit" name="action" value="decline" class="btn btn-outline-secondary">
+                                Decline
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Action Buttons -->
             {% if user.is_authenticated and user != listing.seller %}
             <div class="d-grid gap-2 mb-4">

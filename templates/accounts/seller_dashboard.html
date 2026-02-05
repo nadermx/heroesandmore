@@ -86,6 +86,90 @@
         </div>
     </div>
 
+    <!-- Pending Offers -->
+    {% if pending_offers %}
+    <div class="card mb-4">
+        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold mb-0"><i class="bi bi-tag me-2" style="color: #2563eb;"></i>Pending Offers</h6>
+            <span class="badge bg-primary">{{ pending_offers|length }}</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead style="background: var(--gray-50);">
+                    <tr>
+                        <th class="border-0">Listing</th>
+                        <th class="border-0">Buyer</th>
+                        <th class="border-0">Your Price</th>
+                        <th class="border-0">Offer</th>
+                        <th class="border-0">Expires</th>
+                        <th class="border-0">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for offer in pending_offers %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'marketplace:listing_detail' pk=offer.listing.pk %}" style="color: var(--gray-900);">
+                                {{ offer.listing.title|truncatechars:30 }}
+                            </a>
+                        </td>
+                        <td>{{ offer.buyer.username }}</td>
+                        <td class="text-muted">${{ offer.listing.price }}</td>
+                        <td class="fw-bold" style="color: #16a34a;">${{ offer.amount }}</td>
+                        <td class="text-muted small">{{ offer.time_remaining }}</td>
+                        <td>
+                            <form method="post" action="{% url 'marketplace:respond_offer' pk=offer.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" name="action" value="accept" class="btn btn-sm btn-success me-1">Accept</button>
+                                <button type="submit" name="action" value="decline" class="btn btn-sm btn-outline-secondary me-1">Decline</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        data-bs-toggle="modal" data-bs-target="#counterModal{{ offer.pk }}">Counter</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Counter Offer Modals -->
+    {% for offer in pending_offers %}
+    <div class="modal fade" id="counterModal{{ offer.pk }}" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="post" action="{% url 'marketplace:respond_offer' pk=offer.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="counter">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title fw-bold">Make Counter Offer</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted">
+                            <strong>{{ offer.listing.title }}</strong><br>
+                            Your price: ${{ offer.listing.price }} | Their offer: ${{ offer.amount }}
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Your Counter Offer</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text">$</span>
+                                <input type="number" name="counter_amount" class="form-control"
+                                       step="0.01" min="{{ offer.amount }}" placeholder="0.00" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-outline-dark" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Send Counter Offer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
     <div class="row g-4">
         <!-- Orders Needing Action -->
         <div class="col-lg-8">

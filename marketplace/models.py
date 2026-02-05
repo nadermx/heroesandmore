@@ -317,6 +317,25 @@ class Offer(models.Model):
     def can_accept_counter(self):
         return self.status == 'countered' and not self.is_expired()
 
+    @property
+    def time_remaining(self):
+        """Return human-readable time remaining until expiry."""
+        if not self.expires_at or self.is_expired():
+            return None
+        remaining = self.expires_at - timezone.now()
+        total_seconds = int(remaining.total_seconds())
+        if total_seconds <= 0:
+            return None
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes = remainder // 60
+        if hours > 24:
+            days = hours // 24
+            return f"{days} day{'s' if days != 1 else ''}"
+        elif hours > 0:
+            return f"{hours}h {minutes}m"
+        else:
+            return f"{minutes} minute{'s' if minutes != 1 else ''}"
+
 
 class Order(models.Model):
     STATUS_CHOICES = [

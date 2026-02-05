@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #171717;">New Offer Received</h2>
+
+    <p>Hi {{ offer.listing.seller.username }},</p>
+
+    <p>Great news! You've received an offer on your listing.</p>
+
+    <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #171717;">{{ offer.listing.title }}</h3>
+        <p style="margin-bottom: 5px;"><strong>Your asking price:</strong> ${{ offer.listing.price }}</p>
+        <p style="margin-bottom: 5px;"><strong>Offer amount:</strong> <span style="color: #16a34a; font-size: 1.2em;">${{ offer.amount }}</span></p>
+        <p style="margin-bottom: 0;"><strong>From:</strong> {{ offer.buyer.username }}</p>
+    </div>
+
+    <p>This offer expires in 48 hours. You can accept, decline, or make a counter-offer.</p>
+
+    <p style="text-align: center; margin: 30px 0;">
+        <a href="{{ site_url }}/accounts/seller/"
+           style="background-color: #171717; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+            Respond to Offer
+        </a>
+    </p>
+
+    <p style="color: #737373; font-size: 14px; margin-top: 40px; border-top: 1px solid #e5e5e5; padding-top: 20px;">
+        The HeroesAndMore Team<br>
+        <a href="{{ site_url }}" style="color: #737373;">heroesandmore.com</a>
+    </p>
+</body>
+</html>

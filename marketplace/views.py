@@ -98,6 +98,16 @@ def listing_detail(request, pk):
     # Offer form
     offer_form = OfferForm() if listing.allow_offers else None
 
+    # Check if user has a pending counter-offer on this listing
+    pending_counter = None
+    if request.user.is_authenticated:
+        pending_counter = Offer.objects.filter(
+            listing=listing,
+            buyer=request.user,
+            status='countered',
+            expires_at__gt=timezone.now()
+        ).first()
+
     # Related listings
     related = Listing.objects.filter(
         category=listing.category,
@@ -120,6 +130,7 @@ def listing_detail(request, pk):
         'is_saved': is_saved,
         'bids': bids,
         'offer_form': offer_form,
+        'pending_counter': pending_counter,
         'related': related,
         'seller_listings': seller_listings,
         'recent_sales': recent_sales,
@@ -281,8 +292,19 @@ def place_bid(request, pk):
             messages.error(request, f"Minimum bid is ${min_bid:.2f}")
             return redirect('marketplace:listing_detail', pk=pk)
 
+        # Get the previous high bidder before creating new bid
+        previous_high_bid = listing.bids.order_by('-amount').first()
+
         Bid.objects.create(listing=listing, bidder=request.user, amount=amount)
         messages.success(request, f'You are now the high bidder at ${amount:.2f}!')
+
+        # Notify previous high bidder they've been outbid
+        if previous_high_bid and previous_high_bid.bidder != request.user:
+            try:
+                from alerts.tasks import notify_outbid
+                notify_outbid.delay(listing.id, float(amount), request.user.id)
+            except Exception:
+                pass
 
     return redirect('marketplace:listing_detail', pk=pk)
 
@@ -308,6 +330,14 @@ def make_offer(request, pk):
             offer.buyer = request.user
             offer.expires_at = timezone.now() + timedelta(hours=48)
             offer.save()
+
+            # Notify seller of new offer
+            try:
+                from alerts.tasks import send_new_offer_notification
+                send_new_offer_notification.delay(offer.id)
+            except Exception:
+                pass
+
             messages.success(request, 'Your offer has been sent to the seller.')
 
     return redirect('marketplace:listing_detail', pk=pk)
@@ -377,9 +407,72 @@ def respond_offer(request, pk):
                 offer.countered_at = timezone.now()
                 offer.expires_at = timezone.now() + timedelta(hours=48)
                 offer.save()
+
+                # Notify buyer of counter-offer
+                try:
+                    from alerts.tasks import send_counter_offer_notification
+                    send_counter_offer_notification.delay(offer.id)
+                except Exception:
+                    pass
+
                 messages.success(request, 'Counter offer sent.')
 
     return redirect('accounts:seller_dashboard')
+
+
+@login_required
+def respond_counter_offer(request, pk):
+    """Buyer responds to counter-offer"""
+    offer = get_object_or_404(Offer, pk=pk, buyer=request.user, status='countered')
+
+    if offer.is_expired():
+        messages.error(request, "This counter-offer has expired.")
+        return redirect('marketplace:listing_detail', pk=offer.listing.pk)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'accept':
+            offer.status = 'accepted'
+            offer.responded_at = timezone.now()
+            offer.save()
+
+            # Create order with counter-offer amount
+            listing = offer.listing
+            from marketplace.services.stripe_service import StripeService
+            commission_rate = StripeService.get_seller_commission_rate(listing.seller)
+            platform_fee = offer.counter_amount * commission_rate
+            order = Order.objects.create(
+                listing=listing,
+                buyer=request.user,
+                seller=listing.seller,
+                item_price=offer.counter_amount,
+                shipping_price=listing.shipping_price,
+                amount=offer.counter_amount + listing.shipping_price,
+                platform_fee=platform_fee,
+                seller_payout=offer.counter_amount - platform_fee,
+                shipping_address='',
+            )
+            listing.status = 'sold'
+            listing.save()
+
+            # Notify seller their counter was accepted
+            try:
+                from alerts.tasks import send_counter_offer_accepted_notification
+                send_counter_offer_accepted_notification.delay(offer.id, order.id)
+            except Exception:
+                pass
+
+            messages.success(request, 'Counter-offer accepted! Complete your purchase now.')
+            return redirect('marketplace:checkout', pk=listing.pk)
+
+        elif action == 'decline':
+            offer.status = 'declined'
+            offer.responded_at = timezone.now()
+            offer.save()
+            messages.success(request, 'Counter-offer declined.')
+
+    return redirect('marketplace:listing_detail', pk=offer.listing.pk)
 
 
 @login_required
