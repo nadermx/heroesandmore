@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.utils import timezone
+from datetime import timedelta
 from rest_framework.test import APIClient
 from rest_framework import status
 from items.models import Category
@@ -138,10 +139,11 @@ class AuctionJourneyTests(TestCase):
             seller=self.seller,
             category=self.category,
             title='Rare Auction Item',
-            price=Decimal('10.00'),  # Starting price
+            price=Decimal('10.00'),
+            starting_bid=Decimal('10.00'),
             status='active',
             listing_type='auction',
-            auction_end=timezone.now() + timezone.timedelta(days=7),
+            auction_end=timezone.now() + timedelta(days=7),
         )
         # Create two bidders
         self.bidder1 = User.objects.create_user(

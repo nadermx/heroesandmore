@@ -61,7 +61,7 @@ python manage.py import_market_data       # Import price data (--source ebay|her
 
 ### Running Tests
 ```bash
-python manage.py test                                           # Run all 272 tests
+python manage.py test                                           # Run all tests
 python manage.py test marketplace                               # Run single app tests
 python manage.py test marketplace.tests.test_listings           # Run specific test module
 python manage.py test marketplace.tests.test_listings.BiddingTests  # Run specific test class
@@ -237,13 +237,25 @@ Available loggers: `accounts`, `marketplace`, `pricing`, `alerts`, `scanner`, `a
 
 ## Config Values Needed (config.py)
 Copy `config.py.example` to `config.py` and set:
+
+**Required:**
 - `SECRET_KEY` - Django secret key
 - `DATABASE_PASSWORD` - PostgreSQL password
 - `STRIPE_PUBLIC_KEY` - Stripe publishable key
 - `STRIPE_SECRET_KEY` - Stripe secret key
-- `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing
+- `STRIPE_WEBHOOK_SECRET` - Stripe main webhook signing
+- `STRIPE_CONNECT_WEBHOOK_SECRET` - Stripe Connect webhook signing
 - `DO_SPACES_KEY` - DigitalOcean Spaces access key
 - `DO_SPACES_SECRET` - DigitalOcean Spaces secret
+
+**Optional (for subscriptions):**
+- `STRIPE_PRICE_BASIC`, `STRIPE_PRICE_FEATURED`, `STRIPE_PRICE_PREMIUM` - Stripe price IDs for seller tiers
+
+**Defaults usually fine:**
+- `DATABASE_HOST`, `DATABASE_PORT` - Database connection (default: localhost:5432)
+- `REDIS_URL` - Redis connection (default: redis://localhost:6379/0)
+- `SITE_URL` - Base URL for callbacks (default: http://localhost:8000)
+- `EMAIL_*` - Email settings (console backend used in development)
 
 For Ansible deploys, these go in `ansible/group_vars/vault.yml`.
 
@@ -395,7 +407,7 @@ SUBSCRIPTION_RETRY_INTERVALS = [1, 3, 5, 7]  # Days between retries
 
 ## Email (Self-Hosted)
 
-Email is self-hosted on the server using Postfix with OpenDKIM.
+Email is self-hosted on the server using Postfix with OpenDKIM and PostSRSd.
 
 ### Domain Setup
 - **mail.heroesandmore.com** - SENDING domain (outbound emails, e.g., noreply@mail.heroesandmore.com)
@@ -404,7 +416,11 @@ Email is self-hosted on the server using Postfix with OpenDKIM.
 ### DNS Records (managed via DigitalOcean API)
 - SPF: `v=spf1 ip4:174.138.33.140 a ~all`
 - DKIM: `mail._domainkey.mail.heroesandmore.com`
-- DMARC: `v=DMARC1; p=none; rua=mailto:postmaster@mail.heroesandmore.com; fo=1`
+- DMARC: `v=DMARC1; p=none; rua=mailto:postmaster@heroesandmore.com; fo=1`
+- PTR: `174.138.33.140` → `mail.heroesandmore.com` (set via DigitalOcean droplet name)
+
+### Email Forwarding with SRS
+PostSRSd (Sender Rewriting Scheme) is configured to prevent SPF failures when forwarding external emails. Config: `/etc/default/postsrsd`
 
 ### Credentials
 API keys are stored in `~/.credentials/`:

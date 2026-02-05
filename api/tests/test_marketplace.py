@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.utils import timezone
+from datetime import timedelta
 from rest_framework.test import APIClient
 from rest_framework import status
 from items.models import Category
@@ -210,9 +211,10 @@ class BiddingAPITests(TestCase):
             category=self.category,
             title='Auction Item',
             price=Decimal('10.00'),
+            starting_bid=Decimal('10.00'),
             status='active',
             listing_type='auction',
-            auction_end=timezone.now() + timezone.timedelta(days=1),
+            auction_end=timezone.now() + timedelta(days=1),
         )
 
     def get_bidder_token(self):
@@ -563,16 +565,30 @@ class CheckoutAPITests(TestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_checkout_creates_order(self):
+    @patch('marketplace.services.stripe_service.stripe.Customer.create')
+    @patch('marketplace.services.stripe_service.stripe.PaymentIntent.create')
+    def test_checkout_creates_order(self, mock_intent, mock_customer):
         """Checkout should create an order."""
+        # Mock Stripe customer
+        customer_mock = MagicMock()
+        customer_mock.id = 'cus_test123'
+        mock_customer.return_value = customer_mock
+
+        # Mock Stripe payment intent
+        intent_mock = MagicMock()
+        intent_mock.id = 'pi_test123'
+        intent_mock.client_secret = 'pi_test123_secret_xxx'
+        intent_mock.status = 'requires_payment_method'
+        mock_intent.return_value = intent_mock
+
         token = self.get_buyer_token()
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
         response = self.client.post(f'/api/v1/marketplace/checkout/{self.listing.pk}/', {
             'shipping_address': '123 Test St, City, ST 12345',
         })
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('id', response.data)
-        self.assertEqual(response.data['status'], 'pending')
+        self.assertIn('order', response.data)
+        self.assertEqual(response.data['order']['status'], 'pending')
 
 
 class AutoBidAPITests(TestCase):
@@ -590,7 +606,7 @@ class AutoBidAPITests(TestCase):
             listing_type='auction',
             price=Decimal('100.00'),
             starting_bid=Decimal('10.00'),
-            auction_end=timezone.now() + timezone.timedelta(days=7),
+            auction_end=timezone.now() + timedelta(days=7),
             condition='good',
             status='active',
         )

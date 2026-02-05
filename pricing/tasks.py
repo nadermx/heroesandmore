@@ -3,6 +3,9 @@ from django.db.models import Avg, Count
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
@@ -167,3 +170,183 @@ def check_price_alerts():
             triggered_count += 1
 
     return f"Triggered {triggered_count} price alerts"
+
+
+# =============================================================================
+# Market Data Import Tasks (run twice daily)
+# =============================================================================
+
+@shared_task
+def import_ebay_market_data(category_slug: str = None, limit: int = 100):
+    """
+    Import sold listings data from eBay.
+
+    Runs twice daily at 6 AM and 6 PM.
+    """
+    from .models import PriceGuideItem
+    from .services.market_data import EbayMarketData, MarketDataImporter
+
+    logger.info(f"Starting eBay market data import (category: {category_slug})")
+
+    importer = MarketDataImporter()
+    items = PriceGuideItem.objects.all()
+
+    if category_slug:
+        items = items.filter(category__slug=category_slug)
+
+    items = items.order_by('-total_sales')[:limit]
+    total_imported = 0
+
+    for item in items:
+        try:
+            search_query = importer._build_search_query(item)
+            results = importer.ebay.search_sold_items(search_query, limit=20)
+
+            for result in results:
+                if importer._record_sale(item, result):
+                    total_imported += 1
+
+            # Update stats after import
+            if results:
+                update_price_guide_stats.delay(item.id)
+
+        except Exception as e:
+            logger.error(f"eBay import failed for {item.name}: {e}")
+
+    logger.info(f"eBay import complete: {total_imported} new sales recorded")
+    return f"Imported {total_imported} sales from eBay"
+
+
+@shared_task
+def import_heritage_market_data(category: str = 'sports', days_back: int = 7):
+    """
+    Import auction results from Heritage Auctions.
+
+    Runs twice daily at 6 AM and 6 PM.
+    """
+    from .models import PriceGuideItem
+    from .services.market_data import HeritageAuctionsData, MarketDataImporter
+
+    logger.info(f"Starting Heritage Auctions import (category: {category})")
+
+    heritage = HeritageAuctionsData()
+    importer = MarketDataImporter()
+
+    # Get recent sales from Heritage
+    results = heritage.get_recent_sales(category=category, days_back=days_back, limit=200)
+    total_imported = 0
+    matched_items = set()
+
+    for result in results:
+        # Try to match to existing price guide items
+        items = PriceGuideItem.objects.all()
+
+        for item in items[:500]:  # Limit for performance
+            if importer._is_match(item, result.get('title', '')):
+                if importer._record_sale(item, result):
+                    total_imported += 1
+                    matched_items.add(item.id)
+                break
+
+    # Update stats for matched items
+    for item_id in matched_items:
+        update_price_guide_stats.delay(item_id)
+
+    logger.info(f"Heritage import complete: {total_imported} new sales, {len(matched_items)} items matched")
+    return f"Imported {total_imported} sales from Heritage Auctions"
+
+
+@shared_task
+def import_gocollect_market_data(limit: int = 50):
+    """
+    Import comic book price data from GoCollect.
+
+    Runs twice daily at 6 AM and 6 PM.
+    """
+    from .models import PriceGuideItem
+    from .services.market_data import GoCollectData, MarketDataImporter
+
+    logger.info("Starting GoCollect market data import")
+
+    gocollect = GoCollectData()
+    importer = MarketDataImporter()
+
+    # Get comic items from our price guide
+    comic_items = PriceGuideItem.objects.filter(
+        category__slug__icontains='comic'
+    ).order_by('-total_sales')[:limit]
+
+    total_imported = 0
+
+    for item in comic_items:
+        try:
+            search_query = importer._build_search_query(item)
+            results = gocollect.search_comics(search_query, limit=10)
+
+            for result in results:
+                # Get detailed sales for this comic
+                sales = gocollect.get_comic_sales(result.get('url', ''), limit=10)
+
+                for sale in sales:
+                    sale['title'] = result.get('title', item.name)
+                    if importer._record_sale(item, sale):
+                        total_imported += 1
+
+            # Update stats after import
+            if results:
+                update_price_guide_stats.delay(item.id)
+
+        except Exception as e:
+            logger.error(f"GoCollect import failed for {item.name}: {e}")
+
+    logger.info(f"GoCollect import complete: {total_imported} new sales recorded")
+    return f"Imported {total_imported} sales from GoCollect"
+
+
+@shared_task
+def import_all_market_data():
+    """
+    Master task to import data from all sources.
+
+    This is the task scheduled to run twice daily.
+    Chains together all individual import tasks.
+    """
+    logger.info("Starting full market data import from all sources")
+
+    results = {
+        'ebay': 0,
+        'heritage_sports': 0,
+        'heritage_comics': 0,
+        'gocollect': 0,
+    }
+
+    # Import from eBay (all categories)
+    try:
+        ebay_result = import_ebay_market_data(limit=200)
+        logger.info(f"eBay: {ebay_result}")
+    except Exception as e:
+        logger.error(f"eBay import failed: {e}")
+
+    # Import from Heritage (sports)
+    try:
+        heritage_sports = import_heritage_market_data(category='sports', days_back=3)
+        logger.info(f"Heritage Sports: {heritage_sports}")
+    except Exception as e:
+        logger.error(f"Heritage Sports import failed: {e}")
+
+    # Import from Heritage (comics)
+    try:
+        heritage_comics = import_heritage_market_data(category='comics', days_back=3)
+        logger.info(f"Heritage Comics: {heritage_comics}")
+    except Exception as e:
+        logger.error(f"Heritage Comics import failed: {e}")
+
+    # Import from GoCollect (comics only)
+    try:
+        gocollect_result = import_gocollect_market_data(limit=100)
+        logger.info(f"GoCollect: {gocollect_result}")
+    except Exception as e:
+        logger.error(f"GoCollect import failed: {e}")
+
+    logger.info("Full market data import complete")
+    return "Market data import complete from all sources"
