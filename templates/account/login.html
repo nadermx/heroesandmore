@@ -30,7 +30,7 @@
                             <div class="mb-3">
                                 <label for="id_login" class="form-label">Email or Username</label>
                                 <input type="text" name="login" id="id_login" class="form-control {% if form.login.errors %}is-invalid{% endif %}"
-                                       placeholder="Enter your email or username" required autofocus>
+                                       placeholder="Enter your email or username" required>
                                 {% if form.login.errors %}
                                 <div class="invalid-feedback">{{ form.login.errors.0 }}</div>
                                 {% endif %}

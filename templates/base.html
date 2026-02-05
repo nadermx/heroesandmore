@@ -706,8 +706,22 @@
             border: 1px solid var(--border-color);
             border-radius: 0.5rem;
             padding: 0.625rem 1rem;
-            font-size: 0.9rem;
+            font-size: 16px; /* Prevents zoom on iOS */
+            min-height: 44px; /* Minimum touch target */
             transition: all 0.15s;
+            -webkit-appearance: none;
+            touch-action: manipulation;
+            cursor: text;
+        }
+
+        /* Ensure inputs are tappable on mobile */
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="search"],
+        textarea {
+            -webkit-user-select: text;
+            user-select: text;
         }
 
         .form-control:focus, .form-select:focus {
