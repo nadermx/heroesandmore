@@ -218,20 +218,28 @@
                 <div class="card mb-3">
                     <div class="card-body">
                         <h6 class="fw-bold mb-2">{% if is_seller %}Buyer{% else %}Seller{% endif %}</h6>
+                        {% with other_user=is_seller|yesno:"buyer,seller" %}
                         {% if is_seller %}
-                        {% with other_user=order.buyer %}
-                        {% else %}
-                        {% with other_user=order.seller %}
-                        {% endif %}
-                        <a href="{% url 'accounts:profile' username=other_user.username %}" class="text-decoration-none d-flex align-items-center mb-2">
+                        <a href="{% url 'accounts:profile' username=order.buyer.username %}" class="text-decoration-none d-flex align-items-center mb-2">
                             <div class="rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; background: var(--gray-200);">
                                 <i class="bi bi-person" style="color: var(--gray-600);"></i>
                             </div>
-                            <span style="color: var(--gray-900);">{{ other_user.username }}</span>
+                            <span style="color: var(--gray-900);">{{ order.buyer.username }}</span>
                         </a>
-                        <a href="{% url 'social:compose_to' username=other_user.username %}" class="btn btn-outline-dark btn-sm w-100">
+                        <a href="{% url 'social:compose_to' username=order.buyer.username %}" class="btn btn-outline-dark btn-sm w-100">
                             <i class="bi bi-envelope me-1"></i> Send Message
                         </a>
+                        {% else %}
+                        <a href="{% url 'accounts:profile' username=order.seller.username %}" class="text-decoration-none d-flex align-items-center mb-2">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; background: var(--gray-200);">
+                                <i class="bi bi-person" style="color: var(--gray-600);"></i>
+                            </div>
+                            <span style="color: var(--gray-900);">{{ order.seller.username }}</span>
+                        </a>
+                        <a href="{% url 'social:compose_to' username=order.seller.username %}" class="btn btn-outline-dark btn-sm w-100">
+                            <i class="bi bi-envelope me-1"></i> Send Message
+                        </a>
+                        {% endif %}
                         {% endwith %}
                     </div>
                 </div>
