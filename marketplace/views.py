@@ -669,6 +669,14 @@ def order_ship(request, pk):
             order.status = 'shipped'
             order.shipped_at = timezone.now()
             order.save()
+
+            # Send notification to buyer
+            try:
+                from alerts.tasks import send_order_notifications
+                send_order_notifications.delay(order.id, 'shipped')
+            except Exception:
+                pass
+
             messages.success(request, 'Order marked as shipped. Buyer has been notified.')
 
     return redirect('marketplace:order_detail', pk=pk)
@@ -682,6 +690,14 @@ def order_received(request, pk):
     order.status = 'delivered'
     order.delivered_at = timezone.now()
     order.save()
+
+    # Send notification to seller
+    try:
+        from alerts.tasks import send_order_notifications
+        send_order_notifications.delay(order.id, 'delivered')
+    except Exception:
+        pass
+
     messages.success(request, 'Order marked as received. Please leave a review!')
 
     return redirect('marketplace:order_detail', pk=pk)

@@ -196,3 +196,151 @@ def notify_outbid(listing_id, new_bid_amount, new_bidder_id):
             link=listing.get_absolute_url(),
             listing=listing,
         )
+
+
+@shared_task
+def send_order_notifications(order_id, event_type):
+    """
+    Send email notifications for order events.
+
+    event_type can be:
+    - 'paid': Order confirmed (buyer) + New sale (seller)
+    - 'shipped': Order shipped (buyer)
+    - 'delivered': Order delivered (seller)
+    - 'payment_failed': Payment failed (buyer)
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Order
+    from .models import Alert
+
+    try:
+        order = Order.objects.select_related(
+            'buyer', 'seller', 'listing', 'buyer__profile', 'seller__profile'
+        ).get(id=order_id)
+    except Order.DoesNotExist:
+        return
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'order': order, 'site_url': site_url}
+
+    if event_type == 'paid':
+        # Email to buyer: Order confirmed
+        if order.buyer.email:
+            html_content = render_to_string('marketplace/emails/order_confirmed.html', context)
+            try:
+                send_mail(
+                    subject=f'Order Confirmed - #{order.id}',
+                    message=f'Your order #{order.id} for {order.listing.title} has been confirmed.',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[order.buyer.email],
+                    html_message=html_content,
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+
+        # Email to seller: New sale
+        if order.seller.email:
+            html_content = render_to_string('marketplace/emails/new_sale.html', context)
+            try:
+                send_mail(
+                    subject=f'You made a sale! - Order #{order.id}',
+                    message=f'Your item {order.listing.title} has sold for ${order.item_price}.',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[order.seller.email],
+                    html_message=html_content,
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+
+        # Create in-app alerts
+        Alert.objects.create(
+            user=order.buyer,
+            alert_type='order_update',
+            title=f'Order #{order.id} Confirmed',
+            message=f'Your order for {order.listing.title} has been confirmed.',
+            link=f'/marketplace/order/{order.id}/',
+        )
+        Alert.objects.create(
+            user=order.seller,
+            alert_type='order_update',
+            title=f'New Sale! Order #{order.id}',
+            message=f'Your item {order.listing.title} has sold for ${order.item_price}.',
+            link=f'/marketplace/order/{order.id}/',
+        )
+
+    elif event_type == 'shipped':
+        # Email to buyer: Order shipped
+        if order.buyer.email:
+            html_content = render_to_string('marketplace/emails/order_shipped.html', context)
+            try:
+                send_mail(
+                    subject=f'Your order has shipped - #{order.id}',
+                    message=f'Your order #{order.id} has been shipped via {order.tracking_carrier}. Tracking: {order.tracking_number}',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[order.buyer.email],
+                    html_message=html_content,
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+
+        # In-app alert
+        Alert.objects.create(
+            user=order.buyer,
+            alert_type='order_update',
+            title=f'Order #{order.id} Shipped',
+            message=f'Your order has been shipped! Tracking: {order.tracking_number}',
+            link=f'/marketplace/order/{order.id}/',
+        )
+
+    elif event_type == 'delivered':
+        # Email to seller: Delivery confirmed
+        if order.seller.email:
+            html_content = render_to_string('marketplace/emails/order_delivered.html', context)
+            try:
+                send_mail(
+                    subject=f'Delivery Confirmed - Order #{order.id}',
+                    message=f'The buyer has confirmed receipt of order #{order.id}. Your payout: ${order.seller_payout}',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[order.seller.email],
+                    html_message=html_content,
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+
+        # In-app alert
+        Alert.objects.create(
+            user=order.seller,
+            alert_type='order_update',
+            title=f'Order #{order.id} Delivered',
+            message=f'The buyer confirmed receipt. Your payout: ${order.seller_payout}',
+            link=f'/marketplace/order/{order.id}/',
+        )
+
+    elif event_type == 'payment_failed':
+        # Email to buyer: Payment failed
+        if order.buyer.email:
+            html_content = render_to_string('marketplace/emails/payment_failed.html', context)
+            try:
+                send_mail(
+                    subject=f'Payment Issue - Order #{order.id}',
+                    message=f'We were unable to process your payment for order #{order.id}. Please try again.',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[order.buyer.email],
+                    html_message=html_content,
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+
+        # In-app alert
+        Alert.objects.create(
+            user=order.buyer,
+            alert_type='order_update',
+            title=f'Payment Failed - Order #{order.id}',
+            message=f'We were unable to process your payment. Please try again.',
+            link=f'/marketplace/{order.listing.id}/checkout/',
+        )

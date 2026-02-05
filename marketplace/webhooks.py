@@ -152,6 +152,13 @@ def handle_payment_intent_failed(event):
 
         logger.info(f"Order {order_id} payment failed")
 
+        # Send notification to buyer about payment failure
+        try:
+            from alerts.tasks import send_order_notifications
+            send_order_notifications.delay(order.id, 'payment_failed')
+        except ImportError:
+            pass
+
     except Order.DoesNotExist:
         logger.error(f"Order {order_id} not found")
 

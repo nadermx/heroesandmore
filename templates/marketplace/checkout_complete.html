@@ -10,54 +10,90 @@
             {% if order.status == 'paid' or order.status == 'shipped' or order.status == 'delivered' or order.status == 'completed' %}
             <!-- Success -->
             <div class="mb-4">
-                <div class="rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; background: var(--accent-success); background: rgba(34, 197, 94, 0.1);">
+                <div class="rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; background: rgba(34, 197, 94, 0.1);">
                     <i class="bi bi-check-lg" style="font-size: 2.5rem; color: var(--accent-success);"></i>
                 </div>
             </div>
 
             <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">Order Confirmed!</h1>
-            <p class="text-muted mb-4">Thank you for your purchase. Order #{{ order.id }}</p>
+            <p class="text-muted mb-4">Thank you for your purchase. A confirmation email has been sent.</p>
 
             <div class="card text-start mb-4">
                 <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <span class="text-muted">Order #{{ order.id }}</span>
+                        <span class="badge bg-success">Paid</span>
+                    </div>
+
                     <div class="d-flex mb-3">
                         {% if order.listing and order.listing.image1 %}
-                        <img src="{{ order.listing.image1.url }}" class="me-3" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;">
+                        <img src="{{ order.listing.image1.url }}" class="me-3" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px;">
+                        {% else %}
+                        <div class="me-3 d-flex align-items-center justify-content-center" style="width: 100px; height: 100px; background: var(--gray-100); border-radius: 8px;">
+                            <i class="bi bi-image" style="font-size: 2rem; color: var(--gray-400);"></i>
+                        </div>
                         {% endif %}
                         <div>
                             {% if order.listing %}
                             <h6 class="mb-1">{{ order.listing.title }}</h6>
+                            <small class="text-muted">Condition: {{ order.listing.get_condition_display }}</small>
                             {% else %}
-                            <h6 class="mb-1">Listing unavailable</h6>
+                            <h6 class="mb-1">Item Details</h6>
                             {% endif %}
-                            <small class="text-muted">Sold by {{ order.seller.username }}</small>
+                            <p class="mb-0 mt-2"><small class="text-muted">Seller:</small> <a href="{% url 'accounts:profile' username=order.seller.username %}" class="text-decoration-none">{{ order.seller.username }}</a></p>
                         </div>
                     </div>
 
                     <hr>
 
-                    <div class="row">
+                    <div class="row text-start">
                         <div class="col-6">
-                            <small class="text-muted d-block">Order Total</small>
-                            <strong>${{ order.amount|intcomma }}</strong>
+                            <small class="text-muted d-block">Item Price</small>
+                            <span>${{ order.item_price|intcomma }}</span>
                         </div>
                         <div class="col-6">
-                            <small class="text-muted d-block">Status</small>
-                            <span class="badge bg-success">Paid</span>
+                            <small class="text-muted d-block">Shipping</small>
+                            <span>${{ order.shipping_price }}</span>
                         </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="d-flex justify-content-between">
+                        <strong>Total Paid</strong>
+                        <strong>${{ order.amount|intcomma }}</strong>
                     </div>
 
                     {% if order.shipping_address %}
                     <hr>
-                    <small class="text-muted d-block mb-1">Shipping To</small>
-                    <p class="mb-0" style="white-space: pre-line;">{{ order.shipping_address }}</p>
+                    <small class="text-muted d-block mb-1"><i class="bi bi-geo-alt me-1"></i>Shipping To</small>
+                    <p class="mb-0" style="white-space: pre-line; font-size: 0.9rem;">{{ order.shipping_address }}</p>
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- What's Next -->
+            <div class="card text-start mb-4" style="background: var(--gray-50); border: none;">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2"></i>What happens next?</h6>
+                    <div class="d-flex mb-2">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 24px; height: 24px; min-width: 24px; background: var(--gray-900); color: white; font-size: 0.75rem;">1</div>
+                        <div><strong>Seller ships your item</strong><br><small class="text-muted">Usually within 1-3 business days</small></div>
+                    </div>
+                    <div class="d-flex mb-2">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 24px; height: 24px; min-width: 24px; background: var(--gray-300); color: var(--gray-700); font-size: 0.75rem;">2</div>
+                        <div><strong>Track your package</strong><br><small class="text-muted">You'll get an email with tracking info</small></div>
+                    </div>
+                    <div class="d-flex">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 24px; height: 24px; min-width: 24px; background: var(--gray-300); color: var(--gray-700); font-size: 0.75rem;">3</div>
+                        <div><strong>Confirm delivery</strong><br><small class="text-muted">Let us know when you receive it</small></div>
+                    </div>
                 </div>
             </div>
 
             <div class="d-grid gap-2">
                 <a href="{% url 'marketplace:order_detail' pk=order.id %}" class="btn btn-dark btn-lg">
-                    View Order Details
+                    <i class="bi bi-box-seam me-2"></i>View Order Details
                 </a>
                 <a href="{% url 'marketplace:listing_list' %}" class="btn btn-outline-dark">
                     Continue Shopping
