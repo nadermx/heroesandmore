@@ -3,6 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.core.paginator import Paginator
+from django.utils import timezone
+from urllib.parse import parse_qs
 
 from .models import Wishlist, WishlistItem, Alert, SavedSearch
 from .forms import WishlistForm, WishlistItemForm, SavedSearchForm
@@ -248,6 +250,44 @@ def saved_search_list(request):
 def saved_search_create(request):
     """Save current search"""
     if request.method == 'POST':
+        if request.headers.get('HX-Request'):
+            raw = request.POST.get('query', '')
+            parsed = parse_qs(raw, keep_blank_values=True)
+
+            query = parsed.get('q', [''])[0]
+            category_slug = parsed.get('category', [''])[0]
+            min_price = parsed.get('min_price', [''])[0] or None
+            max_price = parsed.get('max_price', [''])[0] or None
+            condition = parsed.get('condition', [''])[0]
+            listing_type = parsed.get('type', [''])[0]
+            graded_only = parsed.get('graded', [''])
+
+            category = None
+            if category_slug:
+                category = Category.objects.filter(slug=category_slug).first()
+
+            name = request.POST.get('name')
+            if not name:
+                if query:
+                    name = f"Search: {query[:60]}"
+                elif category:
+                    name = f"Category: {category.name}"
+                else:
+                    name = f"Saved search {timezone.now().strftime('%Y-%m-%d')}"
+
+            saved = SavedSearch.objects.create(
+                user=request.user,
+                name=name,
+                query=query,
+                category=category,
+                min_price=min_price or None,
+                max_price=max_price or None,
+                condition=condition,
+                listing_type=listing_type,
+                filters={'graded_only': bool(graded_only and graded_only[0])}
+            )
+            return JsonResponse({'success': True, 'id': saved.id})
+
         form = SavedSearchForm(request.POST)
         if form.is_valid():
             search = form.save(commit=False)

@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Subscription Billing History - HeroesAndMore{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb mb-0" style="font-size: 0.875rem;">
+                <li class="breadcrumb-item"><a href="{% url 'seller_tools:dashboard' %}" class="text-muted">Seller Tools</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'seller_tools:subscription' %}" class="text-muted">Subscription</a></li>
+                <li class="breadcrumb-item active">Billing History</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 1.75rem; margin-bottom: 0;">Billing History</h1>
+    </div>
+</div>
+
+<div class="container py-4">
+    {% if billing_history %}
+    <div class="card">
+        <div class="card-header bg-transparent">
+            <h6 class="fw-bold mb-0">Recent Charges</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Tier</th>
+                        <th>Period</th>
+                        <th>Status</th>
+                        <th class="text-end">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in billing_history %}
+                    <tr>
+                        <td>{{ entry.created|date:"M d, Y" }}</td>
+                        <td>{{ entry.get_transaction_type_display }}</td>
+                        <td class="text-capitalize">{{ entry.tier }}</td>
+                        <td>{{ entry.period_start|date:"M d, Y" }} - {{ entry.period_end|date:"M d, Y" }}</td>
+                        <td>
+                            {% if entry.status == 'succeeded' %}
+                            <span class="badge bg-success">Succeeded</span>
+                            {% elif entry.status == 'failed' %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% elif entry.status == 'refunded' %}
+                            <span class="badge bg-secondary">Refunded</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">${{ entry.amount|floatformat:2|intcomma }}</td>
+                    </tr>
+                    {% if entry.failure_reason %}
+                    <tr class="table-light">
+                        <td colspan="6" class="text-muted small">Failure reason: {{ entry.failure_reason }}</td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <div class="mb-3">
+            <i class="bi bi-receipt display-4" style="color: var(--gray-300);"></i>
+        </div>
+        <h5>No billing history yet</h5>
+        <p class="text-muted mb-3">Your subscription charges will appear here once billing starts.</p>
+        <a href="{% url 'seller_tools:subscription' %}" class="btn btn-dark">Back to Subscription</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

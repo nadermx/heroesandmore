@@ -47,17 +47,38 @@ class ListingForm(forms.ModelForm):
             'ships_from': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City, State'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Require an image for manual listings, but allow programmatic imports to omit
+        if 'image1' in self.fields:
+            self.fields['image1'].required = True
+
     def clean(self):
         cleaned_data = super().clean()
         listing_type = cleaned_data.get('listing_type')
+        grading_service = cleaned_data.get('grading_service')
+        grade = cleaned_data.get('grade')
 
         if listing_type == 'auction':
             duration = cleaned_data.get('auction_duration')
             if not duration:
                 raise forms.ValidationError("Please select an auction duration")
             cleaned_data['auction_end'] = timezone.now() + timedelta(days=int(duration))
+        else:
+            cleaned_data['auction_end'] = None
+
+        cleaned_data['is_graded'] = bool(grading_service or grade)
 
         return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.is_graded = self.cleaned_data.get('is_graded', False)
+        if instance.listing_type == 'auction':
+            instance.starting_bid = instance.price
+        if commit:
+            instance.save()
+        return instance
 
 
 class OfferForm(forms.ModelForm):

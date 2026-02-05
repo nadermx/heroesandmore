@@ -17,7 +17,7 @@
                 <div class="card-body">
                     <h5>{{ listing.title }}</h5>
                     <p class="text-muted small mb-0">
-                        {{ listing.condition }}
+                        {{ listing.get_condition_display }}
                         {% if listing.grade %} &bull; {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %}
                     </p>
                 </div>

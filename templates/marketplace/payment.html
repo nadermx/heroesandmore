@@ -13,11 +13,15 @@
                 <div class="card-body">
                     <!-- Order Summary -->
                     <div class="d-flex gap-3 mb-4 pb-4 border-bottom">
-                        {% if order.listing.image %}
-                        <img src="{{ order.listing.image.url }}" class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
+                        {% if order.listing and order.listing.image1 %}
+                        <img src="{{ order.listing.image1.url }}" class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
                         {% endif %}
                         <div>
+                            {% if order.listing %}
                             <h6 class="mb-1">{{ order.listing.title }}</h6>
+                            {% else %}
+                            <h6 class="mb-1">Listing unavailable</h6>
+                            {% endif %}
                             <p class="text-muted small mb-0">Seller: {{ order.seller.username }}</p>
                         </div>
                     </div>

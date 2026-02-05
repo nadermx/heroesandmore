@@ -192,6 +192,9 @@ SUBSCRIPTION_GRACE_PERIOD_DAYS = 7  # Days before downgrading after failed payme
 SUBSCRIPTION_MAX_RETRY_ATTEMPTS = 4  # Max payment retry attempts
 SUBSCRIPTION_RETRY_INTERVALS = [1, 3, 5, 7]  # Days between retry attempts
 
+# Order payment timeout (hours) before auto-canceling unpaid orders
+ORDER_PAYMENT_TIMEOUT_HOURS = getattr(config, 'ORDER_PAYMENT_TIMEOUT_HOURS', 24)
+
 # Platform fee (3% base, adjusted per seller tier)
 from decimal import Decimal
 PLATFORM_FEE_PERCENT = Decimal('0.03')

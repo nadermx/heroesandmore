@@ -229,3 +229,38 @@ class StripeService:
             payment_method_types=['card'],
             metadata={'user_id': user.id}
         )
+
+    @staticmethod
+    def create_payment_intent_for_amount(amount, user, seller, item_price=None, metadata=None):
+        """Create a PaymentIntent for a one-off amount (API checkout flow)."""
+        customer = StripeService.get_or_create_customer(user)
+        seller_profile = seller.profile
+
+        if metadata is None:
+            metadata = {}
+
+        total_cents = int(amount * 100)
+        fee_base = item_price if item_price is not None else amount
+
+        commission_rate = StripeService.get_seller_commission_rate(seller)
+        platform_fee_cents = int(fee_base * commission_rate * 100)
+
+        params = {
+            'amount': total_cents,
+            'currency': 'usd',
+            'customer': customer.id,
+            'metadata': {
+                'buyer_id': user.id,
+                'seller_id': seller.id,
+                **metadata,
+            },
+            'automatic_payment_methods': {'enabled': True},
+        }
+
+        if seller_profile.stripe_account_id and seller_profile.stripe_charges_enabled:
+            params['transfer_data'] = {
+                'destination': seller_profile.stripe_account_id,
+            }
+            params['application_fee_amount'] = platform_fee_cents
+
+        return stripe.PaymentIntent.create(**params)

@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Upgrade Subscription - HeroesAndMore{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb mb-0" style="font-size: 0.875rem;">
+                <li class="breadcrumb-item"><a href="{% url 'seller_tools:dashboard' %}" class="text-muted">Seller Tools</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'seller_tools:subscription' %}" class="text-muted">Subscription</a></li>
+                <li class="breadcrumb-item active">Upgrade</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 1.75rem; margin-bottom: 0;">Upgrade to {{ tier_info.name }}</h1>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Plan Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="mb-1">{{ tier_info.name }}</h5>
+                            <p class="text-muted mb-0">{{ tier_info.description }}</p>
+                        </div>
+                        <div class="text-end">
+                            <div class="fs-4 fw-bold">${{ tier_info.price }}</div>
+                            <small class="text-muted">per month</small>
+                        </div>
+                    </div>
+
+                    {% if proration and proration.amount %}
+                    <div class="alert alert-info mb-0">
+                        <strong>Proration:</strong>
+                        {% if proration.is_upgrade %}
+                        You will be charged ${{ proration.amount|floatformat:2 }} for the remaining {{ proration.days_remaining }} days of this billing period.
+                        {% else %}
+                        You will receive a credit of ${{ proration.amount|floatformat:2 }} on your next invoice.
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Payment Method</h6>
+                </div>
+                <div class="card-body">
+                    {% if payment_methods %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Select a card</label>
+                            <select name="payment_method_id" class="form-select" required>
+                                <option value="">Choose a card</option>
+                                {% for pm in payment_methods %}
+                                <option value="{{ pm.stripe_payment_method_id }}" {% if pm.is_default %}selected{% endif %}>
+                                    {{ pm.card_brand|title }} **** {{ pm.card_last4 }} ({{ pm.card_exp_month }}/{{ pm.card_exp_year }}){% if pm.is_default %} - Default{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-dark">Confirm Upgrade</button>
+                        <a href="{% url 'seller_tools:subscription' %}" class="btn btn-outline-dark ms-2">Cancel</a>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        You need a payment method before upgrading.
+                    </div>
+                    <a href="{% url 'seller_tools:subscription_payment_methods' %}" class="btn btn-dark">Add Payment Method</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">What you'll get</h6>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><i class="bi bi-check-lg me-2" style="color: var(--accent-success);"></i>{{ tier_info.max_listings }} listings</li>
+                        <li class="mb-2"><i class="bi bi-check-lg me-2" style="color: var(--accent-success);"></i>{{ tier_info.commission_rate }}% commission</li>
+                        {% if tier_info.featured_slots %}
+                        <li class="mb-2"><i class="bi bi-check-lg me-2" style="color: var(--accent-success);"></i>{{ tier_info.featured_slots }} featured slots</li>
+                        {% endif %}
+                        <li class="mb-2"><i class="bi bi-check-lg me-2" style="color: var(--accent-success);"></i>Priority support</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -207,10 +207,12 @@
                             <div class="countdown-timer">
                                 <i class="bi bi-clock"></i>
                                 <span id="countdown">
-                                    {% with remaining=listing.time_remaining %}
-                                        {% if remaining.days > 0 %}{{ remaining.days }}d {% endif %}
-                                        {% if remaining.hours > 0 %}{{ remaining.hours }}h {% endif %}
-                                        {{ remaining.minutes }}m
+                                    {% with remaining=listing.time_remaining_parts %}
+                                        {% if remaining %}
+                                            {% if remaining.days > 0 %}{{ remaining.days }}d {% endif %}
+                                            {% if remaining.hours > 0 %}{{ remaining.hours }}h {% endif %}
+                                            {{ remaining.minutes }}m
+                                        {% endif %}
                                     {% endwith %}
                                 </span>
                             </div>
@@ -231,6 +233,28 @@
                         <i class="bi bi-truck me-1"></i> Free shipping
                         {% endif %}
                     </div>
+
+                    <!-- Recent Sales Ticker -->
+                    {% if recent_sales %}
+                    <div class="mt-3 pt-3 border-top">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-graph-up-arrow text-success"></i>
+                            <span class="small fw-semibold text-uppercase" style="letter-spacing: 0.05em;">Recent Sales</span>
+                        </div>
+                        <div class="recent-sales-ticker">
+                            {% for sale in recent_sales %}
+                            <span class="badge bg-light text-dark me-1 mb-1" style="font-size: 0.8rem;">
+                                {{ sale.get_source_display }} <strong>${{ sale.sale_price|intcomma }}</strong>
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% if listing.price_guide_item %}
+                        <a href="{{ listing.price_guide_item.get_absolute_url }}" class="small text-muted">
+                            View full price history <i class="bi bi-arrow-right"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 

@@ -1,13 +1,8 @@
 """
-Celery tasks for internal subscription billing.
-
-These tasks handle:
-- Nightly subscription renewal processing
-- Failed payment retries
-- Grace period expiration
-- Renewal reminder emails
+Celery tasks for internal subscription billing and bulk imports.
 """
 import logging
+from datetime import timedelta
 from celery import shared_task
 from django.utils import timezone
 from django.core.mail import send_mail
@@ -218,46 +213,16 @@ def send_renewal_reminders():
     subscriptions = SellerSubscription.objects.filter(
         current_period_end__date=reminder_date.date(),
         subscription_status='active',
-        cancel_at_period_end=False,
-    ).exclude(tier='starter').select_related('user')
+    ).exclude(tier='starter')
 
     sent = 0
-
     for subscription in subscriptions:
         try:
-            user = subscription.user
-            tier_info = subscription.get_tier_info()
-
-            subject = f"Your {tier_info['name']} subscription renews in 3 days"
-
-            context = {
-                'user': user,
-                'subscription': subscription,
-                'tier_info': tier_info,
-                'renewal_date': subscription.current_period_end,
-            }
-
-            html_message = render_to_string(
-                'seller_tools/emails/renewal_reminder.html', context
-            )
-            plain_message = render_to_string(
-                'seller_tools/emails/renewal_reminder.txt', context
-            )
-
-            send_mail(
-                subject=subject,
-                message=plain_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                html_message=html_message,
-                fail_silently=True,
-            )
-
+            send_subscription_renewal_notification.delay(subscription.id)
             sent += 1
-
         except Exception as e:
-            logger.error(
-                f"Error sending renewal reminder to user {subscription.user_id}: {e}"
+            logger.exception(
+                f"Error sending renewal reminder for subscription {subscription.id}: {e}"
             )
 
     if sent:
@@ -267,137 +232,231 @@ def send_renewal_reminders():
 
 
 @shared_task
-def send_payment_failed_notification(subscription_id, error_message):
-    """Send notification when subscription payment fails."""
-    from seller_tools.models import SellerSubscription
+def process_bulk_import(bulk_import_id):
+    """Process a bulk import and create draft listings."""
+    from seller_tools.models import BulkImport, BulkImportRow
+    from marketplace.models import Listing
+    from items.models import Category
 
-    try:
-        subscription = SellerSubscription.objects.select_related('user').get(
-            id=subscription_id
+    bulk_import = BulkImport.objects.filter(id=bulk_import_id).select_related('user').first()
+    if not bulk_import:
+        logger.error("Bulk import %s not found", bulk_import_id)
+        return {'success': False, 'error': 'Bulk import not found'}
+
+    if bulk_import.status not in ['validating', 'partial', 'processing', 'pending']:
+        return {'success': False, 'error': 'Import is not ready'}
+
+    rows = bulk_import.rows.all().order_by('row_number')
+
+    success_count = 0
+    error_count = 0
+    processed_rows = 0
+
+    for row in rows:
+        if row.status == 'success':
+            continue
+
+        data = row.data or {}
+        title = (data.get('title') or '').strip()
+        description = (data.get('description') or '').strip()
+        category_slug = (data.get('category') or '').strip()
+        condition = (data.get('condition') or '').strip()
+        price = data.get('price')
+        shipping_price = data.get('shipping_price') or 0
+        listing_type = (data.get('listing_type') or 'fixed').strip()
+        allow_offers = str(data.get('allow_offers', '')).lower() in ['1', 'true', 'yes', 'on']
+        grading_service = (data.get('grading_service') or '').strip()
+        grade = (data.get('grade') or '').strip()
+        cert_number = (data.get('cert_number') or '').strip()
+        auction_duration = data.get('auction_duration_days') or ''
+
+        if not title:
+            row.status = 'error'
+            row.error_message = 'Missing title'
+            row.save(update_fields=['status', 'error_message'])
+            error_count += 1
+            continue
+
+        if not description:
+            row.status = 'error'
+            row.error_message = 'Missing description'
+            row.save(update_fields=['status', 'error_message'])
+            error_count += 1
+            continue
+
+        category = None
+        if category_slug:
+            category = Category.objects.filter(slug=category_slug).first()
+
+        if not category:
+            row.status = 'error'
+            row.error_message = 'Invalid or missing category'
+            row.save(update_fields=['status', 'error_message'])
+            error_count += 1
+            continue
+
+        if not condition:
+            row.status = 'error'
+            row.error_message = 'Missing condition'
+            row.save(update_fields=['status', 'error_message'])
+            error_count += 1
+            continue
+
+        if not price:
+            row.status = 'error'
+            row.error_message = 'Missing price'
+            row.save(update_fields=['status', 'error_message'])
+            error_count += 1
+            continue
+
+        listing = Listing.objects.create(
+            seller=bulk_import.user,
+            title=title,
+            description=description,
+            category=category,
+            condition=condition,
+            price=price,
+            shipping_price=shipping_price,
+            listing_type=listing_type if listing_type in ['fixed', 'auction'] else 'fixed',
+            allow_offers=allow_offers,
+            grading_service=grading_service,
+            grade=grade,
+            cert_number=cert_number,
+            status='draft',
         )
-    except SellerSubscription.DoesNotExist:
-        return
 
-    user = subscription.user
-    tier_info = subscription.get_tier_info()
+        if listing.listing_type == 'auction' and auction_duration:
+            try:
+                days = int(auction_duration)
+                listing.auction_end = timezone.now() + timedelta(days=days)
+                listing.starting_bid = listing.price
+                listing.save(update_fields=['auction_end', 'starting_bid'])
+            except Exception:
+                pass
 
-    subject = f"Payment failed for your {tier_info['name']} subscription"
+        row.listing = listing
+        row.status = 'success'
+        row.error_message = ''
+        row.save(update_fields=['listing', 'status', 'error_message'])
 
-    context = {
-        'user': user,
-        'subscription': subscription,
-        'tier_info': tier_info,
-        'error_message': error_message,
-        'grace_period_end': subscription.grace_period_end,
-        'update_payment_url': f"{settings.SITE_URL}/seller/subscription/payment-methods/",
+        success_count += 1
+        processed_rows += 1
+
+    bulk_import.processed_rows = processed_rows
+    bulk_import.success_count = success_count
+    bulk_import.error_count = error_count
+    bulk_import.status = 'completed' if error_count == 0 else 'partial'
+    bulk_import.completed_at = timezone.now()
+    bulk_import.save(update_fields=[
+        'processed_rows', 'success_count', 'error_count',
+        'status', 'completed_at'
+    ])
+
+    return {
+        'success': True,
+        'processed': processed_rows,
+        'success_count': success_count,
+        'error_count': error_count,
     }
 
-    try:
-        html_message = render_to_string(
-            'seller_tools/emails/payment_failed.html', context
-        )
-        plain_message = render_to_string(
-            'seller_tools/emails/payment_failed.txt', context
-        )
 
-        send_mail(
-            subject=subject,
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            html_message=html_message,
-            fail_silently=True,
-        )
-    except Exception as e:
-        logger.error(
-            f"Error sending payment failed notification to user {user.id}: {e}"
-        )
+@shared_task
+def send_subscription_renewal_notification(subscription_id):
+    from seller_tools.models import SellerSubscription
+    subscription = SellerSubscription.objects.filter(id=subscription_id).select_related('user').first()
+    if not subscription:
+        return
+
+    subject = 'Your HeroesAndMore subscription renews soon'
+    context = {
+        'subscription': subscription,
+        'user': subscription.user,
+    }
+    body = render_to_string('seller_tools/emails/renewal_reminder.txt', context)
+    html_body = render_to_string('seller_tools/emails/renewal_reminder.html', context)
+
+    send_mail(
+        subject,
+        body,
+        getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@heroesandmore.com'),
+        [subscription.user.email],
+        html_message=html_body,
+        fail_silently=True,
+    )
+
+
+@shared_task
+def send_payment_failed_notification(subscription_id, error):
+    from seller_tools.models import SellerSubscription
+    subscription = SellerSubscription.objects.filter(id=subscription_id).select_related('user').first()
+    if not subscription:
+        return
+
+    subject = 'Payment failed for your HeroesAndMore subscription'
+    context = {
+        'subscription': subscription,
+        'user': subscription.user,
+        'error': error,
+    }
+    body = render_to_string('seller_tools/emails/payment_failed.txt', context)
+    html_body = render_to_string('seller_tools/emails/payment_failed.html', context)
+
+    send_mail(
+        subject,
+        body,
+        getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@heroesandmore.com'),
+        [subscription.user.email],
+        html_message=html_body,
+        fail_silently=True,
+    )
 
 
 @shared_task
 def send_payment_recovered_notification(subscription_id):
-    """Send notification when payment succeeds after previous failure."""
     from seller_tools.models import SellerSubscription
-
-    try:
-        subscription = SellerSubscription.objects.select_related('user').get(
-            id=subscription_id
-        )
-    except SellerSubscription.DoesNotExist:
+    subscription = SellerSubscription.objects.filter(id=subscription_id).select_related('user').first()
+    if not subscription:
         return
 
-    user = subscription.user
-    tier_info = subscription.get_tier_info()
-
-    subject = f"Payment successful - Your {tier_info['name']} subscription is active"
-
+    subject = 'Payment recovered for your HeroesAndMore subscription'
     context = {
-        'user': user,
         'subscription': subscription,
-        'tier_info': tier_info,
+        'user': subscription.user,
     }
+    body = render_to_string('seller_tools/emails/payment_recovered.txt', context)
+    html_body = render_to_string('seller_tools/emails/payment_recovered.html', context)
 
-    try:
-        html_message = render_to_string(
-            'seller_tools/emails/payment_recovered.html', context
-        )
-        plain_message = render_to_string(
-            'seller_tools/emails/payment_recovered.txt', context
-        )
-
-        send_mail(
-            subject=subject,
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            html_message=html_message,
-            fail_silently=True,
-        )
-    except Exception as e:
-        logger.error(
-            f"Error sending payment recovered notification to user {user.id}: {e}"
-        )
+    send_mail(
+        subject,
+        body,
+        getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@heroesandmore.com'),
+        [subscription.user.email],
+        html_message=html_body,
+        fail_silently=True,
+    )
 
 
 @shared_task
 def send_subscription_expired_notification(subscription_id, old_tier):
-    """Send notification when subscription expires after grace period."""
     from seller_tools.models import SellerSubscription
-
-    try:
-        subscription = SellerSubscription.objects.select_related('user').get(
-            id=subscription_id
-        )
-    except SellerSubscription.DoesNotExist:
+    subscription = SellerSubscription.objects.filter(id=subscription_id).select_related('user').first()
+    if not subscription:
         return
 
-    user = subscription.user
-
-    subject = "Your seller subscription has expired"
-
+    subject = 'Your HeroesAndMore subscription has expired'
     context = {
-        'user': user,
+        'subscription': subscription,
+        'user': subscription.user,
         'old_tier': old_tier,
-        'subscription_url': f"{settings.SITE_URL}/seller/subscription/",
     }
+    body = render_to_string('seller_tools/emails/subscription_expired.txt', context)
+    html_body = render_to_string('seller_tools/emails/subscription_expired.html', context)
 
-    try:
-        html_message = render_to_string(
-            'seller_tools/emails/subscription_expired.html', context
-        )
-        plain_message = render_to_string(
-            'seller_tools/emails/subscription_expired.txt', context
-        )
-
-        send_mail(
-            subject=subject,
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            html_message=html_message,
-            fail_silently=True,
-        )
-    except Exception as e:
-        logger.error(
-            f"Error sending subscription expired notification to user {user.id}: {e}"
-        )
+    send_mail(
+        subject,
+        body,
+        getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@heroesandmore.com'),
+        [subscription.user.email],
+        html_message=html_body,
+        fail_silently=True,
+    )

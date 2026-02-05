@@ -46,4 +46,9 @@ app.conf.beat_schedule = {
         'task': 'seller_tools.tasks.send_renewal_reminders',
         'schedule': crontab(hour=10, minute=0),  # Daily at 10 AM
     },
+    # Expire unpaid orders hourly
+    'expire-unpaid-orders': {
+        'task': 'marketplace.tasks.expire_unpaid_orders',
+        'schedule': crontab(minute=15),
+    },
 }

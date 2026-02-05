@@ -9,7 +9,7 @@
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-2">
                 <li class="breadcrumb-item"><a href="{% url 'items:category_list' %}">Categories</a></li>
-                <li class="breadcrumb-item"><a href="{% url 'items:category_detail' slug=category.slug %}">{{ category.name }}</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'items:category' slug=category.slug %}">{{ category.name }}</a></li>
                 <li class="breadcrumb-item active">{{ item.name|truncatechars:30 }}</li>
             </ol>
         </nav>
@@ -22,8 +22,8 @@
         <!-- Item info -->
         <div class="col-md-4">
             <div class="card mb-4">
-                {% if item.image %}
-                <img src="{{ item.image.url }}" class="card-img-top" alt="{{ item.name }}">
+                {% if item.images and item.images.0 %}
+                <img src="{{ item.images.0 }}" class="card-img-top" alt="{{ item.name }}">
                 {% else %}
                 <div class="card-img-top d-flex align-items-center justify-content-center bg-light" style="height: 250px;">
                     <i class="bi bi-image text-muted display-1"></i>
@@ -37,35 +37,18 @@
                         {% if item.year %}
                         <tr><th>Year</th><td>{{ item.year }}</td></tr>
                         {% endif %}
-                        {% if item.set_name %}
-                        <tr><th>Set</th><td>{{ item.set_name }}</td></tr>
+                        {% if item.attributes.set %}
+                        <tr><th>Set</th><td>{{ item.attributes.set }}</td></tr>
                         {% endif %}
-                        {% if item.card_number %}
-                        <tr><th>Number</th><td>{{ item.card_number }}</td></tr>
+                        {% if item.attributes.card_number %}
+                        <tr><th>Number</th><td>{{ item.attributes.card_number }}</td></tr>
                         {% endif %}
-                        {% if item.rarity %}
-                        <tr><th>Rarity</th><td>{{ item.rarity }}</td></tr>
+                        {% if item.attributes.rarity %}
+                        <tr><th>Rarity</th><td>{{ item.attributes.rarity }}</td></tr>
                         {% endif %}
                     </table>
                 </div>
             </div>
-
-            {% if item.price_guide_item %}
-            <div class="card mb-4">
-                <div class="card-header bg-transparent">
-                    <h6 class="fw-bold mb-0">Price Guide</h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Avg Price:</span>
-                        <span class="fw-bold text-success">${{ item.price_guide_item.avg_sale_price|default:0|intcomma }}</span>
-                    </div>
-                    <a href="{{ item.price_guide_item.get_absolute_url }}" class="btn btn-outline-dark btn-sm w-100">
-                        View Price History
-                    </a>
-                </div>
-            </div>
-            {% endif %}
         </div>
 
         <!-- Listings -->
@@ -87,13 +70,13 @@
                         <div>
                             <h6 class="mb-1">{{ listing.title }}</h6>
                             <small class="text-muted">
-                                {{ listing.condition }}
+                                {{ listing.get_condition_display }}
                                 {% if listing.grade %} &bull; {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %}
                                 &bull; Seller: {{ listing.seller.username }}
                             </small>
                         </div>
                         <div class="text-end">
-                            <span class="fs-5 fw-bold text-success">${{ listing.price|intcomma }}</span>
+                            <span class="fs-5 fw-bold text-success">${{ listing.get_current_price|intcomma }}</span>
                             {% if listing.shipping_price %}
                             <br><small class="text-muted">+${{ listing.shipping_price }} shipping</small>
                             {% endif %}

@@ -159,7 +159,7 @@
                 <ul class="pagination justify-content-center">
                     {% if listings.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ listings.previous_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">
+                        <a class="page-link" href="?page={{ listings.previous_page_number }}{% if query_params %}&{{ query_params }}{% endif %}">
                             <i class="bi bi-chevron-left"></i>
                         </a>
                     </li>
@@ -170,14 +170,14 @@
                         <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                         {% elif num > listings.number|add:'-3' and num < listings.number|add:'3' %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">{{ num }}</a>
+                            <a class="page-link" href="?page={{ num }}{% if query_params %}&{{ query_params }}{% endif %}">{{ num }}</a>
                         </li>
                         {% endif %}
                     {% endfor %}
 
                     {% if listings.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ listings.next_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}">
+                        <a class="page-link" href="?page={{ listings.next_page_number }}{% if query_params %}&{{ query_params }}{% endif %}">
                             <i class="bi bi-chevron-right"></i>
                         </a>
                     </li>

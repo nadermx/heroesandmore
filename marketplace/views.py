@@ -5,10 +5,12 @@ from django.http import JsonResponse, Http404
 from django.db.models import Q, F
 from django.core.paginator import Paginator
 from django.utils import timezone
+from datetime import timedelta
 from django.conf import settings
 from decimal import Decimal
 
 from .models import Listing, Bid, Offer, Order, Review, SavedListing
+from accounts.models import RecentlyViewed
 from .forms import ListingForm, OfferForm, ReviewForm, ShippingForm
 from items.models import Category
 
@@ -23,6 +25,10 @@ def listing_list(request):
         category = get_object_or_404(Category, slug=category_slug)
         listings = listings.filter(category=category)
 
+    price_guide_id = request.GET.get('price_guide')
+    if price_guide_id:
+        listings = listings.filter(price_guide_item_id=price_guide_id)
+
     condition = request.GET.get('condition')
     if condition:
         listings = listings.filter(condition=condition)
@@ -30,6 +36,10 @@ def listing_list(request):
     listing_type = request.GET.get('type')
     if listing_type:
         listings = listings.filter(listing_type=listing_type)
+
+    graded_only = request.GET.get('graded')
+    if graded_only:
+        listings = listings.filter(is_graded=True)
 
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
@@ -45,6 +55,7 @@ def listing_list(request):
         'price_high': '-price',
         'newest': '-created',
         'ending': 'auction_end',
+        'popular': '-views',
     }
     listings = listings.order_by(sort_options.get(sort, '-created'))
 
@@ -57,7 +68,11 @@ def listing_list(request):
     context = {
         'listings': listings,
         'categories': categories,
+        'query_params': request.GET.copy(),
     }
+    if 'page' in context['query_params']:
+        context['query_params'].pop('page')
+    context['query_params'] = context['query_params'].urlencode()
     return render(request, 'marketplace/listing_list.html', context)
 
 
@@ -67,6 +82,8 @@ def listing_detail(request, pk):
 
     # Increment view count (simple approach)
     Listing.objects.filter(pk=pk).update(views=F('views') + 1)
+    if request.user.is_authenticated:
+        RecentlyViewed.record_view(request.user, listing)
 
     # Check if user has saved this listing
     is_saved = False
@@ -113,24 +130,60 @@ def listing_detail(request, pk):
 @login_required
 def listing_create(request):
     """Create new listing"""
+    prefill = request.session.get('listing_prefill') or {}
+    scan_image = request.session.get('scan_image')
+
+    if request.method == 'GET':
+        item_id = request.GET.get('item')
+        price_guide_id = request.GET.get('price_guide')
+
+        if item_id:
+            from items.models import Item
+            item = Item.objects.filter(pk=item_id).select_related('category').first()
+            if item:
+                prefill.update({
+                    'title': item.name,
+                    'category': item.category_id,
+                    'item_id': item.id,
+                })
+
+        if price_guide_id:
+            from pricing.models import PriceGuideItem
+            price_item = PriceGuideItem.objects.filter(pk=price_guide_id).select_related('category').first()
+            if price_item:
+                prefill.update({
+                    'title': price_item.name,
+                    'category': price_item.category_id,
+                    'price_guide_item': price_item.id,
+                })
+
+        if prefill:
+            request.session['listing_prefill'] = prefill
+
     if request.method == 'POST':
         form = ListingForm(request.POST, request.FILES)
         if form.is_valid():
             listing = form.save(commit=False)
             listing.seller = request.user
-            if form.cleaned_data.get('auction_end'):
-                listing.auction_end = form.cleaned_data['auction_end']
+            if prefill.get('item_id') and not listing.item_id:
+                listing.item_id = prefill.get('item_id')
+            if prefill.get('price_guide_item') and not listing.price_guide_item_id:
+                listing.price_guide_item_id = prefill.get('price_guide_item')
+            listing.auction_end = form.cleaned_data.get('auction_end')
             listing.save()
+            request.session.pop('listing_prefill', None)
+            request.session.pop('scan_image', None)
             messages.success(request, 'Listing created! Review and publish when ready.')
             return redirect('marketplace:listing_edit', pk=listing.pk)
     else:
-        form = ListingForm()
+        form = ListingForm(initial=prefill or None)
 
     categories = Category.objects.filter(is_active=True).order_by('name')
 
     context = {
         'form': form,
         'categories': categories,
+        'scan_image': scan_image,
     }
     return render(request, 'marketplace/listing_form.html', context)
 
@@ -148,8 +201,7 @@ def listing_edit(request, pk):
         form = ListingForm(request.POST, request.FILES, instance=listing)
         if form.is_valid():
             listing = form.save(commit=False)
-            if form.cleaned_data.get('auction_end'):
-                listing.auction_end = form.cleaned_data['auction_end']
+            listing.auction_end = form.cleaned_data.get('auction_end')
             listing.save()
             messages.success(request, 'Listing updated.')
             return redirect('marketplace:listing_detail', pk=pk)
@@ -247,9 +299,14 @@ def make_offer(request, pk):
     if request.method == 'POST':
         form = OfferForm(request.POST)
         if form.is_valid():
+            min_offer = listing.price * Decimal(listing.minimum_offer_percent) / 100
+            if form.cleaned_data['amount'] < min_offer:
+                messages.error(request, f"Minimum offer is ${min_offer:.2f}")
+                return redirect('marketplace:listing_detail', pk=pk)
             offer = form.save(commit=False)
             offer.listing = listing
             offer.buyer = request.user
+            offer.expires_at = timezone.now() + timedelta(hours=48)
             offer.save()
             messages.success(request, 'Your offer has been sent to the seller.')
 
@@ -261,15 +318,22 @@ def respond_offer(request, pk):
     """Seller responds to offer"""
     offer = get_object_or_404(Offer, pk=pk, listing__seller=request.user, status='pending')
 
+    if offer.is_expired():
+        messages.error(request, "This offer has expired.")
+        return redirect('accounts:seller_dashboard')
+
     if request.method == 'POST':
         action = request.POST.get('action')
 
         if action == 'accept':
             offer.status = 'accepted'
+            offer.responded_at = timezone.now()
             offer.save()
             # Create order
             listing = offer.listing
-            platform_fee = offer.amount * Decimal(str(settings.PLATFORM_FEE_PERCENT)) / 100
+            from marketplace.services.stripe_service import StripeService
+            commission_rate = StripeService.get_seller_commission_rate(request.user)
+            platform_fee = offer.amount * commission_rate
             Order.objects.create(
                 listing=listing,
                 buyer=offer.buyer,
@@ -287,14 +351,23 @@ def respond_offer(request, pk):
 
         elif action == 'decline':
             offer.status = 'declined'
+            offer.responded_at = timezone.now()
             offer.save()
             messages.success(request, 'Offer declined.')
 
         elif action == 'counter':
             counter = request.POST.get('counter_amount')
             if counter:
+                try:
+                    counter_amount = Decimal(counter)
+                except Exception:
+                    messages.error(request, 'Invalid counter offer amount.')
+                    return redirect('accounts:seller_dashboard')
+
                 offer.status = 'countered'
-                offer.counter_amount = Decimal(counter)
+                offer.counter_amount = counter_amount
+                offer.countered_at = timezone.now()
+                offer.expires_at = timezone.now() + timedelta(hours=48)
                 offer.save()
                 messages.success(request, 'Counter offer sent.')
 
@@ -304,50 +377,65 @@ def respond_offer(request, pk):
 @login_required
 def checkout(request, pk):
     """Checkout page for buying - combines shipping and payment"""
-    listing = get_object_or_404(Listing, pk=pk, status='active')
+    listing = get_object_or_404(Listing, pk=pk)
 
     if request.user == listing.seller:
         raise Http404("Cannot buy your own listing")
 
+    order = None
+    # If listing is no longer active, allow checkout only for an existing pending order.
+    if listing.status != 'active':
+        order = Order.objects.filter(
+            listing=listing,
+            buyer=request.user,
+            status__in=['pending', 'payment_failed']
+        ).first()
+        if not order:
+            raise Http404("Listing is no longer available")
+
     # Calculate fees based on seller tier
     from marketplace.services.stripe_service import StripeService
     commission_rate = StripeService.get_seller_commission_rate(listing.seller)
-    platform_fee = listing.price * commission_rate
-    total = listing.price + listing.shipping_price
 
-    # Get or create pending order for this listing/buyer
-    order, created = Order.objects.get_or_create(
-        listing=listing,
-        buyer=request.user,
-        status='pending',
-        defaults={
-            'seller': listing.seller,
-            'item_price': listing.price,
-            'shipping_price': listing.shipping_price,
-            'amount': total,
-            'platform_fee': platform_fee,
-            'seller_payout': listing.price - platform_fee,
-            'shipping_address': '',
-        }
-    )
+    if not order:
+        if Order.objects.filter(
+            listing=listing,
+            status__in=['pending', 'payment_failed']
+        ).exclude(buyer=request.user).exists():
+            messages.error(request, 'This listing is currently in another checkout. Please try again shortly.')
+            return redirect('marketplace:listing_detail', pk=pk)
+
+        price = listing.get_current_price()
+        platform_fee = price * commission_rate
+        total = price + listing.shipping_price
+
+        # Get or create pending order for this listing/buyer
+        order, created = Order.objects.get_or_create(
+            listing=listing,
+            buyer=request.user,
+            status='pending',
+            defaults={
+                'seller': listing.seller,
+                'item_price': price,
+                'shipping_price': listing.shipping_price,
+                'amount': total,
+                'platform_fee': platform_fee,
+                'seller_payout': price - platform_fee,
+                'shipping_address': '',
+            }
+        )
+    else:
+        price = order.item_price
+        platform_fee = order.platform_fee
+        total = order.amount
 
     # Get saved payment methods
     payment_methods = StripeService.list_payment_methods(request.user)
-
-    # Create or retrieve payment intent
-    if not order.stripe_payment_intent:
-        intent = StripeService.create_payment_intent(order)
-    else:
-        intent = StripeService.retrieve_payment_intent(order.stripe_payment_intent)
-        # If intent was canceled or expired, create new one
-        if intent.status in ['canceled', 'requires_payment_method']:
-            intent = StripeService.create_payment_intent(order)
 
     context = {
         'listing': listing,
         'order': order,
         'payment_methods': payment_methods,
-        'client_secret': intent.client_secret,
         'platform_fee': platform_fee,
         'total': total,
         'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
@@ -358,7 +446,7 @@ def checkout(request, pk):
 @login_required
 def payment(request, pk):
     """Handle Stripe payment confirmation"""
-    order = get_object_or_404(Order, pk=pk, buyer=request.user, status='pending')
+    order = get_object_or_404(Order, pk=pk, buyer=request.user, status__in=['pending', 'payment_failed'])
 
     from marketplace.services.stripe_service import StripeService
 
@@ -370,7 +458,13 @@ def payment(request, pk):
             order.stripe_payment_status = 'succeeded'
             order.paid_at = timezone.now()
             order.save()
+            if order.listing and order.listing.status != 'sold':
+                order.listing.status = 'sold'
+                order.listing.save(update_fields=['status'])
             return redirect('marketplace:order_detail', pk=pk)
+
+    if order.listing:
+        return redirect('marketplace:checkout', pk=order.listing.pk)
 
     context = {
         'order': order,
@@ -411,7 +505,7 @@ def process_payment(request, pk):
     """Process payment with selected method (AJAX endpoint)"""
     from django.http import JsonResponse
 
-    order = get_object_or_404(Order, pk=pk, buyer=request.user, status='pending')
+    order = get_object_or_404(Order, pk=pk, buyer=request.user, status__in=['pending', 'payment_failed'])
 
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
@@ -421,6 +515,8 @@ def process_payment(request, pk):
     if shipping_address:
         order.shipping_address = shipping_address
         order.save(update_fields=['shipping_address'])
+    elif not order.shipping_address:
+        return JsonResponse({'error': 'Shipping address is required'}, status=400)
 
     payment_method_id = request.POST.get('payment_method_id')
     save_card = request.POST.get('save_card') == 'true'
@@ -547,7 +643,7 @@ def order_detail(request, pk):
     review_form = None
 
     # Show review form if buyer and order completed
-    if request.user == order.buyer and order.status == 'completed':
+    if request.user == order.buyer and order.status in ['delivered', 'completed']:
         if not hasattr(order, 'review'):
             review_form = ReviewForm()
 
@@ -583,7 +679,7 @@ def order_received(request, pk):
     """Buyer confirms receipt"""
     order = get_object_or_404(Order, pk=pk, buyer=request.user, status='shipped')
 
-    order.status = 'completed'
+    order.status = 'delivered'
     order.delivered_at = timezone.now()
     order.save()
     messages.success(request, 'Order marked as received. Please leave a review!')
@@ -594,7 +690,7 @@ def order_received(request, pk):
 @login_required
 def leave_review(request, pk):
     """Leave review for order"""
-    order = get_object_or_404(Order, pk=pk, buyer=request.user, status='completed')
+    order = get_object_or_404(Order, pk=pk, buyer=request.user, status__in=['delivered', 'completed'])
 
     if hasattr(order, 'review'):
         messages.error(request, 'You have already reviewed this order.')
@@ -608,6 +704,9 @@ def leave_review(request, pk):
             review.reviewer = request.user
             review.seller = order.seller
             review.save()
+            if order.status != 'completed':
+                order.status = 'completed'
+                order.save(update_fields=['status', 'updated'])
             messages.success(request, 'Thank you for your review!')
 
     return redirect('marketplace:order_detail', pk=pk)

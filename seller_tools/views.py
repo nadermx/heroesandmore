@@ -364,8 +364,13 @@ def bulk_import_process(request, pk):
         messages.error(request, 'This import cannot be processed')
         return redirect('seller_tools:import_detail', pk=pk)
 
-    # In production, trigger Celery task
-    # process_bulk_import.delay(bulk_import.id)
+    # Trigger Celery task
+    from seller_tools.tasks import process_bulk_import
+    try:
+        process_bulk_import.delay(bulk_import.id)
+    except Exception:
+        # Fallback to synchronous processing if Celery isn't running
+        process_bulk_import(bulk_import.id)
 
     bulk_import.status = 'processing'
     bulk_import.started_at = timezone.now()

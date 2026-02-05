@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render, get_object_or_404
 from django.views.generic import ListView, DetailView
 from django.http import JsonResponse
@@ -104,10 +105,10 @@ class PriceGuideDetailView(DetailView):
         return context
 
     def get_price_history(self, item):
-        """Get price history grouped by month for charts"""
+        """Get price history grouped by month for charts - returns JSON string"""
         twelve_months_ago = timezone.now() - timedelta(days=365)
 
-        return item.sales.filter(
+        history = item.sales.filter(
             sale_date__gte=twelve_months_ago
         ).annotate(
             month=TruncMonth('sale_date')
@@ -115,6 +116,15 @@ class PriceGuideDetailView(DetailView):
             avg_price=Avg('sale_price'),
             count=Count('id')
         ).order_by('month')
+
+        # Convert to JSON-serializable format
+        data = [{
+            'month': h['month'].isoformat(),
+            'avg_price': float(h['avg_price']),
+            'count': h['count']
+        } for h in history]
+
+        return json.dumps(data)
 
 
 def price_guide_search(request):

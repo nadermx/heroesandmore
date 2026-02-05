@@ -169,7 +169,7 @@ class Listing(models.Model):
     identification_confidence = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     # Images
-    image1 = models.ImageField(upload_to='listings/')
+    image1 = models.ImageField(upload_to='listings/', blank=True, null=True)
     image2 = models.ImageField(upload_to='listings/', blank=True, null=True)
     image3 = models.ImageField(upload_to='listings/', blank=True, null=True)
     image4 = models.ImageField(upload_to='listings/', blank=True, null=True)
@@ -213,6 +213,7 @@ class Listing(models.Model):
             highest_bid = self.bids.order_by('-amount').first()
             if highest_bid:
                 return highest_bid.amount
+            return self.starting_bid
         return self.price
 
     def get_total_price(self):
@@ -231,6 +232,21 @@ class Listing(models.Model):
         if remaining.total_seconds() < 0:
             return None
         return remaining
+
+    def time_remaining_parts(self):
+        """Return remaining time as days/hours/minutes for templates."""
+        remaining = self.time_remaining()
+        if not remaining:
+            return None
+        total_seconds = int(remaining.total_seconds())
+        days, remainder = divmod(total_seconds, 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes = remainder // 60
+        return {
+            'days': days,
+            'hours': hours,
+            'minutes': minutes,
+        }
 
 
 class Bid(models.Model):

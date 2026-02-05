@@ -111,7 +111,7 @@ def create_listing_from_scan(request, pk):
     # Pre-populate listing form data
     form_data = {
         'title': scan.get_suggested_title(),
-        'price_guide_item': scan.identified_item,
+        'price_guide_item': scan.identified_item_id,
     }
 
     # Add extracted data

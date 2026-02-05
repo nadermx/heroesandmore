@@ -87,11 +87,11 @@
 
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted">Item Price</span>
-                                <span style="color: var(--gray-900);">${{ listing.price|intcomma }}</span>
+                                <span style="color: var(--gray-900);">${{ order.item_price|intcomma }}</span>
                             </div>
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted">Shipping</span>
-                                <span style="color: var(--gray-900);">{% if listing.shipping_price %}${{ listing.shipping_price }}{% else %}<span style="color: var(--accent-success);">Free</span>{% endif %}</span>
+                            <span style="color: var(--gray-900);">{% if order.shipping_price %}${{ order.shipping_price }}{% else %}<span style="color: var(--accent-success);">Free</span>{% endif %}</span>
                             </div>
                             <hr style="border-color: var(--gray-200);">
                             <div class="d-flex justify-content-between">
@@ -265,10 +265,12 @@ document.getElementById('pay-button').addEventListener('click', async function()
     try {
         const selectedCard = document.querySelector('input[name="selected_card"]:checked');
         let paymentMethodId;
+        let saveCard = false;
 
         if (selectedCard) {
             paymentMethodId = selectedCard.value;
         } else {
+            saveCard = document.getElementById('save-card')?.checked;
             // Create new payment method
             const { paymentMethod, error } = await stripe.createPaymentMethod({
                 type: 'card',
@@ -284,23 +286,33 @@ document.getElementById('pay-button').addEventListener('click', async function()
             paymentMethodId = paymentMethod.id;
         }
 
-        // Confirm payment
-        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
-            '{{ client_secret }}',
-            {
-                payment_method: paymentMethodId,
-                return_url: window.location.origin + '/marketplace/order/{{ order.id }}/complete/'
+        const response = await fetch('{% url "marketplace:process_payment" pk=order.pk %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: new URLSearchParams({
+                payment_method_id: paymentMethodId,
+                save_card: saveCard,
+                shipping_address: shippingAddress
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            window.location.href = data.redirect;
+        } else if (data.requires_action) {
+            const { error: actionError, paymentIntent } = await stripe.confirmCardPayment(data.client_secret);
+            if (actionError) {
+                throw new Error(actionError.message);
             }
-        );
-
-        if (confirmError) {
-            throw new Error(confirmError.message);
-        }
-
-        if (paymentIntent.status === 'succeeded') {
-            window.location.href = '/marketplace/order/{{ order.id }}/complete/';
-        } else if (paymentIntent.status === 'requires_action') {
-            // 3D Secure - Stripe.js handles this automatically with return_url
+            if (paymentIntent && paymentIntent.status === 'succeeded') {
+                window.location.href = '/marketplace/order/{{ order.id }}/complete/';
+            }
+        } else {
+            throw new Error(data.error || 'Payment failed');
         }
 
     } catch (error) {

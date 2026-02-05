@@ -150,7 +150,7 @@
         <!-- Listings Grid -->
         <div class="col-lg-9">
             <!-- Active Filters -->
-            {% if request.GET.category or request.GET.type or request.GET.condition or request.GET.min_price or request.GET.max_price %}
+            {% if request.GET.category or request.GET.type or request.GET.condition or request.GET.min_price or request.GET.max_price or request.GET.graded %}
             <div class="mb-4 d-flex flex-wrap gap-2 align-items-center">
                 <span class="text-muted small">Active filters:</span>
                 {% if request.GET.category %}
@@ -164,6 +164,9 @@
                 {% endif %}
                 {% if request.GET.min_price or request.GET.max_price %}
                 <span class="badge bg-dark">${{ request.GET.min_price|default:'0' }} - ${{ request.GET.max_price|default:'∞' }}</span>
+                {% endif %}
+                {% if request.GET.graded %}
+                <span class="badge bg-dark">Graded only</span>
                 {% endif %}
             </div>
             {% endif %}
@@ -197,7 +200,7 @@
                 <ul class="pagination justify-content-center">
                     {% if listings.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ listings.previous_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">
+                        <a class="page-link" href="?page={{ listings.previous_page_number }}{% if query_params %}&{{ query_params }}{% endif %}">
                             <i class="bi bi-chevron-left"></i>
                         </a>
                     </li>
@@ -208,14 +211,14 @@
                         <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                         {% elif num > listings.number|add:'-3' and num < listings.number|add:'3' %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">{{ num }}</a>
+                            <a class="page-link" href="?page={{ num }}{% if query_params %}&{{ query_params }}{% endif %}">{{ num }}</a>
                         </li>
                         {% endif %}
                     {% endfor %}
 
                     {% if listings.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ listings.next_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">
+                        <a class="page-link" href="?page={{ listings.next_page_number }}{% if query_params %}&{{ query_params }}{% endif %}">
                             <i class="bi bi-chevron-right"></i>
                         </a>
                     </li>

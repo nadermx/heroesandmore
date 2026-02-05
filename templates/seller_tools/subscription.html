@@ -19,7 +19,7 @@
 
 <div class="container py-4">
     <!-- Current Subscription -->
-    {% if subscription.tier != 'starter' and subscription.stripe_subscription_id %}
+    {% if subscription.tier != 'starter' and subscription.subscription_status == 'active' %}
     <div class="card mb-4">
         <div class="card-body">
             <div class="row align-items-center">
@@ -41,8 +41,11 @@
                         <button type="submit" class="btn btn-dark">Reactivate</button>
                     </form>
                     {% else %}
-                    <a href="{% url 'seller_tools:subscription_billing_portal' %}" class="btn btn-outline-dark me-2">
-                        Manage Billing
+                    <a href="{% url 'seller_tools:subscription_payment_methods' %}" class="btn btn-outline-dark me-2">
+                        Payment Methods
+                    </a>
+                    <a href="{% url 'seller_tools:subscription_billing_history' %}" class="btn btn-outline-dark me-2">
+                        Billing History
                     </a>
                     <form method="post" action="{% url 'seller_tools:subscription_cancel' %}" class="d-inline" onsubmit="return confirm('Cancel your subscription?')">
                         {% csrf_token %}

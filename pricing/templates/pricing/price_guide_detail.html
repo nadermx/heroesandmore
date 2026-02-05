@@ -196,12 +196,12 @@
                                         <strong>{{ listing.title|truncatechars:50 }}</strong>
                                         <br>
                                         <small class="text-muted">
-                                            {{ listing.condition }}
+                                            {{ listing.get_condition_display }}
                                             {% if listing.grade %} &bull; {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %}
                                         </small>
                                     </div>
                                     <div class="text-end">
-                                        <strong class="text-success">${{ listing.price|intcomma }}</strong>
+                                        <strong class="text-success">${{ listing.get_current_price|intcomma }}</strong>
                                         <br>
                                         <small class="text-muted">{{ listing.seller.username }}</small>
                                     </div>

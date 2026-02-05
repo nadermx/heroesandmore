@@ -87,6 +87,11 @@ class CreateListingFromScanView(APIView):
             pass
 
         category = get_object_or_404(Category, pk=category_id) if category_id else None
+        if not category:
+            return Response(
+                {'error': 'Category is required to create a listing'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Create listing
         listing = Listing.objects.create(

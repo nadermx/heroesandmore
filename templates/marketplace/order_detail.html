@@ -40,20 +40,20 @@
                             <small class="text-muted">Ordered</small>
                         </div>
                         <div class="position-relative" style="z-index: 1;">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 40px; height: 40px; {% if order.status in 'paid,shipped,delivered,completed' %}background: var(--gray-900); color: white;{% else %}background: var(--gray-200); color: var(--gray-500);{% endif %}">
-                                <i class="bi bi-{% if order.status in 'paid,shipped,delivered,completed' %}check{% else %}credit-card{% endif %}"></i>
+                            <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 40px; height: 40px; {% if order.status == 'paid' or order.status == 'shipped' or order.status == 'delivered' or order.status == 'completed' %}background: var(--gray-900); color: white;{% else %}background: var(--gray-200); color: var(--gray-500);{% endif %}">
+                                <i class="bi bi-{% if order.status == 'paid' or order.status == 'shipped' or order.status == 'delivered' or order.status == 'completed' %}check{% else %}credit-card{% endif %}"></i>
                             </div>
                             <small class="text-muted">Paid</small>
                         </div>
                         <div class="position-relative" style="z-index: 1;">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 40px; height: 40px; {% if order.status in 'shipped,delivered,completed' %}background: var(--gray-900); color: white;{% else %}background: var(--gray-200); color: var(--gray-500);{% endif %}">
-                                <i class="bi bi-{% if order.status in 'shipped,delivered,completed' %}check{% else %}truck{% endif %}"></i>
+                            <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 40px; height: 40px; {% if order.status == 'shipped' or order.status == 'delivered' or order.status == 'completed' %}background: var(--gray-900); color: white;{% else %}background: var(--gray-200); color: var(--gray-500);{% endif %}">
+                                <i class="bi bi-{% if order.status == 'shipped' or order.status == 'delivered' or order.status == 'completed' %}check{% else %}truck{% endif %}"></i>
                             </div>
                             <small class="text-muted">Shipped</small>
                         </div>
                         <div class="position-relative" style="z-index: 1;">
-                            <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 40px; height: 40px; {% if order.status in 'delivered,completed' %}background: var(--gray-900); color: white;{% else %}background: var(--gray-200); color: var(--gray-500);{% endif %}">
-                                <i class="bi bi-{% if order.status in 'delivered,completed' %}check{% else %}box{% endif %}"></i>
+                            <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 40px; height: 40px; {% if order.status == 'delivered' or order.status == 'completed' %}background: var(--gray-900); color: white;{% else %}background: var(--gray-200); color: var(--gray-500);{% endif %}">
+                                <i class="bi bi-{% if order.status == 'delivered' or order.status == 'completed' %}check{% else %}box{% endif %}"></i>
                             </div>
                             <small class="text-muted">Delivered</small>
                         </div>
@@ -68,7 +68,7 @@
                 </div>
                 <div class="card-body">
                     <div class="d-flex">
-                        {% if order.listing.image1 %}
+                        {% if order.listing and order.listing.image1 %}
                         <img src="{{ order.listing.image1.url }}" class="me-3" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px;">
                         {% else %}
                         <div class="me-3 d-flex align-items-center justify-content-center" style="width: 100px; height: 100px; background: var(--gray-100); border-radius: 8px;">
@@ -76,10 +76,14 @@
                         </div>
                         {% endif %}
                         <div>
+                            {% if order.listing %}
                             <h5 class="mb-1" style="color: var(--gray-900);">{{ order.listing.title }}</h5>
                             <p class="mb-1 text-muted">Condition: {{ order.listing.get_condition_display }}</p>
                             {% if order.listing.grading_service %}
                             <p class="mb-0 text-muted">Grade: <span class="fw-semibold">{{ order.listing.grading_service|upper }} {{ order.listing.grade }}</span></p>
+                            {% endif %}
+                            {% else %}
+                            <h5 class="mb-1" style="color: var(--gray-900);">Listing unavailable</h5>
                             {% endif %}
                         </div>
                     </div>
@@ -144,8 +148,9 @@
                 </div>
                 {% endif %}
 
-                {% if order.status == 'completed' and not order.review %}
-                <div class="card mb-4">
+                {% if order.status == 'delivered' or order.status == 'completed' %}
+                {% if not order.review %}
+                <div class="card mb-4" id="review">
                     <div class="card-header bg-transparent">
                         <h6 class="fw-bold mb-0">Leave a Review</h6>
                     </div>
@@ -169,6 +174,7 @@
                         </form>
                     </div>
                 </div>
+                {% endif %}
                 {% endif %}
             {% endif %}
         </div>
@@ -198,7 +204,7 @@
                         {% if is_seller %}
                         <hr style="border-color: var(--gray-200);">
                         <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted">Platform Fee (3%)</span>
+                            <span class="text-muted">Platform Fee</span>
                             <span class="text-muted">-${{ order.platform_fee }}</span>
                         </div>
                         <div class="d-flex justify-content-between">
@@ -212,15 +218,21 @@
                 <div class="card mb-3">
                     <div class="card-body">
                         <h6 class="fw-bold mb-2">{% if is_seller %}Buyer{% else %}Seller{% endif %}</h6>
-                        <a href="{% url 'accounts:profile' username=order.buyer.username %}" class="text-decoration-none d-flex align-items-center mb-2">
+                        {% if is_seller %}
+                        {% with other_user=order.buyer %}
+                        {% else %}
+                        {% with other_user=order.seller %}
+                        {% endif %}
+                        <a href="{% url 'accounts:profile' username=other_user.username %}" class="text-decoration-none d-flex align-items-center mb-2">
                             <div class="rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; background: var(--gray-200);">
                                 <i class="bi bi-person" style="color: var(--gray-600);"></i>
                             </div>
-                            <span style="color: var(--gray-900);">{% if is_seller %}{{ order.buyer.username }}{% else %}{{ order.seller.username }}{% endif %}</span>
+                            <span style="color: var(--gray-900);">{{ other_user.username }}</span>
                         </a>
-                        <a href="{% url 'social:compose_to' username=order.buyer.username %}" class="btn btn-outline-dark btn-sm w-100">
+                        <a href="{% url 'social:compose_to' username=other_user.username %}" class="btn btn-outline-dark btn-sm w-100">
                             <i class="bi bi-envelope me-1"></i> Send Message
                         </a>
+                        {% endwith %}
                     </div>
                 </div>
 

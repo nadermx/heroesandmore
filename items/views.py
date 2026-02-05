@@ -108,7 +108,11 @@ def category_detail(request, slug):
         'listings': listings,
         'subcategories': subcategories,
         'ancestors': category.get_ancestors(),
+        'query_params': request.GET.copy(),
     }
+    if 'page' in context['query_params']:
+        context['query_params'].pop('page')
+    context['query_params'] = context['query_params'].urlencode()
     return render(request, 'items/category_detail.html', context)
 
 
@@ -198,7 +202,11 @@ def search(request):
         'query': query,
         'listings': listings,
         'categories': categories,
+        'query_params': request.GET.copy(),
     }
+    if 'page' in context['query_params']:
+        context['query_params'].pop('page')
+    context['query_params'] = context['query_params'].urlencode()
     return render(request, 'items/search.html', context)
 
 

@@ -56,13 +56,17 @@
             <i class="bi bi-clock"></i>
             {% if listing.auction_end %}
             <span data-countdown="{{ listing.auction_end|date:'c' }}">
-                {% with remaining=listing.time_remaining %}
-                    {% if remaining.days > 0 %}
-                        {{ remaining.days }}d {{ remaining.hours }}h
-                    {% elif remaining.hours > 0 %}
-                        {{ remaining.hours }}h {{ remaining.minutes }}m
-                    {% elif remaining.minutes > 0 %}
-                        {{ remaining.minutes }}m
+                {% with remaining=listing.time_remaining_parts %}
+                    {% if remaining %}
+                        {% if remaining.days > 0 %}
+                            {{ remaining.days }}d {{ remaining.hours }}h
+                        {% elif remaining.hours > 0 %}
+                            {{ remaining.hours }}h {{ remaining.minutes }}m
+                        {% elif remaining.minutes > 0 %}
+                            {{ remaining.minutes }}m
+                        {% else %}
+                            Ending soon
+                        {% endif %}
                     {% else %}
                         Ending soon
                     {% endif %}

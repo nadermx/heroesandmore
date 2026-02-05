@@ -167,7 +167,24 @@ class ListingCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['seller'] = self.context['request'].user
         validated_data['status'] = 'draft'
-        return super().create(validated_data)
+        instance = super().create(validated_data)
+        instance.is_graded = bool(validated_data.get('grading_service') or validated_data.get('grade'))
+        update_fields = ['is_graded']
+        if instance.listing_type == 'auction':
+            instance.starting_bid = instance.price
+            update_fields.append('starting_bid')
+        instance.save(update_fields=update_fields)
+        return instance
+
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        instance.is_graded = bool(validated_data.get('grading_service') or validated_data.get('grade'))
+        update_fields = ['is_graded']
+        if instance.listing_type == 'auction':
+            instance.starting_bid = instance.price
+            update_fields.append('starting_bid')
+        instance.save(update_fields=update_fields)
+        return instance
 
 
 class BidSerializer(serializers.ModelSerializer):

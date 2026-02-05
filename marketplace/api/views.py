@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, IsAuthenticate
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from datetime import timedelta
 from django.db.models import Q
 from decimal import Decimal
 
@@ -147,7 +148,7 @@ class ListingViewSet(viewsets.ModelViewSet):
         if listing.use_extended_bidding and listing.auction_end:
             time_left = listing.auction_end - timezone.now()
             if time_left.total_seconds() < listing.extended_bidding_minutes * 60:
-                listing.auction_end = timezone.now() + timezone.timedelta(
+                listing.auction_end = timezone.now() + timedelta(
                     minutes=listing.extended_bidding_minutes
                 )
                 listing.times_extended += 1
@@ -194,7 +195,7 @@ class ListingViewSet(viewsets.ModelViewSet):
             buyer=request.user,
             amount=amount,
             message=serializer.validated_data.get('message', ''),
-            expires_at=timezone.now() + timezone.timedelta(hours=48)
+            expires_at=timezone.now() + timedelta(hours=48)
         )
 
         return Response(OfferSerializer(offer).data, status=status.HTTP_201_CREATED)
@@ -242,8 +243,9 @@ class OfferViewSet(viewsets.ReadOnlyModelViewSet):
 
         # Create order
         listing = offer.listing
-        from django.conf import settings
-        platform_fee = offer.amount * Decimal(settings.PLATFORM_FEE_PERCENT) / 100
+        from marketplace.services.stripe_service import StripeService
+        commission_rate = StripeService.get_seller_commission_rate(listing.seller)
+        platform_fee = offer.amount * commission_rate
 
         Order.objects.create(
             listing=listing,
@@ -281,6 +283,12 @@ class OfferViewSet(viewsets.ReadOnlyModelViewSet):
             Offer, pk=pk, listing__seller=request.user, status='pending'
         )
 
+        if offer.is_expired():
+            return Response(
+                {'error': 'Offer has expired'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         serializer = CounterOfferSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -288,7 +296,7 @@ class OfferViewSet(viewsets.ReadOnlyModelViewSet):
         offer.counter_amount = serializer.validated_data['amount']
         offer.counter_message = serializer.validated_data.get('message', '')
         offer.countered_at = timezone.now()
-        offer.expires_at = timezone.now() + timezone.timedelta(hours=48)
+        offer.expires_at = timezone.now() + timedelta(hours=48)
         offer.save()
 
         return Response(OfferSerializer(offer).data)
@@ -403,7 +411,7 @@ class EndingSoonView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        one_hour = timezone.now() + timezone.timedelta(hours=1)
+        one_hour = timezone.now() + timedelta(hours=1)
         return Listing.objects.filter(
             status='active',
             listing_type='auction',
@@ -488,7 +496,7 @@ class CheckoutView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        listing = get_object_or_404(Listing, pk=pk, status='active')
+        listing = get_object_or_404(Listing, pk=pk)
 
         if listing.seller == request.user:
             return Response(
@@ -499,32 +507,63 @@ class CheckoutView(views.APIView):
         serializer = CheckoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Calculate fees
-        from django.conf import settings
-        platform_fee_percent = getattr(settings, 'PLATFORM_FEE_PERCENT', Decimal('10'))
-        price = listing.get_current_price()
-        platform_fee = price * platform_fee_percent / 100
-        total = price + listing.shipping_price
+        if listing.status != 'active':
+            order = Order.objects.filter(
+                listing=listing,
+                buyer=request.user,
+                status__in=['pending', 'payment_failed']
+            ).first()
+            if not order:
+                return Response(
+                    {'error': 'Listing is no longer available'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            if Order.objects.filter(
+                listing=listing,
+                status__in=['pending', 'payment_failed']
+            ).exclude(buyer=request.user).exists():
+                return Response(
+                    {'error': 'Listing is currently in another checkout'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        # Create pending order
-        order = Order.objects.create(
-            listing=listing,
-            buyer=request.user,
-            seller=listing.seller,
-            item_price=price,
-            shipping_price=listing.shipping_price,
-            amount=total,
-            platform_fee=platform_fee,
-            seller_payout=price - platform_fee,
-            shipping_address=serializer.validated_data['shipping_address'],
-            status='pending'
-        )
+            # Calculate fees
+            from marketplace.services.stripe_service import StripeService
+            platform_fee_percent = StripeService.get_seller_commission_rate(listing.seller)
+            price = listing.get_current_price()
+            platform_fee = price * platform_fee_percent
+            total = price + listing.shipping_price
 
-        # Mark listing as pending sale
-        listing.status = 'sold'
-        listing.save()
+            # Create pending order
+            order, _ = Order.objects.get_or_create(
+                listing=listing,
+                buyer=request.user,
+                status='pending',
+                defaults={
+                    'seller': listing.seller,
+                    'item_price': price,
+                    'shipping_price': listing.shipping_price,
+                    'amount': total,
+                    'platform_fee': platform_fee,
+                    'seller_payout': price - platform_fee,
+                    'shipping_address': serializer.validated_data['shipping_address'],
+                }
+            )
 
-        return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+        from marketplace.services.stripe_service import StripeService
+        if order.stripe_payment_intent:
+            intent = StripeService.retrieve_payment_intent(order.stripe_payment_intent)
+            if intent.status in ['canceled', 'requires_payment_method']:
+                intent = StripeService.create_payment_intent(order)
+        else:
+            intent = StripeService.create_payment_intent(order)
+
+        return Response({
+            'order': OrderSerializer(order).data,
+            'client_secret': intent.client_secret,
+            'payment_intent_id': intent.id,
+        }, status=status.HTTP_201_CREATED)
 
 
 class PaymentIntentView(views.APIView):
@@ -539,15 +578,62 @@ class PaymentIntentView(views.APIView):
         offer_id = serializer.validated_data.get('offer_id')
 
         if listing_id:
-            listing = get_object_or_404(Listing, pk=listing_id, status='active')
-            price = listing.get_current_price()
-            total = price + listing.shipping_price
+            listing = get_object_or_404(Listing, pk=listing_id)
+            if listing.status != 'active':
+                order = Order.objects.filter(
+                    listing=listing,
+                    buyer=request.user,
+                    status__in=['pending', 'payment_failed']
+                ).first()
+                if not order:
+                    return Response(
+                        {'error': 'Listing is no longer available'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                if Order.objects.filter(
+                    listing=listing,
+                    status__in=['pending', 'payment_failed']
+                ).exclude(buyer=request.user).exists():
+                    return Response(
+                        {'error': 'Listing is currently in another checkout'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                from marketplace.services.stripe_service import StripeService
+                platform_fee_percent = StripeService.get_seller_commission_rate(listing.seller)
+                price = listing.get_current_price()
+                platform_fee = price * platform_fee_percent
+                total = price + listing.shipping_price
+                order, _ = Order.objects.get_or_create(
+                    listing=listing,
+                    buyer=request.user,
+                    status='pending',
+                    defaults={
+                        'seller': listing.seller,
+                        'item_price': price,
+                        'shipping_price': listing.shipping_price,
+                        'amount': total,
+                        'platform_fee': platform_fee,
+                        'seller_payout': price - platform_fee,
+                        'shipping_address': '',
+                    }
+                )
         elif offer_id:
             offer = get_object_or_404(
                 Offer, pk=offer_id, buyer=request.user, status='accepted'
             )
             listing = offer.listing
-            total = offer.amount + listing.shipping_price
+            order = Order.objects.filter(
+                listing=listing,
+                buyer=request.user,
+                status__in=['pending', 'payment_failed']
+            ).first()
+            if not order:
+                return Response(
+                    {'error': 'Order not found for this offer'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         else:
             return Response(
                 {'error': 'listing_id or offer_id required'},
@@ -557,19 +643,17 @@ class PaymentIntentView(views.APIView):
         # Create Stripe PaymentIntent
         try:
             from marketplace.services.stripe_service import StripeService
-            intent = StripeService.create_payment_intent_for_amount(
-                amount=total,
-                user=request.user,
-                seller=listing.seller,
-                metadata={
-                    'listing_id': listing.id,
-                    'offer_id': offer_id,
-                }
-            )
+            if order.stripe_payment_intent:
+                intent = StripeService.retrieve_payment_intent(order.stripe_payment_intent)
+                if intent.status in ['canceled', 'requires_payment_method']:
+                    intent = StripeService.create_payment_intent(order)
+            else:
+                intent = StripeService.create_payment_intent(order)
             return Response({
                 'client_secret': intent.client_secret,
                 'payment_intent_id': intent.id,
-                'amount': str(total),
+                'order_id': order.id,
+                'amount': str(order.amount),
             })
         except Exception as e:
             return Response(
@@ -602,8 +686,12 @@ class PaymentConfirmView(views.APIView):
 
             if intent.status == 'succeeded':
                 order.status = 'paid'
+                order.stripe_payment_status = 'succeeded'
                 order.paid_at = timezone.now()
-                order.save()
+                order.save(update_fields=['status', 'stripe_payment_status', 'paid_at', 'updated'])
+                if order.listing and order.listing.status != 'sold':
+                    order.listing.status = 'sold'
+                    order.listing.save(update_fields=['status'])
                 return Response(OrderSerializer(order).data)
             else:
                 return Response(
