@@ -193,6 +193,7 @@ Application logs in `/home/www/heroesandmore/logs/`:
 |------|---------|---------------|
 | `errors.log` | All ERROR level logs | First place to look for issues |
 | `stripe.log` | Stripe API calls, payments, Connect | Payment failures, webhook issues |
+| `frontend.log` | JavaScript errors from browsers | Client-side bugs, mobile issues |
 | `app.log` | General application activity | Flow debugging |
 | `security.log` | Auth failures, permission issues | Login problems, suspicious activity |
 | `celery_tasks.log` | Background task execution | Scheduled jobs failing |
@@ -203,9 +204,12 @@ System logs in `/var/log/heroesandmore/`:
 
 | File | Purpose |
 |------|---------|
-| `heroesandmore.log` | Gunicorn web server output |
-| `celery.log` | Celery worker process |
-| `celerybeat.log` | Celery beat scheduler |
+| `heroesandmore.out.log` | Gunicorn web server stdout |
+| `heroesandmore.err.log` | Gunicorn web server stderr (errors) |
+| `celery.out.log` | Celery worker stdout |
+| `celery.err.log` | Celery worker stderr (errors) |
+| `celerybeat.out.log` | Celery beat stdout |
+| `celerybeat.err.log` | Celery beat stderr (errors) |
 
 ### Quick Debug Commands
 ```bash
@@ -233,7 +237,7 @@ logger.warning('Something unexpected')
 logger.error('Error occurred', exc_info=True)  # Include traceback
 ```
 
-Available loggers: `accounts`, `marketplace`, `pricing`, `alerts`, `scanner`, `api`, `seller_tools`
+Available loggers: `accounts`, `marketplace`, `pricing`, `alerts`, `scanner`, `api`, `seller_tools`, `frontend`
 
 ## Config Values Needed (config.py)
 Copy `config.py.example` to `config.py` and set:
