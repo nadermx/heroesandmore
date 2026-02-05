@@ -210,23 +210,48 @@ class BidCreateSerializer(serializers.Serializer):
         return value
 
 
+class OfferListingSerializer(serializers.ModelSerializer):
+    """Compact listing serializer for offers"""
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Listing
+        fields = ['id', 'title', 'price', 'image_url']
+
+    def get_image_url(self, obj):
+        if obj.image1:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image1.url)
+            return obj.image1.url
+        return None
+
+
 class OfferSerializer(serializers.ModelSerializer):
     """Serializer for offers"""
+    listing = OfferListingSerializer(read_only=True)
     buyer_username = serializers.CharField(source='buyer.username', read_only=True)
-    listing_title = serializers.CharField(source='listing.title', read_only=True)
-    listing_id = serializers.IntegerField(source='listing.id', read_only=True)
+    is_from_buyer = serializers.SerializerMethodField()
+    time_remaining = serializers.CharField(read_only=True)
 
     class Meta:
         model = Offer
         fields = [
-            'id', 'listing_id', 'listing_title', 'amount', 'message',
-            'buyer_username', 'status', 'counter_amount', 'counter_message',
+            'id', 'listing', 'amount', 'message',
+            'buyer_username', 'status', 'is_from_buyer',
+            'counter_amount', 'counter_message', 'time_remaining',
             'expires_at', 'created'
         ]
         read_only_fields = [
             'status', 'counter_amount', 'counter_message',
-            'buyer_username', 'expires_at'
+            'buyer_username', 'expires_at', 'is_from_buyer', 'time_remaining'
         ]
+
+    def get_is_from_buyer(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.buyer == request.user
+        return False
 
 
 class OfferCreateSerializer(serializers.Serializer):

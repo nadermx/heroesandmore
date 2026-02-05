@@ -299,7 +299,78 @@ class OfferViewSet(viewsets.ReadOnlyModelViewSet):
         offer.expires_at = timezone.now() + timedelta(hours=48)
         offer.save()
 
+        # Notify buyer of counter-offer
+        try:
+            from alerts.tasks import send_counter_offer_notification
+            send_counter_offer_notification.delay(offer.id)
+        except Exception:
+            pass
+
         return Response(OfferSerializer(offer).data)
+
+    @action(detail=True, methods=['post'], url_path='accept-counter')
+    def accept_counter(self, request, pk=None):
+        """Accept a counter-offer (buyer only)"""
+        offer = get_object_or_404(
+            Offer, pk=pk, buyer=request.user, status='countered'
+        )
+
+        if offer.is_expired():
+            return Response(
+                {'error': 'Counter-offer has expired'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        offer.status = 'accepted'
+        offer.responded_at = timezone.now()
+        offer.save()
+
+        # Create order with counter-offer amount
+        listing = offer.listing
+        from marketplace.services.stripe_service import StripeService
+        commission_rate = StripeService.get_seller_commission_rate(listing.seller)
+        platform_fee = offer.counter_amount * commission_rate
+
+        order = Order.objects.create(
+            listing=listing,
+            buyer=request.user,
+            seller=listing.seller,
+            item_price=offer.counter_amount,
+            shipping_price=listing.shipping_price,
+            amount=offer.counter_amount + listing.shipping_price,
+            platform_fee=platform_fee,
+            seller_payout=offer.counter_amount - platform_fee,
+            shipping_address='',
+            status='pending'
+        )
+
+        listing.status = 'sold'
+        listing.save()
+
+        # Notify seller that buyer accepted counter-offer
+        try:
+            from alerts.tasks import send_counter_offer_accepted_notification
+            send_counter_offer_accepted_notification.delay(offer.id, order.id)
+        except Exception:
+            pass
+
+        return Response({
+            'status': 'accepted',
+            'order_id': order.id
+        })
+
+    @action(detail=True, methods=['post'], url_path='decline-counter')
+    def decline_counter(self, request, pk=None):
+        """Decline a counter-offer (buyer only)"""
+        offer = get_object_or_404(
+            Offer, pk=pk, buyer=request.user, status='countered'
+        )
+
+        offer.status = 'declined'
+        offer.responded_at = timezone.now()
+        offer.save()
+
+        return Response({'status': 'declined'})
 
 
 class OrderViewSet(viewsets.ReadOnlyModelViewSet):
