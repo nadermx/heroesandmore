@@ -133,8 +133,62 @@
                 </div>
             </div>
 
+            <!-- Seller Actions -->
+            {% if is_seller %}
+                {% if order.status == 'paid' or order.status == 'shipped' %}
+                <div class="card mb-4">
+                    <div class="card-header bg-transparent">
+                        <h6 class="fw-bold mb-0">Order Actions</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">Issue a refund if there's an issue with the order.</p>
+                        <form method="post" action="{% url 'marketplace:order_refund' pk=order.pk %}" onsubmit="return confirm('Are you sure you want to issue a full refund? This cannot be undone.');">
+                            {% csrf_token %}
+                            <input type="hidden" name="refund_type" value="full">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Issue Full Refund
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if order.status == 'pending' %}
+                <div class="card mb-4">
+                    <div class="card-header bg-transparent">
+                        <h6 class="fw-bold mb-0">Cancel Order</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">Cancel this order if the buyer doesn't complete payment.</p>
+                        <form method="post" action="{% url 'marketplace:order_cancel' pk=order.pk %}" onsubmit="return confirm('Are you sure you want to cancel this order?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-x-circle me-1"></i> Cancel Order
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            {% endif %}
+
             <!-- Buyer Actions -->
             {% if not is_seller %}
+                {% if order.status == 'pending' or order.status == 'payment_failed' %}
+                <div class="card mb-4" style="border: 2px solid var(--gray-900);">
+                    <div class="card-body text-center py-4">
+                        <h6 class="fw-bold mb-2">Complete Your Purchase</h6>
+                        <p class="text-muted mb-3">Finish checkout to secure your item</p>
+                        <a href="{% url 'marketplace:checkout' pk=order.listing.id %}" class="btn btn-dark">
+                            <i class="bi bi-credit-card me-1"></i> Pay Now
+                        </a>
+                        <form method="post" action="{% url 'marketplace:order_cancel' pk=order.pk %}" class="mt-3" onsubmit="return confirm('Are you sure you want to cancel this order?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-link text-muted btn-sm">Cancel Order</button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
                 {% if order.status == 'shipped' %}
                 <div class="card mb-4" style="border: 2px solid var(--gray-900);">
                     <div class="card-body text-center py-4">

@@ -334,7 +334,7 @@ def respond_offer(request, pk):
             from marketplace.services.stripe_service import StripeService
             commission_rate = StripeService.get_seller_commission_rate(request.user)
             platform_fee = offer.amount * commission_rate
-            Order.objects.create(
+            order = Order.objects.create(
                 listing=listing,
                 buyer=offer.buyer,
                 seller=request.user,
@@ -347,7 +347,15 @@ def respond_offer(request, pk):
             )
             listing.status = 'sold'
             listing.save()
-            messages.success(request, 'Offer accepted! Waiting for buyer payment.')
+
+            # Send notification to buyer
+            try:
+                from alerts.tasks import send_offer_accepted_notification
+                send_offer_accepted_notification.delay(order.id)
+            except Exception:
+                pass
+
+            messages.success(request, 'Offer accepted! Buyer has been notified to complete payment.')
 
         elif action == 'decline':
             offer.status = 'declined'
@@ -724,6 +732,146 @@ def leave_review(request, pk):
                 order.status = 'completed'
                 order.save(update_fields=['status', 'updated'])
             messages.success(request, 'Thank you for your review!')
+
+    return redirect('marketplace:order_detail', pk=pk)
+
+
+@login_required
+def order_refund(request, pk):
+    """Seller issues refund for an order"""
+    import stripe
+    from django.conf import settings
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+
+    order = get_object_or_404(Order, pk=pk, seller=request.user)
+
+    # Can only refund paid/shipped orders
+    if order.status not in ['paid', 'shipped']:
+        messages.error(request, 'This order cannot be refunded.')
+        return redirect('marketplace:order_detail', pk=pk)
+
+    if not order.stripe_payment_intent:
+        messages.error(request, 'No payment found to refund.')
+        return redirect('marketplace:order_detail', pk=pk)
+
+    if request.method == 'POST':
+        refund_type = request.POST.get('refund_type', 'full')
+
+        try:
+            if refund_type == 'full':
+                refund_amount = order.amount
+            else:
+                refund_amount = Decimal(request.POST.get('refund_amount', '0'))
+                if refund_amount <= 0 or refund_amount > order.amount:
+                    messages.error(request, 'Invalid refund amount.')
+                    return redirect('marketplace:order_detail', pk=pk)
+
+            # Create refund in Stripe
+            refund = stripe.Refund.create(
+                payment_intent=order.stripe_payment_intent,
+                amount=int(refund_amount * 100),  # Convert to cents
+            )
+
+            # Update order
+            order.refund_amount = refund_amount
+            order.stripe_refund_id = refund.id
+            if refund_amount >= order.amount:
+                order.refund_status = 'full'
+                order.status = 'refunded'
+            else:
+                order.refund_status = 'partial'
+            order.save()
+
+            # Restore listing if full refund
+            if order.refund_status == 'full' and order.listing:
+                order.listing.status = 'active'
+                order.listing.save(update_fields=['status'])
+
+            # Send notification to buyer
+            try:
+                from alerts.tasks import send_refund_notification
+                send_refund_notification.delay(order.id, float(refund_amount))
+            except Exception:
+                pass
+
+            messages.success(request, f'Refund of ${refund_amount} has been issued.')
+
+        except stripe.error.StripeError as e:
+            messages.error(request, f'Refund failed: {e.user_message}')
+        except Exception as e:
+            messages.error(request, f'Refund failed: {str(e)}')
+
+    return redirect('marketplace:order_detail', pk=pk)
+
+
+@login_required
+def order_cancel(request, pk):
+    """Cancel an order (buyer or seller)"""
+    import stripe
+    from django.conf import settings
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+
+    order = get_object_or_404(Order, pk=pk)
+
+    # Check permission - must be buyer or seller
+    if request.user != order.buyer and request.user != order.seller:
+        messages.error(request, 'You do not have permission to cancel this order.')
+        return redirect('marketplace:order_detail', pk=pk)
+
+    # Determine who is cancelling
+    is_buyer = request.user == order.buyer
+    cancelled_by = 'buyer' if is_buyer else 'seller'
+
+    # Check if order can be cancelled
+    # Buyers can cancel: pending, payment_failed
+    # Sellers can cancel: pending, paid (with refund)
+    if is_buyer and order.status not in ['pending', 'payment_failed']:
+        messages.error(request, 'This order can no longer be cancelled.')
+        return redirect('marketplace:order_detail', pk=pk)
+
+    if not is_buyer and order.status not in ['pending', 'paid']:
+        messages.error(request, 'This order can no longer be cancelled.')
+        return redirect('marketplace:order_detail', pk=pk)
+
+    if request.method == 'POST':
+        try:
+            # If order was paid, issue refund
+            if order.status == 'paid' and order.stripe_payment_intent:
+                refund = stripe.Refund.create(
+                    payment_intent=order.stripe_payment_intent,
+                )
+                order.refund_amount = order.amount
+                order.stripe_refund_id = refund.id
+                order.refund_status = 'full'
+
+            # Cancel any pending payment intent
+            if order.status == 'pending' and order.stripe_payment_intent:
+                try:
+                    stripe.PaymentIntent.cancel(order.stripe_payment_intent)
+                except Exception:
+                    pass
+
+            order.status = 'cancelled'
+            order.save()
+
+            # Restore listing
+            if order.listing and order.listing.status == 'sold':
+                order.listing.status = 'active'
+                order.listing.save(update_fields=['status'])
+
+            # Send notification to other party
+            try:
+                from alerts.tasks import send_cancellation_notification
+                send_cancellation_notification.delay(order.id, cancelled_by)
+            except Exception:
+                pass
+
+            messages.success(request, 'Order has been cancelled.')
+
+        except stripe.error.StripeError as e:
+            messages.error(request, f'Cancellation failed: {e.user_message}')
+        except Exception as e:
+            messages.error(request, f'Cancellation failed: {str(e)}')
 
     return redirect('marketplace:order_detail', pk=pk)
 

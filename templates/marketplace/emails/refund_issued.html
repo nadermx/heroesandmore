@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #171717;">Refund Issued</h2>
+
+    <p>Hi {{ order.buyer.first_name|default:order.buyer.username }},</p>
+
+    <p>A refund has been issued for your order.</p>
+
+    <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #171717;">Order #{{ order.id }}</h3>
+
+        {% if order.listing %}
+        <p style="margin-bottom: 5px;"><strong>Item:</strong> {{ order.listing.title }}</p>
+        {% endif %}
+        <p style="margin-bottom: 5px;"><strong>Original Amount:</strong> ${{ order.amount }}</p>
+        <p style="margin-bottom: 5px; color: #16a34a; font-size: 1.1rem;"><strong>Refund Amount:</strong> ${{ refund_amount }}</p>
+    </div>
+
+    <p>The refund has been processed and should appear on your original payment method within <strong>5-10 business days</strong>, depending on your bank.</p>
+
+    <p style="text-align: center; margin: 30px 0;">
+        <a href="{{ site_url }}/marketplace/order/{{ order.id }}/"
+           style="background-color: #171717; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+            View Order Details
+        </a>
+    </p>
+
+    <p>If you have any questions, please contact the seller or our support team.</p>
+
+    <p style="color: #737373; font-size: 14px; margin-top: 40px; border-top: 1px solid #e5e5e5; padding-top: 20px;">
+        The HeroesAndMore Team<br>
+        <a href="{{ site_url }}" style="color: #737373;">heroesandmore.com</a>
+    </p>
+</body>
+</html>

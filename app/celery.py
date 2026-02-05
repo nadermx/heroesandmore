@@ -51,4 +51,24 @@ app.conf.beat_schedule = {
         'task': 'marketplace.tasks.expire_unpaid_orders',
         'schedule': crontab(minute=15),
     },
+    # End auctions every 5 minutes
+    'end-auctions': {
+        'task': 'marketplace.tasks.end_auctions',
+        'schedule': crontab(minute='*/5'),  # Every 5 minutes
+    },
+    # Send alert emails every 15 minutes
+    'send-alert-emails': {
+        'task': 'alerts.tasks.send_alert_emails',
+        'schedule': crontab(minute='*/15'),
+    },
+    # Check wishlist matches daily
+    'check-wishlist-matches': {
+        'task': 'alerts.tasks.check_wishlist_matches',
+        'schedule': crontab(hour=8, minute=0),  # Daily at 8 AM
+    },
+    # Check ending auctions (notify bidders)
+    'check-ending-auctions': {
+        'task': 'alerts.tasks.check_ending_auctions',
+        'schedule': crontab(minute='*/30'),  # Every 30 minutes
+    },
 }

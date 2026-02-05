@@ -34,6 +34,8 @@ urlpatterns = [
     path('order/<int:pk>/ship/', views.order_ship, name='order_ship'),
     path('order/<int:pk>/received/', views.order_received, name='order_received'),
     path('order/<int:pk>/review/', views.leave_review, name='leave_review'),
+    path('order/<int:pk>/refund/', views.order_refund, name='order_refund'),
+    path('order/<int:pk>/cancel/', views.order_cancel, name='order_cancel'),
 
     # User pages
     path('saved/', views.saved_listings, name='saved_listings'),

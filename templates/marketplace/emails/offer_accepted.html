@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #16a34a;">Your Offer Was Accepted!</h2>
+
+    <p>Hi {{ order.buyer.first_name|default:order.buyer.username }},</p>
+
+    <p>Great news! The seller has accepted your offer.</p>
+
+    <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #171717;">{{ order.listing.title }}</h3>
+
+        <p style="margin-bottom: 5px;"><strong>Your Offer:</strong> <span style="color: #16a34a; font-size: 1.25rem;">${{ order.item_price }}</span></p>
+        <p style="margin-bottom: 5px;"><strong>Shipping:</strong> ${{ order.shipping_price }}</p>
+        <p style="margin-bottom: 5px;"><strong>Total:</strong> ${{ order.amount }}</p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
+
+        <p style="margin-bottom: 0;"><strong>Seller:</strong> {{ order.seller.username }}</p>
+    </div>
+
+    <p><strong>Complete your purchase within 24 hours</strong> to secure your item at this price.</p>
+
+    <p style="text-align: center; margin: 30px 0;">
+        <a href="{{ site_url }}/marketplace/{{ order.listing.id }}/checkout/"
+           style="background-color: #16a34a; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">
+            Complete Purchase Now
+        </a>
+    </p>
+
+    <p>Thanks for shopping on HeroesAndMore!</p>
+
+    <p style="color: #737373; font-size: 14px; margin-top: 40px; border-top: 1px solid #e5e5e5; padding-top: 20px;">
+        The HeroesAndMore Team<br>
+        <a href="{{ site_url }}" style="color: #737373;">heroesandmore.com</a>
+    </p>
+</body>
+</html>

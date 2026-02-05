@@ -344,3 +344,210 @@ def send_order_notifications(order_id, event_type):
             message=f'We were unable to process your payment. Please try again.',
             link=f'/marketplace/{order.listing.id}/checkout/',
         )
+
+
+@shared_task
+def send_auction_won_notification(order_id):
+    """
+    Notify auction winner that they won and need to complete payment.
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Order
+    from .models import Alert
+
+    try:
+        order = Order.objects.select_related(
+            'buyer', 'seller', 'listing', 'buyer__profile', 'seller__profile'
+        ).get(id=order_id)
+    except Order.DoesNotExist:
+        return
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'order': order, 'site_url': site_url}
+
+    # Email to winner
+    if order.buyer.email:
+        html_content = render_to_string('marketplace/emails/auction_won.html', context)
+        try:
+            send_mail(
+                subject=f'You won the auction! - {order.listing.title}',
+                message=f'Congratulations! You won the auction for {order.listing.title} with a bid of ${order.item_price}. Complete your purchase now.',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[order.buyer.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+    # Email to seller
+    if order.seller.email:
+        html_content = render_to_string('marketplace/emails/auction_ended_seller.html', context)
+        try:
+            send_mail(
+                subject=f'Your auction has ended - {order.listing.title}',
+                message=f'Your auction for {order.listing.title} has ended. Winning bid: ${order.item_price}',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[order.seller.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+    # In-app alerts
+    Alert.objects.create(
+        user=order.buyer,
+        alert_type='auction_won',
+        title=f'You won: {order.listing.title}',
+        message=f'Congratulations! Your winning bid: ${order.item_price}. Complete your purchase now.',
+        link=f'/marketplace/{order.listing.id}/checkout/',
+    )
+    Alert.objects.create(
+        user=order.seller,
+        alert_type='auction_ended',
+        title=f'Auction ended: {order.listing.title}',
+        message=f'Your auction has ended with a winning bid of ${order.item_price}.',
+        link=f'/marketplace/order/{order.id}/',
+    )
+
+
+@shared_task
+def send_offer_accepted_notification(order_id):
+    """
+    Notify buyer that their offer was accepted and they can complete payment.
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Order
+    from .models import Alert
+
+    try:
+        order = Order.objects.select_related(
+            'buyer', 'seller', 'listing', 'buyer__profile', 'seller__profile'
+        ).get(id=order_id)
+    except Order.DoesNotExist:
+        return
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'order': order, 'site_url': site_url}
+
+    # Email to buyer
+    if order.buyer.email:
+        html_content = render_to_string('marketplace/emails/offer_accepted.html', context)
+        try:
+            send_mail(
+                subject=f'Your offer was accepted! - {order.listing.title}',
+                message=f'Great news! Your offer of ${order.item_price} for {order.listing.title} was accepted. Complete your purchase now.',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[order.buyer.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+    # In-app alert
+    Alert.objects.create(
+        user=order.buyer,
+        alert_type='offer_accepted',
+        title=f'Offer accepted: {order.listing.title}',
+        message=f'Your offer of ${order.item_price} was accepted! Complete your purchase now.',
+        link=f'/marketplace/{order.listing.id}/checkout/',
+    )
+
+
+@shared_task
+def send_refund_notification(order_id, refund_amount):
+    """
+    Notify buyer that a refund has been issued.
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Order
+    from .models import Alert
+
+    try:
+        order = Order.objects.select_related(
+            'buyer', 'seller', 'listing'
+        ).get(id=order_id)
+    except Order.DoesNotExist:
+        return
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'order': order, 'site_url': site_url, 'refund_amount': refund_amount}
+
+    # Email to buyer
+    if order.buyer.email:
+        html_content = render_to_string('marketplace/emails/refund_issued.html', context)
+        try:
+            send_mail(
+                subject=f'Refund Issued - Order #{order.id}',
+                message=f'A refund of ${refund_amount} has been issued for order #{order.id}. It may take 5-10 business days to appear on your statement.',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[order.buyer.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+    # In-app alert
+    Alert.objects.create(
+        user=order.buyer,
+        alert_type='order_update',
+        title=f'Refund Issued - Order #{order.id}',
+        message=f'A refund of ${refund_amount} has been issued.',
+        link=f'/marketplace/order/{order.id}/',
+    )
+
+
+@shared_task
+def send_cancellation_notification(order_id, cancelled_by):
+    """
+    Notify both parties that an order was cancelled.
+    cancelled_by: 'buyer' or 'seller'
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Order
+    from .models import Alert
+
+    try:
+        order = Order.objects.select_related(
+            'buyer', 'seller', 'listing'
+        ).get(id=order_id)
+    except Order.DoesNotExist:
+        return
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'order': order, 'site_url': site_url, 'cancelled_by': cancelled_by}
+
+    # Determine who to notify
+    if cancelled_by == 'buyer':
+        notify_user = order.seller
+        other_party = 'The buyer'
+    else:
+        notify_user = order.buyer
+        other_party = 'The seller'
+
+    # Email notification
+    if notify_user.email:
+        html_content = render_to_string('marketplace/emails/order_cancelled.html', context)
+        try:
+            send_mail(
+                subject=f'Order Cancelled - #{order.id}',
+                message=f'{other_party} has cancelled order #{order.id} for {order.listing.title if order.listing else "item"}.',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[notify_user.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+    # In-app alert
+    Alert.objects.create(
+        user=notify_user,
+        alert_type='order_update',
+        title=f'Order #{order.id} Cancelled',
+        message=f'{other_party} has cancelled this order.',
+        link=f'/marketplace/order/{order.id}/',
+    )
