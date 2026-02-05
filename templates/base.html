@@ -5,6 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}HeroesAndMore - Premium Collectibles Marketplace{% endblock %}</title>
 
+    <!-- Frontend Error Logging - must be first to catch all errors -->
+    <script>
+    (function() {
+        window.onerror = function(message, source, lineno, colno, error) {
+            try {
+                fetch('/api/log-error/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        message: message,
+                        source: source,
+                        lineno: lineno,
+                        colno: colno,
+                        error: error ? error.stack : '',
+                        url: window.location.href,
+                        userAgent: navigator.userAgent
+                    })
+                });
+            } catch(e) {}
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function(event) {
+            try {
+                fetch('/api/log-error/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        message: 'Unhandled Promise Rejection: ' + (event.reason || 'unknown'),
+                        source: 'promise',
+                        lineno: 0,
+                        colno: 0,
+                        error: event.reason && event.reason.stack ? event.reason.stack : '',
+                        url: window.location.href,
+                        userAgent: navigator.userAgent
+                    })
+                });
+            } catch(e) {}
+        });
+    })();
+    </script>
+
     <!-- Favicon -->
     {% load static %}
     <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">

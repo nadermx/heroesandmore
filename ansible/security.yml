@@ -1,0 +1,122 @@
+---
+# Security Hardening Playbook
+# Creates deploy user, disables root SSH, sets up firewall
+
+- name: Harden server security
+  hosts: web
+  become: yes
+  vars:
+    deploy_user: heroesandmore
+    ssh_port: 22
+
+  tasks:
+    - name: Create deploy user
+      user:
+        name: "{{ deploy_user }}"
+        shell: /bin/bash
+        groups: sudo,www-data
+        append: yes
+        create_home: yes
+
+    - name: Create .ssh directory for deploy user
+      file:
+        path: "/home/{{ deploy_user }}/.ssh"
+        state: directory
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+        mode: '0700'
+
+    - name: Copy root's authorized_keys to deploy user
+      copy:
+        src: /root/.ssh/authorized_keys
+        dest: "/home/{{ deploy_user }}/.ssh/authorized_keys"
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+        mode: '0600'
+        remote_src: yes
+
+    - name: Allow deploy user to sudo without password
+      lineinfile:
+        path: /etc/sudoers.d/{{ deploy_user }}
+        line: "{{ deploy_user }} ALL=(ALL) NOPASSWD:ALL"
+        create: yes
+        mode: '0440'
+        validate: 'visudo -cf %s'
+
+    - name: Give deploy user ownership of app directory
+      file:
+        path: /home/www/heroesandmore
+        owner: "{{ deploy_user }}"
+        group: www-data
+        recurse: yes
+
+    - name: Disable root SSH login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+        backup: yes
+
+    - name: Disable password authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+
+    - name: Restart SSH service
+      service:
+        name: sshd
+        state: restarted
+
+    - name: Install UFW firewall
+      apt:
+        name: ufw
+        state: present
+
+    - name: Allow SSH through firewall
+      ufw:
+        rule: allow
+        port: "{{ ssh_port }}"
+        proto: tcp
+
+    - name: Allow HTTP through firewall
+      ufw:
+        rule: allow
+        port: '80'
+        proto: tcp
+
+    - name: Allow HTTPS through firewall
+      ufw:
+        rule: allow
+        port: '443'
+        proto: tcp
+
+    - name: Enable UFW with default deny
+      ufw:
+        state: enabled
+        default: deny
+        direction: incoming
+
+    - name: Install fail2ban
+      apt:
+        name: fail2ban
+        state: present
+
+    - name: Enable fail2ban
+      service:
+        name: fail2ban
+        state: started
+        enabled: yes
+
+    - name: Set correct permissions on sensitive files
+      file:
+        path: /home/www/heroesandmore/config.py
+        owner: "{{ deploy_user }}"
+        group: www-data
+        mode: '0640'
+
+  handlers:
+    - name: restart ssh
+      service:
+        name: sshd
+        state: restarted

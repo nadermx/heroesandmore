@@ -338,6 +338,15 @@ LOGGING = {
             'backupCount': 5,
             'formatter': 'verbose',
         },
+        # Frontend JavaScript errors
+        'frontend_file': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_DIR / 'frontend.log',
+            'maxBytes': 10 * 1024 * 1024,
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
     },
     'root': {
         'handlers': ['console', 'app_file', 'error_file'],
@@ -419,6 +428,12 @@ LOGGING = {
         'api': {
             'handlers': ['console', 'api_file', 'error_file'],
             'level': 'INFO',
+            'propagate': False,
+        },
+        # Frontend JavaScript errors
+        'frontend': {
+            'handlers': ['console', 'frontend_file', 'error_file'],
+            'level': 'ERROR',
             'propagate': False,
         },
     },

@@ -10,10 +10,14 @@ from items.views import home
 from accounts.api.views import (
     GoogleAuthView, PasswordResetView, PasswordResetConfirmView, ChangePasswordView
 )
+from app.views import log_frontend_error
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home, name='home'),
+
+    # Frontend error logging
+    path('api/log-error/', log_frontend_error, name='log_frontend_error'),
 
     # REST API v1
     path('api/v1/', include('api.urls')),
