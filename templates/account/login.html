@@ -100,48 +100,5 @@
         flex: 1;
         border-bottom: 1px solid var(--gray-200);
     }
-    /* Ensure inputs are interactive on iOS/mobile */
-    #id_login, #id_password {
-        -webkit-user-select: text !important;
-        user-select: text !important;
-        pointer-events: auto !important;
-        -webkit-transform: translateZ(0);
-        transform: translateZ(0);
-        opacity: 1 !important;
-    }
-    /* Fix iOS input focus issues */
-    .card {
-        -webkit-overflow-scrolling: touch;
-    }
 </style>
-<script>
-// iOS keyboard fix - Safari requires synchronous focus during user tap
-document.addEventListener('DOMContentLoaded', function() {
-    var inputs = document.querySelectorAll('#id_login, #id_password');
-    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
-    if (isIOS) {
-        inputs.forEach(function(input) {
-            // On iOS, we need to handle the tap event directly
-            input.addEventListener('touchstart', function(e) {
-                // Store reference for touchend
-                this.dataset.touched = 'true';
-            }, {passive: true});
-
-            input.addEventListener('touchend', function(e) {
-                if (this.dataset.touched === 'true') {
-                    this.dataset.touched = 'false';
-                    // Focus must happen synchronously in the event handler for iOS
-                    this.focus();
-                    // Move cursor to end
-                    if (this.setSelectionRange) {
-                        var len = this.value.length;
-                        this.setSelectionRange(len, len);
-                    }
-                }
-            }, {passive: true});
-        });
-    }
-});
-</script>
 {% endblock %}
