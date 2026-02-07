@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block content %}
 <!-- Hero Section -->
@@ -39,36 +40,38 @@
 </section>
 
 <!-- Stats Bar -->
+{% if stat_active_listings or stat_collectors %}
 <section class="stats-bar d-none d-md-block">
     <div class="container">
         <div class="row">
             <div class="col-3">
                 <div class="stat-item">
-                    <div class="stat-value">50K+</div>
+                    <div class="stat-value">{{ stat_active_listings|intcomma }}</div>
                     <div class="stat-label">Active Listings</div>
                 </div>
             </div>
             <div class="col-3">
                 <div class="stat-item">
-                    <div class="stat-value">10K+</div>
+                    <div class="stat-value">{{ stat_collectors|intcomma }}</div>
                     <div class="stat-label">Collectors</div>
                 </div>
             </div>
             <div class="col-3">
                 <div class="stat-item">
-                    <div class="stat-value">$2M+</div>
+                    <div class="stat-value">${{ stat_sold_total|intcomma }}</div>
                     <div class="stat-label">Items Sold</div>
                 </div>
             </div>
             <div class="col-3">
                 <div class="stat-item">
-                    <div class="stat-value">4.9</div>
+                    <div class="stat-value">{% if stat_avg_rating %}{{ stat_avg_rating }}{% else %}-{% endif %}</div>
                     <div class="stat-label">Avg Rating</div>
                 </div>
             </div>
         </div>
     </div>
 </section>
+{% endif %}
 
 <!-- Categories -->
 <section class="section">

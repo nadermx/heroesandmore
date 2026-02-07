@@ -83,19 +83,19 @@
                 <div class="card-body p-4">
                     <h5 class="fw-bold mb-4">Quick Stats</h5>
                     <div class="mb-3 pb-3 border-bottom">
-                        <div style="font-size: 2rem; font-weight: 800; color: var(--gray-900);">50K+</div>
+                        <div style="font-size: 2rem; font-weight: 800; color: var(--gray-900);">{{ stat_active_listings|default:"0" }}</div>
                         <div class="text-muted small">Active Listings</div>
                     </div>
                     <div class="mb-3 pb-3 border-bottom">
-                        <div style="font-size: 2rem; font-weight: 800; color: var(--gray-900);">10K+</div>
+                        <div style="font-size: 2rem; font-weight: 800; color: var(--gray-900);">{{ stat_collectors|default:"0" }}</div>
                         <div class="text-muted small">Registered Collectors</div>
                     </div>
                     <div class="mb-3 pb-3 border-bottom">
-                        <div style="font-size: 2rem; font-weight: 800; color: var(--gray-900);">$2M+</div>
+                        <div style="font-size: 2rem; font-weight: 800; color: var(--gray-900);">${{ stat_sold_total|default:"0" }}</div>
                         <div class="text-muted small">Items Sold</div>
                     </div>
                     <div>
-                        <div style="font-size: 2rem; font-weight: 800; color: var(--gray-900);">4.9</div>
+                        <div style="font-size: 2rem; font-weight: 800; color: var(--gray-900);">{% if stat_avg_rating %}{{ stat_avg_rating }}{% else %}-{% endif %}</div>
                         <div class="text-muted small">Average Seller Rating</div>
                     </div>
                 </div>

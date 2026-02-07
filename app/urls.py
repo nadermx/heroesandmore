@@ -6,7 +6,7 @@ from django.views.generic import TemplateView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
-from items.views import home
+from items.views import home, about
 from accounts.api.views import (
     GoogleAuthView, PasswordResetView, PasswordResetConfirmView, ChangePasswordView
 )
@@ -46,7 +46,7 @@ urlpatterns = [
     path('seller/', include('seller_tools.urls')),
 
     # Static pages
-    path('about/', TemplateView.as_view(template_name='pages/about.html'), name='about'),
+    path('about/', about, name='about'),
     path('help/', TemplateView.as_view(template_name='pages/help.html'), name='help'),
     path('seller-guide/', TemplateView.as_view(template_name='pages/seller_guide.html'), name='seller_guide'),
     path('safety/', TemplateView.as_view(template_name='pages/safety.html'), name='safety'),

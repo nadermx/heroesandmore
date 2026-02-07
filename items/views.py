@@ -1,10 +1,27 @@
 from django.shortcuts import render, get_object_or_404
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Avg, Sum
 from django.core.paginator import Paginator
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
+from django.contrib.auth.models import User
 
 from .models import Category, Item
-from marketplace.models import Listing
+from marketplace.models import Listing, Order, Review
+
+
+def _get_site_stats():
+    """Get real site-wide stats for homepage and about page."""
+    active_listings = Listing.objects.filter(status='active').count()
+    collectors = User.objects.filter(is_active=True).count()
+    sold_total = Order.objects.filter(status='paid').aggregate(
+        total=Sum('item_price')
+    )['total'] or 0
+    avg_rating = Review.objects.aggregate(avg=Avg('rating'))['avg']
+    return {
+        'stat_active_listings': active_listings,
+        'stat_collectors': collectors,
+        'stat_sold_total': sold_total,
+        'stat_avg_rating': round(avg_rating, 1) if avg_rating else None,
+    }
 
 
 def home(request):
@@ -35,8 +52,14 @@ def home(request):
         'recent_listings': recent_listings,
         'trending_listings': trending_listings,
         'ending_soon': ending_soon,
+        **_get_site_stats(),
     }
     return render(request, 'home.html', context)
+
+
+def about(request):
+    """About page with real site stats."""
+    return render(request, 'pages/about.html', _get_site_stats())
 
 
 def category_list(request):
