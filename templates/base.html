@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}HeroesAndMore - The Premium Collectables Marketplace and Auction House{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}HeroesAndMore - The Premium Collectables Marketplace and Auction House. Buy, sell, and collect comics, cards, toys, and more.{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}HeroesAndMore{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}The Premium Collectables Marketplace and Auction House. Buy, sell, and collect comics, cards, toys, and more.{% endblock %}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta name="twitter:card" content="summary">
 
     <!-- Frontend Error Logging - must be first to catch all errors -->
     <script>
