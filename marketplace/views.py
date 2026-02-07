@@ -362,8 +362,7 @@ def respond_offer(request, pk):
             # Create order
             listing = offer.listing
             from marketplace.services.stripe_service import StripeService
-            commission_rate = StripeService.get_seller_commission_rate(request.user)
-            platform_fee = offer.amount * commission_rate
+            platform_fee = StripeService.calculate_platform_fee(offer.amount, request.user)
             order = Order.objects.create(
                 listing=listing,
                 buyer=offer.buyer,
@@ -440,8 +439,7 @@ def respond_counter_offer(request, pk):
             # Create order with counter-offer amount
             listing = offer.listing
             from marketplace.services.stripe_service import StripeService
-            commission_rate = StripeService.get_seller_commission_rate(listing.seller)
-            platform_fee = offer.counter_amount * commission_rate
+            platform_fee = StripeService.calculate_platform_fee(offer.counter_amount, listing.seller)
             order = Order.objects.create(
                 listing=listing,
                 buyer=request.user,
@@ -496,8 +494,6 @@ def checkout(request, pk):
 
     # Calculate fees based on seller tier
     from marketplace.services.stripe_service import StripeService
-    commission_rate = StripeService.get_seller_commission_rate(listing.seller)
-
     if not order:
         if Order.objects.filter(
             listing=listing,
@@ -507,7 +503,7 @@ def checkout(request, pk):
             return redirect('marketplace:listing_detail', pk=pk)
 
         price = listing.get_current_price()
-        platform_fee = price * commission_rate
+        platform_fee = StripeService.calculate_platform_fee(price, listing.seller)
         total = price + listing.shipping_price
 
         # Get or create pending order for this listing/buyer

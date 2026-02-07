@@ -31,6 +31,9 @@ class StripeService:
         profile.save(update_fields=['stripe_customer_id'])
         return customer
 
+    # Flat fee per transaction to cover Stripe processing costs ($0.30 + 2.9%)
+    PLATFORM_FLAT_FEE = Decimal('0.30')
+
     @staticmethod
     def get_seller_commission_rate(seller):
         """Get seller's commission rate based on subscription tier"""
@@ -44,6 +47,16 @@ class StripeService:
             return Decimal('0.1295')
 
     @staticmethod
+    def calculate_platform_fee(price, seller):
+        """Calculate platform fee: flat fee + percentage commission.
+
+        This ensures we always cover Stripe's processing costs ($0.30 + 2.9%)
+        even on low-dollar transactions.
+        """
+        commission_rate = StripeService.get_seller_commission_rate(seller)
+        return (StripeService.PLATFORM_FLAT_FEE + price * commission_rate).quantize(Decimal('0.01'))
+
+    @staticmethod
     def create_payment_intent(order, payment_method_id=None, save_card=False):
         """Create PaymentIntent for order checkout"""
         customer = StripeService.get_or_create_customer(order.buyer)
@@ -52,9 +65,9 @@ class StripeService:
         # Calculate amounts in cents
         total_cents = int(order.amount * 100)
 
-        # Get commission rate based on seller tier
-        commission_rate = StripeService.get_seller_commission_rate(order.seller)
-        platform_fee_cents = int(order.item_price * commission_rate * 100)
+        # Calculate platform fee (flat fee + percentage)
+        platform_fee = StripeService.calculate_platform_fee(order.item_price, order.seller)
+        platform_fee_cents = int(platform_fee * 100)
 
         # Build PaymentIntent params
         params = {
@@ -91,7 +104,7 @@ class StripeService:
 
         # Update order with payment intent details
         order.stripe_payment_intent = intent.id
-        order.platform_fee = Decimal(platform_fee_cents) / 100
+        order.platform_fee = platform_fee
         order.seller_payout = order.item_price - order.platform_fee
         order.save(update_fields=['stripe_payment_intent', 'platform_fee', 'seller_payout'])
 
@@ -242,8 +255,8 @@ class StripeService:
         total_cents = int(amount * 100)
         fee_base = item_price if item_price is not None else amount
 
-        commission_rate = StripeService.get_seller_commission_rate(seller)
-        platform_fee_cents = int(fee_base * commission_rate * 100)
+        platform_fee = StripeService.calculate_platform_fee(fee_base, seller)
+        platform_fee_cents = int(platform_fee * 100)
 
         params = {
             'amount': total_cents,

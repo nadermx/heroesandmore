@@ -41,8 +41,7 @@ def end_auctions():
 
             if winning_bid:
                 # Create order for the winner
-                commission_rate = StripeService.get_seller_commission_rate(listing.seller)
-                platform_fee = (winning_bid.amount * Decimal(str(commission_rate))).quantize(Decimal('0.01'))
+                platform_fee = StripeService.calculate_platform_fee(winning_bid.amount, listing.seller)
                 seller_payout = winning_bid.amount - platform_fee
 
                 order = Order.objects.create(

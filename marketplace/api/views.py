@@ -244,8 +244,7 @@ class OfferViewSet(viewsets.ReadOnlyModelViewSet):
         # Create order
         listing = offer.listing
         from marketplace.services.stripe_service import StripeService
-        commission_rate = StripeService.get_seller_commission_rate(listing.seller)
-        platform_fee = offer.amount * commission_rate
+        platform_fee = StripeService.calculate_platform_fee(offer.amount, listing.seller)
 
         Order.objects.create(
             listing=listing,
@@ -328,8 +327,7 @@ class OfferViewSet(viewsets.ReadOnlyModelViewSet):
         # Create order with counter-offer amount
         listing = offer.listing
         from marketplace.services.stripe_service import StripeService
-        commission_rate = StripeService.get_seller_commission_rate(listing.seller)
-        platform_fee = offer.counter_amount * commission_rate
+        platform_fee = StripeService.calculate_platform_fee(offer.counter_amount, listing.seller)
 
         order = Order.objects.create(
             listing=listing,
@@ -601,9 +599,8 @@ class CheckoutView(views.APIView):
 
             # Calculate fees
             from marketplace.services.stripe_service import StripeService
-            platform_fee_percent = StripeService.get_seller_commission_rate(listing.seller)
             price = listing.get_current_price()
-            platform_fee = price * platform_fee_percent
+            platform_fee = StripeService.calculate_platform_fee(price, listing.seller)
             total = price + listing.shipping_price
 
             # Create pending order
@@ -672,9 +669,8 @@ class PaymentIntentView(views.APIView):
                     )
 
                 from marketplace.services.stripe_service import StripeService
-                platform_fee_percent = StripeService.get_seller_commission_rate(listing.seller)
                 price = listing.get_current_price()
-                platform_fee = price * platform_fee_percent
+                platform_fee = StripeService.calculate_platform_fee(price, listing.seller)
                 total = price + listing.shipping_price
                 order, _ = Order.objects.get_or_create(
                     listing=listing,
