@@ -886,7 +886,7 @@
                         </li>
                     {% else %}
                         <li class="nav-item ms-2">
-                            <a class="nav-link" href="{% url 'account_signup' %}">Sign Up</a>
+                            <a class="nav-link" href="{% url 'account_login' %}">Sign In</a>
                         </li>
                         <li class="nav-item ms-1">
                             <a class="btn btn-dark btn-sm" href="{% url 'account_signup' %}">Get Started</a>
@@ -935,6 +935,7 @@
                         <li><a href="{% url 'marketplace:listing_list' %}?type=auction">Auctions</a></li>
                         <li><a href="{% url 'pricing:price_guide_list' %}">Price Guide</a></li>
                         <li><a href="{% url 'pricing:trending' %}">Trending</a></li>
+                        <li><a href="{% url 'sell' %}">Sell Your Items</a></li>
                     </ul>
                 </div>
                 <div class="col-6 col-md-3 col-lg-2 mb-4 mb-lg-0">
