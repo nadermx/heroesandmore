@@ -81,6 +81,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'app.context_processors.seo',
             ],
         },
     },
@@ -202,7 +203,7 @@ PLATFORM_FEE_PERCENT = Decimal('0.03')
 # Site URL for callbacks
 SITE_URL = getattr(config, 'SITE_URL', 'http://localhost:8000')
 if not DEBUG:
-    SITE_URL = 'https://www.heroesandmore.com'
+    SITE_URL = 'https://heroesandmore.com'
 
 # DigitalOcean Spaces (for production)
 USE_SPACES = getattr(config, 'USE_SPACES', False)

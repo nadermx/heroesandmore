@@ -1,6 +1,19 @@
 {% extends 'base.html' %}
 
 {% block title %}Marketplace - HeroesAndMore{% endblock %}
+{% block meta_description %}Browse the HeroesAndMore marketplace. Buy and sell trading cards, comics, action figures, and collectibles. Fixed price and auction listings available.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "Marketplace",
+  "description": "Browse collectible listings on HeroesAndMore marketplace.",
+  "url": "{{ request.build_absolute_uri }}"
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <!-- Page Header -->

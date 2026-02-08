@@ -1,5 +1,35 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load seo_tags %}
+
+{% block meta_description %}Buy, sell, and collect trading cards, comics, action figures, and more on HeroesAndMore. Track collection values, browse price guides, and join thousands of collectors.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "HeroesAndMore",
+  "url": "{{ site_url }}",
+  "logo": "{% absolute_static 'images/logo.png' %}",
+  "description": "The Premium Collectables Marketplace and Auction House",
+  "sameAs": []
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "HeroesAndMore",
+  "url": "{{ site_url }}",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "{{ site_url }}/items/search/?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <!-- Hero Section -->

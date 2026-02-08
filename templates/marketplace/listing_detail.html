@@ -1,7 +1,48 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load seo_tags %}
 
 {% block title %}{{ listing.title }} - HeroesAndMore{% endblock %}
+{% block meta_description %}{{ listing.title }}{% if listing.is_graded %} — {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %}{% if listing.condition %} ({{ listing.get_condition_display }}){% endif %} — ${{ listing.price }} on HeroesAndMore.{% endblock %}
+{% block og_title %}{{ listing.title }} - HeroesAndMore{% endblock %}
+{% block og_description %}{{ listing.title }}{% if listing.is_graded %} — {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %} — ${{ listing.price }} on HeroesAndMore.{% endblock %}
+{% block og_type %}product{% endblock %}
+{% block og_image %}{% if listing.image1 %}{% absolute_media listing.image1 %}{% else %}{{ default_og_image }}{% endif %}{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "{{ listing.title|json_ld_escape }}",
+  "description": "{{ listing.description|truncatewords:50|json_ld_escape }}",
+  {% if listing.image1 %}"image": "{% absolute_media listing.image1 %}",{% endif %}
+  "offers": {
+    "@type": "Offer",
+    "url": "{{ request.build_absolute_uri }}",
+    "priceCurrency": "USD",
+    "price": "{{ listing.price }}",
+    "availability": "https://schema.org/{% if listing.status == 'active' %}InStock{% else %}SoldOut{% endif %}",
+    "itemCondition": "https://schema.org/{% if listing.condition == 'new' %}NewCondition{% else %}UsedCondition{% endif %}"{% if listing.seller %},
+    "seller": {
+      "@type": "Person",
+      "name": "{{ listing.seller.username|json_ld_escape }}"
+    }{% endif %}
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ site_url }}"},
+    {"@type": "ListItem", "position": 2, "name": "Marketplace", "item": "{{ site_url }}/marketplace/"},
+    {"@type": "ListItem", "position": 3, "name": "{{ listing.title|json_ld_escape }}"}
+  ]
+}
+</script>
+{% endblock %}
 
 {% block extra_css %}
 <style>

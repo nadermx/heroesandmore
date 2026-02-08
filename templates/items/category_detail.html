@@ -1,6 +1,33 @@
 {% extends 'base.html' %}
+{% load seo_tags %}
 
 {% block title %}{{ category.name }} - HeroesAndMore{% endblock %}
+{% block meta_description %}Browse {{ category.name }} collectibles on HeroesAndMore. Find listings, track prices, and discover rare items in the {{ category.name }} category.{% endblock %}
+{% block og_title %}{{ category.name }} - HeroesAndMore{% endblock %}
+{% block og_description %}Browse {{ category.name }} collectibles on HeroesAndMore. Find listings, track prices, and discover rare items.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "{{ category.name|json_ld_escape }}",
+  "url": "{{ request.build_absolute_uri }}"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ site_url }}"},
+    {"@type": "ListItem", "position": 2, "name": "Categories", "item": "{{ site_url }}/items/"}{% for ancestor in ancestors %},
+    {"@type": "ListItem", "position": {{ forloop.counter|add:2 }}, "name": "{{ ancestor.name|json_ld_escape }}", "item": "{{ site_url }}{{ ancestor.get_absolute_url }}"}{% endfor %},
+    {"@type": "ListItem", "position": {% if ancestors %}{{ ancestors|length|add:3 }}{% else %}3{% endif %}, "name": "{{ category.name|json_ld_escape }}"}
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <!-- Header -->

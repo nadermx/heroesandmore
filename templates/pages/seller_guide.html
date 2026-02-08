@@ -1,6 +1,39 @@
 {% extends 'base.html' %}
+{% load seo_tags %}
 
 {% block title %}Seller Guide - HeroesAndMore{% endblock %}
+{% block meta_description %}Learn how to sell collectibles on HeroesAndMore. Step-by-step guide covering listings, pricing, shipping, and seller subscription tiers.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to Sell Collectibles on HeroesAndMore",
+  "description": "Step-by-step guide to selling collectibles on HeroesAndMore.",
+  "step": [
+    {
+      "@type": "HowToStep",
+      "position": 1,
+      "name": "Create Your Listing",
+      "text": "Upload photos, write a description, set your price or start an auction. Choose a category and add grading details if applicable."
+    },
+    {
+      "@type": "HowToStep",
+      "position": 2,
+      "name": "Connect Your Payment Account",
+      "text": "Set up your Stripe Connect account to receive payments directly. Complete identity verification for seller badge."
+    },
+    {
+      "@type": "HowToStep",
+      "position": 3,
+      "name": "Ship and Get Paid",
+      "text": "When your item sells, ship it to the buyer. Funds are released to your account after the buyer confirms receipt."
+    }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="section-alt border-bottom" style="padding: 3rem 0;">

@@ -1,7 +1,22 @@
 {% extends "base.html" %}
 {% load humanize %}
+{% load seo_tags %}
 
 {% block title %}{{ collection.name }} - HeroesAndMore{% endblock %}
+{% block meta_description %}{{ collection.name }} — a collection by {{ collection.user.username }} on HeroesAndMore.{% if collection.description %} {{ collection.description|truncatewords:20 }}{% endif %}{% endblock %}
+{% block og_title %}{{ collection.name }} - HeroesAndMore{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "{{ collection.name|json_ld_escape }}",
+  "url": "{{ request.build_absolute_uri }}"{% if collection.description %},
+  "description": "{{ collection.description|truncatewords:50|json_ld_escape }}"{% endif %}
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="section-alt border-bottom" style="padding: 1.5rem 0;">

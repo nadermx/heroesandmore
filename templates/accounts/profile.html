@@ -1,6 +1,30 @@
 {% extends 'base.html' %}
+{% load seo_tags %}
 
 {% block title %}{{ profile_user.username }} - HeroesAndMore{% endblock %}
+{% block meta_description %}{{ profile_user.username }}'s profile on HeroesAndMore.{% if profile.rating %} Rated {{ profile.rating|floatformat:1 }}/5.{% endif %}{% if stats.active_listings %} {{ stats.active_listings }} active listing{{ stats.active_listings|pluralize }}.{% endif %} View collections, listings, and reviews.{% endblock %}
+{% block og_title %}{{ profile_user.username }} - HeroesAndMore{% endblock %}
+{% block og_image %}{% if profile.avatar %}{% absolute_media profile.avatar %}{% else %}{{ default_og_image }}{% endif %}{% endblock %}
+{% block og_type %}profile{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ProfilePage",
+  "mainEntity": {
+    "@type": "Person",
+    "name": "{{ profile_user.username|json_ld_escape }}"{% if profile.avatar %},
+    "image": "{% absolute_media profile.avatar %}"{% endif %}{% if profile.rating %},
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "{{ profile.rating|floatformat:1 }}",
+      "ratingCount": "{{ profile.rating_count }}"
+    }{% endif %}
+  }
+}
+</script>
+{% endblock %}
 
 {% block extra_css %}
 <style>

@@ -1,6 +1,26 @@
 {% extends 'base.html' %}
+{% load seo_tags %}
 
 {% block title %}About Us - HeroesAndMore{% endblock %}
+{% block meta_description %}About HeroesAndMore — the premium collectables marketplace and auction house. Secure payments, price tracking, and a community of collectors.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  "name": "About HeroesAndMore",
+  "url": "{{ request.build_absolute_uri }}",
+  "mainEntity": {
+    "@type": "Organization",
+    "name": "HeroesAndMore",
+    "url": "{{ site_url }}",
+    "logo": "{% absolute_static 'images/logo.png' %}",
+    "description": "The Premium Collectables Marketplace and Auction House"
+  }
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="section-alt border-bottom" style="padding: 3rem 0;">

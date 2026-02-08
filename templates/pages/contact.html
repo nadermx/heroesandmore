@@ -1,6 +1,18 @@
 {% extends 'base.html' %}
 
 {% block title %}Contact Us - HeroesAndMore{% endblock %}
+{% block meta_description %}Contact HeroesAndMore support. Get help with orders, listings, account issues, or general inquiries. We're here to help.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ContactPage",
+  "name": "Contact HeroesAndMore",
+  "url": "{{ request.build_absolute_uri }}"
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="section-alt border-bottom" style="padding: 3rem 0;">

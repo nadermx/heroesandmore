@@ -1,6 +1,82 @@
 {% extends 'base.html' %}
 
 {% block title %}Help Center - HeroesAndMore{% endblock %}
+{% block meta_description %}Get help with buying, selling, and collecting on HeroesAndMore. Find answers about payments, listing items, account setup, and more.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How do I purchase an item?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Simply find an item you like, click \"Buy Now\" for fixed-price items or place a bid on auctions. You'll be guided through our secure checkout process powered by Stripe."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What payment methods are accepted?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "We accept all major credit cards (Visa, Mastercard, American Express) through our secure Stripe payment system."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does buyer protection work?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "All purchases are covered by our buyer protection. If an item doesn't match the description or doesn't arrive, you're eligible for a full refund."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I list an item for sale?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Click \"Sell\" in the navigation bar, fill out the listing form with photos and details, set your price, and publish. It's free to list!"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What are the fees?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Listing is free! We only charge a $0.30 transaction fee plus a commission (based on your seller tier) when your item sells."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "When do I get paid?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Funds are released to your connected Stripe account once the buyer confirms receipt of the item, typically within 3-5 business days after delivery."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I create an account?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Click \"Get Started\" and sign up with your email or Google account. It's free and only takes a few seconds."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I become a verified seller?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Verified seller status is granted to sellers who maintain a high rating and complete identity verification. Contact support for more details."
+      }
+    }
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="section-alt border-bottom" style="padding: 3rem 0;">

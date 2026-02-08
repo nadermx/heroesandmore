@@ -1,6 +1,26 @@
 {% extends "base.html" %}
+{% load seo_tags %}
 
 {% block title %}{{ thread.title }} - Forums - HeroesAndMore{% endblock %}
+{% block meta_description %}{{ thread.title }} — discussion by {{ thread.author.username }} on the HeroesAndMore forums. {{ thread.content|truncatewords:20 }}{% endblock %}
+{% block og_title %}{{ thread.title }} - HeroesAndMore Forums{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "DiscussionForumPosting",
+  "headline": "{{ thread.title|json_ld_escape }}",
+  "text": "{{ thread.content|truncatewords:100|json_ld_escape }}",
+  "author": {
+    "@type": "Person",
+    "name": "{{ thread.author.username|json_ld_escape }}"
+  },
+  "datePublished": "{{ thread.created|date:'c' }}",
+  "url": "{{ request.build_absolute_uri }}"
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="section-alt border-bottom" style="padding: 1.5rem 0;">

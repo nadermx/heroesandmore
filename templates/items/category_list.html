@@ -1,6 +1,19 @@
 {% extends 'base.html' %}
 
 {% block title %}Browse Categories - HeroesAndMore{% endblock %}
+{% block meta_description %}Browse collectible categories on HeroesAndMore. Trading cards, comics, action figures, video games, coins, and more. Find what you collect.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "Browse Categories",
+  "description": "Browse collectible categories on HeroesAndMore.",
+  "url": "{{ request.build_absolute_uri }}"
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <!-- Header -->
