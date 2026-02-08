@@ -140,6 +140,10 @@
         border-radius: 0.5rem;
     }
 
+    .product-image-main {
+        cursor: zoom-in;
+    }
+
     .countdown-timer {
         background: #FEF2F2;
         color: var(--accent-danger);
@@ -154,6 +158,94 @@
     .bid-history {
         max-height: 200px;
         overflow-y: auto;
+    }
+
+    /* Image Zoom Lightbox */
+    .zoom-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 9999;
+        display: none;
+        cursor: grab;
+        touch-action: none;
+    }
+
+    .zoom-overlay.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .zoom-overlay img {
+        max-width: 95vw;
+        max-height: 95vh;
+        object-fit: contain;
+        transform-origin: center center;
+        transition: transform 0.1s ease;
+        user-select: none;
+        -webkit-user-drag: none;
+    }
+
+    .zoom-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255,255,255,0.15);
+        border: none;
+        color: #fff;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        font-size: 1.5rem;
+        cursor: pointer;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .zoom-close:hover {
+        background: rgba(255,255,255,0.3);
+    }
+
+    .zoom-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255,255,255,0.15);
+        border: none;
+        color: #fff;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        font-size: 1.25rem;
+        cursor: pointer;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .zoom-nav:hover {
+        background: rgba(255,255,255,0.3);
+    }
+
+    .zoom-prev { left: 1rem; }
+    .zoom-next { right: 1rem; }
+
+    .zoom-hint {
+        position: absolute;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        color: rgba(255,255,255,0.5);
+        font-size: 0.8rem;
+        z-index: 10000;
+        pointer-events: none;
     }
 </style>
 {% endblock %}
@@ -645,6 +737,17 @@
     </div>
 </div>
 
+<!-- Zoom Lightbox -->
+<div class="zoom-overlay" id="zoomOverlay">
+    <button class="zoom-close" onclick="closeZoom()" aria-label="Close">&times;</button>
+    {% if listing.get_images|length > 1 %}
+    <button class="zoom-nav zoom-prev" onclick="zoomNav(-1)" aria-label="Previous"><i class="bi bi-chevron-left"></i></button>
+    <button class="zoom-nav zoom-next" onclick="zoomNav(1)" aria-label="Next"><i class="bi bi-chevron-right"></i></button>
+    {% endif %}
+    <img id="zoomImage" src="" alt="{{ listing.title }}">
+    <div class="zoom-hint">Scroll to zoom &middot; Drag to pan &middot; Esc to close</div>
+</div>
+
 <!-- Offer Modal -->
 {% if listing.allow_offers %}
 <div class="modal fade" id="offerModal" tabindex="-1">
@@ -688,5 +791,122 @@ function switchImage(thumb, imageUrl) {
     document.querySelectorAll('.thumbnail-item').forEach(t => t.classList.remove('active'));
     thumb.classList.add('active');
 }
+
+// Image Zoom
+(function() {
+    var overlay = document.getElementById('zoomOverlay');
+    var zoomImg = document.getElementById('zoomImage');
+    var mainContainer = document.getElementById('mainImageContainer');
+    var scale = 1, panX = 0, panY = 0;
+    var isDragging = false, startX = 0, startY = 0;
+    var images = [{% for img in listing.get_images %}'{{ img.url }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+    var currentIdx = 0;
+
+    if (mainContainer) {
+        mainContainer.addEventListener('click', function() {
+            var mainImg = document.getElementById('mainImage');
+            if (!mainImg) return;
+            currentIdx = images.indexOf(mainImg.src.replace(location.origin, ''));
+            if (currentIdx < 0) currentIdx = 0;
+            openZoom(images[currentIdx]);
+        });
+    }
+
+    function openZoom(src) {
+        zoomImg.src = src;
+        scale = 1; panX = 0; panY = 0;
+        applyTransform();
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    window.closeZoom = function() {
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    };
+
+    window.zoomNav = function(dir) {
+        currentIdx = (currentIdx + dir + images.length) % images.length;
+        scale = 1; panX = 0; panY = 0;
+        zoomImg.src = images[currentIdx];
+        applyTransform();
+    };
+
+    function applyTransform() {
+        zoomImg.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + scale + ')';
+    }
+
+    // Mouse wheel zoom
+    overlay.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        var delta = e.deltaY > 0 ? -0.15 : 0.15;
+        scale = Math.min(Math.max(scale + delta, 0.5), 5);
+        if (scale <= 1) { panX = 0; panY = 0; }
+        applyTransform();
+    }, {passive: false});
+
+    // Mouse drag
+    overlay.addEventListener('mousedown', function(e) {
+        if (e.target === zoomImg && scale > 1) {
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+            overlay.style.cursor = 'grabbing';
+        }
+    });
+    overlay.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        panX = e.clientX - startX;
+        panY = e.clientY - startY;
+        applyTransform();
+    });
+    overlay.addEventListener('mouseup', function() {
+        isDragging = false;
+        overlay.style.cursor = 'grab';
+    });
+
+    // Touch pinch-to-zoom
+    var lastDist = 0, lastMidX = 0, lastMidY = 0;
+    overlay.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 1 && scale > 1) {
+            isDragging = true;
+            startX = e.touches[0].clientX - panX;
+            startY = e.touches[0].clientY - panY;
+        } else if (e.touches.length === 2) {
+            isDragging = false;
+            lastDist = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+        }
+    }, {passive: true});
+    overlay.addEventListener('touchmove', function(e) {
+        if (e.touches.length === 1 && isDragging) {
+            e.preventDefault();
+            panX = e.touches[0].clientX - startX;
+            panY = e.touches[0].clientY - startY;
+            applyTransform();
+        } else if (e.touches.length === 2) {
+            e.preventDefault();
+            var dist = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+            var delta = (dist - lastDist) * 0.01;
+            scale = Math.min(Math.max(scale + delta, 0.5), 5);
+            lastDist = dist;
+            if (scale <= 1) { panX = 0; panY = 0; }
+            applyTransform();
+        }
+    }, {passive: false});
+    overlay.addEventListener('touchend', function() { isDragging = false; });
+
+    // Click overlay background to close (not the image)
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closeZoom();
+    });
+
+    // Keyboard controls
+    document.addEventListener('keydown', function(e) {
+        if (!overlay.classList.contains('active')) return;
+        if (e.key === 'Escape') closeZoom();
+        else if (e.key === 'ArrowLeft' && images.length > 1) zoomNav(-1);
+        else if (e.key === 'ArrowRight' && images.length > 1) zoomNav(1);
+    });
+})();
 </script>
 {% endblock %}
