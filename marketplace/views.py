@@ -147,6 +147,22 @@ def listing_create(request):
     if request.method == 'GET':
         item_id = request.GET.get('item')
         price_guide_id = request.GET.get('price_guide')
+        from_listing_id = request.GET.get('from_listing')
+
+        if from_listing_id:
+            source = Listing.objects.filter(pk=from_listing_id).select_related('category').first()
+            if source:
+                prefill.update({
+                    'title': source.title,
+                    'category': source.category_id,
+                    'condition': source.condition,
+                    'grading_service': source.grading_service,
+                    'listing_type': 'fixed',
+                })
+                if source.item_id:
+                    prefill['item_id'] = source.item_id
+                if source.price_guide_item_id:
+                    prefill['price_guide_item'] = source.price_guide_item_id
 
         if item_id:
             from items.models import Item

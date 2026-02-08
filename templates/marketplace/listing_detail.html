@@ -507,6 +507,29 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Sell CTA -->
+            {% if not user.is_authenticated or user != listing.seller %}
+            <div class="card mt-3" style="background: var(--gray-900); border: none;">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h6 class="fw-bold mb-0 text-white">Have one like this?</h6>
+                            <p class="small mb-0" style="color: var(--gray-400);">List yours on HeroesAndMore and reach thousands of collectors.</p>
+                        </div>
+                        {% if user.is_authenticated %}
+                        <a href="{% url 'marketplace:listing_create' %}?from_listing={{ listing.pk }}" class="btn btn-light btn-sm flex-shrink-0 ms-3">
+                            Sell Yours
+                        </a>
+                        {% else %}
+                        <a href="{% url 'account_signup' %}?next={% url 'marketplace:listing_create' %}%3Ffrom_listing%3D{{ listing.pk }}" class="btn btn-light btn-sm flex-shrink-0 ms-3">
+                            Sell Yours
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
