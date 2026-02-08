@@ -123,7 +123,7 @@
                     {% if user.is_authenticated %}
                     <a href="{% url 'marketplace:listing_create' %}?item={{ item.pk }}" class="btn btn-dark">Create Listing</a>
                     {% else %}
-                    <a href="{% url 'account_login' %}?next={{ request.path }}" class="btn btn-dark">Login to Sell</a>
+                    <a href="{% url 'account_signup' %}?next={{ request.path }}" class="btn btn-dark">Sign Up to Sell</a>
                     {% endif %}
                 </div>
             </div>

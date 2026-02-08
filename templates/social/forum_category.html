@@ -52,7 +52,7 @@
         {% if user.is_authenticated %}
         <a href="{% url 'social:create_thread' slug=category.slug %}" class="btn btn-dark">Start a Thread</a>
         {% else %}
-        <a href="{% url 'account_login' %}?next={{ request.path }}" class="btn btn-dark">Log in to Post</a>
+        <a href="{% url 'account_signup' %}?next={{ request.path }}" class="btn btn-dark">Sign Up to Post</a>
         {% endif %}
     </div>
     {% endif %}
