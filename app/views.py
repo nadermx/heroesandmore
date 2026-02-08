@@ -5,13 +5,21 @@ from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from items.models import Category
+from items.views import _get_site_stats
+
 logger = logging.getLogger('frontend')
 
 
 def sell_landing(request):
     if request.user.is_authenticated:
         return redirect('marketplace:listing_create')
-    return render(request, 'pages/sell.html')
+    categories = Category.objects.filter(parent=None, is_active=True).order_by('order')[:8]
+    context = {
+        'categories': categories,
+        **_get_site_stats(),
+    }
+    return render(request, 'pages/sell.html', context)
 
 
 @csrf_exempt
