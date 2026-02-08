@@ -392,14 +392,21 @@
                 {% endif %}
             </div>
             {% else %}
-            <div class="card mb-4" style="background: var(--gray-50);">
-                <div class="card-body text-center py-4">
-                    <p class="mb-3">Sign in to purchase this item</p>
-                    <div class="d-flex gap-2 justify-content-center">
-                        <a href="{% url 'account_login' %}?next={{ request.path }}" class="btn btn-dark">Sign In</a>
-                        <a href="{% url 'account_signup' %}" class="btn btn-outline-dark">Create Account</a>
-                    </div>
-                </div>
+            <div class="d-grid gap-2 mb-4">
+                {% if listing.listing_type == 'auction' and not listing.is_auction_ended %}
+                <a href="{% url 'account_login' %}?next={{ request.path }}" class="btn btn-dark action-button">
+                    <i class="bi bi-hammer me-2"></i> Sign In to Bid
+                </a>
+                {% elif listing.listing_type == 'fixed' and listing.status == 'active' %}
+                <a href="{% url 'account_login' %}?next={{ request.path }}" class="btn btn-dark action-button">
+                    <i class="bi bi-bag me-2"></i> Buy Now — ${{ listing.price|intcomma }}
+                </a>
+                {% if listing.allow_offers %}
+                <a href="{% url 'account_login' %}?next={{ request.path }}" class="btn btn-outline-dark action-button">
+                    <i class="bi bi-tag me-2"></i> Make an Offer
+                </a>
+                {% endif %}
+                {% endif %}
             </div>
             {% endif %}
 
