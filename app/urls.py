@@ -10,7 +10,7 @@ from items.views import home, about
 from accounts.api.views import (
     GoogleAuthView, PasswordResetView, PasswordResetConfirmView, ChangePasswordView
 )
-from app.views import log_frontend_error
+from app.views import log_frontend_error, sell_landing
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -44,6 +44,9 @@ urlpatterns = [
     path('price-guide/', include('pricing.urls')),
     path('scanner/', include('scanner.urls')),
     path('seller/', include('seller_tools.urls')),
+
+    # Sell landing page (media buy destination)
+    path('sell/', sell_landing, name='sell'),
 
     # Static pages
     path('about/', about, name='about'),

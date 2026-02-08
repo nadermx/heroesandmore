@@ -1,10 +1,17 @@
 import json
 import logging
 from django.http import JsonResponse
+from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 logger = logging.getLogger('frontend')
+
+
+def sell_landing(request):
+    if request.user.is_authenticated:
+        return redirect('marketplace:listing_create')
+    return render(request, 'pages/sell.html')
 
 
 @csrf_exempt
