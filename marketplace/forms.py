@@ -22,7 +22,7 @@ class ListingForm(forms.ModelForm):
         fields = [
             'title', 'description', 'category', 'condition',
             'grading_service', 'grade', 'cert_number',
-            'price', 'listing_type', 'reserve_price', 'allow_offers',
+            'price', 'listing_type', 'quantity', 'reserve_price', 'allow_offers',
             'image1', 'image2', 'image3', 'image4', 'image5',
             'shipping_price', 'ships_from',
         ]
@@ -43,6 +43,7 @@ class ListingForm(forms.ModelForm):
             'image3': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'image4': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'image5': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
             'shipping_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'ships_from': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City, State'}),
         }
@@ -64,6 +65,7 @@ class ListingForm(forms.ModelForm):
             if not duration:
                 raise forms.ValidationError("Please select an auction duration")
             cleaned_data['auction_end'] = timezone.now() + timedelta(days=int(duration))
+            cleaned_data['quantity'] = 1
         else:
             cleaned_data['auction_end'] = None
 

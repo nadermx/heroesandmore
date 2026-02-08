@@ -27,6 +27,7 @@ class ListingListSerializer(serializers.ModelSerializer):
     current_price = serializers.SerializerMethodField()
     time_remaining = serializers.SerializerMethodField()
     bid_count = serializers.SerializerMethodField()
+    quantity_available = serializers.SerializerMethodField()
 
     class Meta:
         model = Listing
@@ -35,8 +36,11 @@ class ListingListSerializer(serializers.ModelSerializer):
             'condition', 'grading_service', 'grade', 'seller_username',
             'category_name', 'category_slug', 'primary_image',
             'auction_end', 'time_remaining', 'bid_count',
-            'shipping_price', 'views', 'created'
+            'shipping_price', 'views', 'created', 'quantity_available'
         ]
+
+    def get_quantity_available(self, obj):
+        return obj.quantity_available
 
     def get_primary_image(self, obj):
         if obj.image1:
@@ -73,6 +77,7 @@ class ListingDetailSerializer(serializers.ModelSerializer):
     is_saved = serializers.SerializerMethodField()
     recent_sales = serializers.SerializerMethodField()
     time_remaining = serializers.SerializerMethodField()
+    quantity_available = serializers.SerializerMethodField()
 
     class Meta:
         model = Listing
@@ -81,11 +86,15 @@ class ListingDetailSerializer(serializers.ModelSerializer):
             'listing_type', 'condition', 'grading_service', 'grade',
             'cert_number', 'is_graded', 'seller', 'category_name',
             'category_slug', 'images', 'allow_offers', 'minimum_offer_percent',
+            'quantity', 'quantity_available', 'quantity_sold',
             'shipping_price', 'ships_from', 'auction_end', 'time_remaining',
             'reserve_price', 'no_reserve', 'starting_bid',
             'bid_count', 'high_bidder', 'is_saved', 'recent_sales',
             'views', 'status', 'created'
         ]
+
+    def get_quantity_available(self, obj):
+        return obj.quantity_available
 
     def get_seller(self, obj):
         return PublicProfileSerializer(
@@ -145,7 +154,7 @@ class ListingCreateSerializer(serializers.ModelSerializer):
         model = Listing
         fields = [
             'title', 'description', 'category', 'condition', 'price',
-            'listing_type', 'auction_end', 'reserve_price', 'no_reserve',
+            'listing_type', 'quantity', 'auction_end', 'reserve_price', 'no_reserve',
             'starting_bid', 'allow_offers', 'minimum_offer_percent',
             'grading_service', 'grade', 'cert_number',
             'shipping_price', 'ships_from',
@@ -162,6 +171,7 @@ class ListingCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'auction_end': 'Auction end time must be in the future'
                 })
+            data['quantity'] = 1
         return data
 
     def create(self, validated_data):
@@ -276,7 +286,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'id', 'listing', 'buyer_username', 'seller_username',
-            'item_price', 'shipping_price', 'amount', 'platform_fee',
+            'quantity', 'item_price', 'shipping_price', 'amount', 'platform_fee',
             'seller_payout', 'status', 'shipping_address',
             'tracking_number', 'tracking_carrier',
             'shipped_at', 'delivered_at', 'created'
@@ -369,12 +379,14 @@ class CheckoutSerializer(serializers.Serializer):
     """Serializer for checkout request"""
     shipping_address = serializers.CharField(max_length=500)
     payment_method_id = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    quantity = serializers.IntegerField(default=1, min_value=1)
 
 
 class PaymentIntentSerializer(serializers.Serializer):
     """Serializer for creating payment intent"""
     listing_id = serializers.IntegerField(required=False, allow_null=True)
     offer_id = serializers.IntegerField(required=False, allow_null=True)
+    quantity = serializers.IntegerField(default=1, min_value=1)
 
     def validate(self, data):
         if not data.get('listing_id') and not data.get('offer_id'):

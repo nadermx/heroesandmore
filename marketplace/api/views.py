@@ -259,8 +259,7 @@ class OfferViewSet(viewsets.ReadOnlyModelViewSet):
             status='pending'
         )
 
-        listing.status = 'sold'
-        listing.save()
+        listing.record_sale(1)
 
         return Response({'status': 'accepted'})
 
@@ -342,8 +341,7 @@ class OfferViewSet(viewsets.ReadOnlyModelViewSet):
             status='pending'
         )
 
-        listing.status = 'sold'
-        listing.save()
+        listing.record_sale(1)
 
         # Notify seller that buyer accepted counter-offer
         try:
@@ -588,20 +586,26 @@ class CheckoutView(views.APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
         else:
-            if Order.objects.filter(
-                listing=listing,
-                status__in=['pending', 'payment_failed']
-            ).exclude(buyer=request.user).exists():
-                return Response(
-                    {'error': 'Listing is currently in another checkout'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            # For single-quantity listings, block concurrent checkouts
+            if listing.quantity <= 1:
+                if Order.objects.filter(
+                    listing=listing,
+                    status__in=['pending', 'payment_failed']
+                ).exclude(buyer=request.user).exists():
+                    return Response(
+                        {'error': 'Listing is currently in another checkout'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
             # Calculate fees
             from marketplace.services.stripe_service import StripeService
-            price = listing.get_current_price()
-            platform_fee = StripeService.calculate_platform_fee(price, listing.seller)
-            total = price + listing.shipping_price
+            qty = serializer.validated_data.get('quantity', 1)
+            qty = max(1, min(qty, listing.quantity_available))
+
+            unit_price = listing.get_current_price()
+            item_price = unit_price * qty
+            platform_fee = StripeService.calculate_platform_fee(item_price, listing.seller)
+            total = item_price + listing.shipping_price
 
             # Create pending order
             order, _ = Order.objects.get_or_create(
@@ -610,11 +614,12 @@ class CheckoutView(views.APIView):
                 status='pending',
                 defaults={
                     'seller': listing.seller,
-                    'item_price': price,
+                    'quantity': qty,
+                    'item_price': item_price,
                     'shipping_price': listing.shipping_price,
                     'amount': total,
                     'platform_fee': platform_fee,
-                    'seller_payout': price - platform_fee,
+                    'seller_payout': item_price - platform_fee,
                     'shipping_address': serializer.validated_data['shipping_address'],
                 }
             )
@@ -644,6 +649,7 @@ class PaymentIntentView(views.APIView):
 
         listing_id = serializer.validated_data.get('listing_id')
         offer_id = serializer.validated_data.get('offer_id')
+        # quantity is used in the listing branch below
 
         if listing_id:
             listing = get_object_or_404(Listing, pk=listing_id)
@@ -659,30 +665,37 @@ class PaymentIntentView(views.APIView):
                         status=status.HTTP_400_BAD_REQUEST
                     )
             else:
-                if Order.objects.filter(
-                    listing=listing,
-                    status__in=['pending', 'payment_failed']
-                ).exclude(buyer=request.user).exists():
-                    return Response(
-                        {'error': 'Listing is currently in another checkout'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                # For single-quantity listings, block concurrent checkouts
+                if listing.quantity <= 1:
+                    if Order.objects.filter(
+                        listing=listing,
+                        status__in=['pending', 'payment_failed']
+                    ).exclude(buyer=request.user).exists():
+                        return Response(
+                            {'error': 'Listing is currently in another checkout'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
                 from marketplace.services.stripe_service import StripeService
-                price = listing.get_current_price()
-                platform_fee = StripeService.calculate_platform_fee(price, listing.seller)
-                total = price + listing.shipping_price
+                qty = serializer.validated_data.get('quantity', 1)
+                qty = max(1, min(qty, listing.quantity_available))
+
+                unit_price = listing.get_current_price()
+                item_price = unit_price * qty
+                platform_fee = StripeService.calculate_platform_fee(item_price, listing.seller)
+                total = item_price + listing.shipping_price
                 order, _ = Order.objects.get_or_create(
                     listing=listing,
                     buyer=request.user,
                     status='pending',
                     defaults={
                         'seller': listing.seller,
-                        'item_price': price,
+                        'quantity': qty,
+                        'item_price': item_price,
                         'shipping_price': listing.shipping_price,
                         'amount': total,
                         'platform_fee': platform_fee,
-                        'seller_payout': price - platform_fee,
+                        'seller_payout': item_price - platform_fee,
                         'shipping_address': '',
                     }
                 )
@@ -756,9 +769,8 @@ class PaymentConfirmView(views.APIView):
                 order.stripe_payment_status = 'succeeded'
                 order.paid_at = timezone.now()
                 order.save(update_fields=['status', 'stripe_payment_status', 'paid_at', 'updated'])
-                if order.listing and order.listing.status != 'sold':
-                    order.listing.status = 'sold'
-                    order.listing.save(update_fields=['status'])
+                if order.listing:
+                    order.listing.record_sale(order.quantity)
                 return Response(OrderSerializer(order).data)
             else:
                 return Response(

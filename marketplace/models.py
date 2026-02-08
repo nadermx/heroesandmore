@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import F, Value, Case, When
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
@@ -150,6 +151,10 @@ class Listing(models.Model):
     allow_offers = models.BooleanField(default=False)
     minimum_offer_percent = models.IntegerField(default=70, help_text="Minimum offer as % of price")
 
+    # Quantity (fixed-price only)
+    quantity = models.PositiveIntegerField(default=1, help_text="Number of items available")
+    quantity_sold = models.PositiveIntegerField(default=0)
+
     # Auction event link
     auction_event = models.ForeignKey(
         'AuctionEvent',
@@ -247,6 +252,39 @@ class Listing(models.Model):
             'hours': hours,
             'minutes': minutes,
         }
+
+    @property
+    def quantity_available(self):
+        return self.quantity - self.quantity_sold
+
+    def record_sale(self, qty=1):
+        """Atomically record a sale. Returns True on success, False if insufficient stock."""
+        from django.db import transaction
+        with transaction.atomic():
+            locked = Listing.objects.select_for_update().get(pk=self.pk)
+            if locked.quantity_sold + qty > locked.quantity:
+                return False
+            Listing.objects.filter(pk=self.pk).update(
+                quantity_sold=F('quantity_sold') + qty,
+                status=Case(
+                    When(quantity_sold__gte=F('quantity') - qty, then=Value('sold')),
+                    default=F('status'),
+                )
+            )
+            self.refresh_from_db()
+            return True
+
+    def reverse_sale(self, qty=1):
+        """Atomically reverse a sale (e.g. refund). Restores status to active if was sold."""
+        from django.db import transaction
+        with transaction.atomic():
+            locked = Listing.objects.select_for_update().get(pk=self.pk)
+            new_sold = max(locked.quantity_sold - qty, 0)
+            updates = {'quantity_sold': new_sold}
+            if locked.status == 'sold' and new_sold < locked.quantity:
+                updates['status'] = 'active'
+            Listing.objects.filter(pk=self.pk).update(**updates)
+            self.refresh_from_db()
 
 
 class Bid(models.Model):
@@ -355,6 +393,7 @@ class Order(models.Model):
     seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sales')
 
     # Pricing
+    quantity = models.PositiveIntegerField(default=1)
     item_price = models.DecimalField(max_digits=10, decimal_places=2)
     shipping_price = models.DecimalField(max_digits=6, decimal_places=2)
     amount = models.DecimalField(max_digits=10, decimal_places=2)  # Total

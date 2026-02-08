@@ -99,9 +99,8 @@ def handle_payment_intent_succeeded(event):
 
         logger.info(f"Order {order_id} marked as paid")
 
-        if order.listing and order.listing.status != 'sold':
-            order.listing.status = 'sold'
-            order.listing.save(update_fields=['status'])
+        if order.listing:
+            order.listing.record_sale(order.quantity)
 
         # Send notifications (async via Celery if available)
         try:
@@ -145,10 +144,9 @@ def handle_payment_intent_failed(event):
         order.status = 'payment_failed'
         order.save(update_fields=['stripe_payment_status', 'status', 'updated'])
 
-        # Restore listing if it was marked sold
-        if order.listing and order.listing.status == 'sold':
-            order.listing.status = 'active'
-            order.listing.save(update_fields=['status'])
+        # Restore listing stock if it was marked sold
+        if order.listing:
+            order.listing.reverse_sale(order.quantity)
 
         logger.info(f"Order {order_id} payment failed")
 

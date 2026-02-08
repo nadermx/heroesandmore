@@ -92,6 +92,14 @@
                             </div>
                         </div>
 
+                        <div class="row mb-4" id="quantityRow">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Quantity</label>
+                                {{ form.quantity }}
+                                <small class="text-muted d-block mt-1">Number of identical items available.</small>
+                            </div>
+                        </div>
+
                         <div class="row mb-4" id="auctionOptions" style="display: none;">
                             <div class="col-md-6 mb-3 mb-md-0">
                                 <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Auction Duration</label>
@@ -204,14 +212,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const listingType = document.getElementById('id_listing_type');
     const auctionOptions = document.getElementById('auctionOptions');
     const offerOption = document.getElementById('offerOption');
+    const quantityRow = document.getElementById('quantityRow');
 
     function toggleOptions() {
         if (listingType.value === 'auction') {
             auctionOptions.style.display = 'flex';
             offerOption.style.display = 'none';
+            quantityRow.style.display = 'none';
         } else {
             auctionOptions.style.display = 'none';
             offerOption.style.display = 'block';
+            quantityRow.style.display = 'flex';
         }
     }
 

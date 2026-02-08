@@ -57,8 +57,7 @@ def end_auctions():
                     shipping_address='',  # Buyer fills this at checkout
                 )
 
-                listing.status = 'sold'
-                listing.save(update_fields=['status'])
+                listing.record_sale(1)
 
                 # Send notifications
                 try:
@@ -112,9 +111,8 @@ def expire_unpaid_orders():
             order.status = 'cancelled'
             order.save(update_fields=['status', 'updated'])
 
-            if order.listing and order.listing.status == 'sold':
-                order.listing.status = 'active'
-                order.listing.save(update_fields=['status'])
+            if order.listing:
+                order.listing.reverse_sale(order.quantity)
 
             expired_count += 1
         except Exception as e:

@@ -19,6 +19,9 @@
             {% if listing.grading_service %}
             <span class="badge badge-grade">{{ listing.grading_service|upper }} {{ listing.grade }}</span>
             {% endif %}
+            {% if listing.quantity > 1 and listing.listing_type == 'fixed' %}
+            <span class="badge bg-info text-white">{{ listing.quantity_available }} avail</span>
+            {% endif %}
         </div>
 
         <!-- Quick actions -->

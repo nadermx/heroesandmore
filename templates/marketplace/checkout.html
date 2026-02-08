@@ -85,10 +85,25 @@
 
                             <hr style="border-color: var(--gray-200);">
 
+                            {% if order.quantity > 1 %}
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Unit Price</span>
+                                <span style="color: var(--gray-900);">${{ listing.price|intcomma }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Quantity</span>
+                                <span style="color: var(--gray-900);">&times; {{ order.quantity }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Subtotal</span>
+                                <span style="color: var(--gray-900);">${{ order.item_price|intcomma }}</span>
+                            </div>
+                            {% else %}
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted">Item Price</span>
                                 <span style="color: var(--gray-900);">${{ order.item_price|intcomma }}</span>
                             </div>
+                            {% endif %}
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted">Shipping</span>
                             <span style="color: var(--gray-900);">{% if order.shipping_price %}${{ order.shipping_price }}{% else %}<span style="color: var(--accent-success);">Free</span>{% endif %}</span>

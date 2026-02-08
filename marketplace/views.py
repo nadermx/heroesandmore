@@ -390,8 +390,7 @@ def respond_offer(request, pk):
                 seller_payout=offer.amount - platform_fee,
                 shipping_address='',  # Will be collected at checkout
             )
-            listing.status = 'sold'
-            listing.save()
+            listing.record_sale(1)
 
             # Send notification to buyer
             try:
@@ -467,8 +466,7 @@ def respond_counter_offer(request, pk):
                 seller_payout=offer.counter_amount - platform_fee,
                 shipping_address='',
             )
-            listing.status = 'sold'
-            listing.save()
+            listing.record_sale(1)
 
             # Notify seller their counter was accepted
             try:
@@ -511,16 +509,26 @@ def checkout(request, pk):
     # Calculate fees based on seller tier
     from marketplace.services.stripe_service import StripeService
     if not order:
-        if Order.objects.filter(
-            listing=listing,
-            status__in=['pending', 'payment_failed']
-        ).exclude(buyer=request.user).exists():
-            messages.error(request, 'This listing is currently in another checkout. Please try again shortly.')
-            return redirect('marketplace:listing_detail', pk=pk)
+        # For single-quantity listings, block concurrent checkouts
+        if listing.quantity <= 1:
+            if Order.objects.filter(
+                listing=listing,
+                status__in=['pending', 'payment_failed']
+            ).exclude(buyer=request.user).exists():
+                messages.error(request, 'This listing is currently in another checkout. Please try again shortly.')
+                return redirect('marketplace:listing_detail', pk=pk)
 
-        price = listing.get_current_price()
-        platform_fee = StripeService.calculate_platform_fee(price, listing.seller)
-        total = price + listing.shipping_price
+        # Read requested quantity
+        try:
+            qty = int(request.GET.get('qty', 1))
+        except (ValueError, TypeError):
+            qty = 1
+        qty = max(1, min(qty, listing.quantity_available))
+
+        unit_price = listing.get_current_price()
+        item_price = unit_price * qty
+        platform_fee = StripeService.calculate_platform_fee(item_price, listing.seller)
+        total = item_price + listing.shipping_price
 
         # Get or create pending order for this listing/buyer
         order, created = Order.objects.get_or_create(
@@ -529,11 +537,12 @@ def checkout(request, pk):
             status='pending',
             defaults={
                 'seller': listing.seller,
-                'item_price': price,
+                'quantity': qty,
+                'item_price': item_price,
                 'shipping_price': listing.shipping_price,
                 'amount': total,
                 'platform_fee': platform_fee,
-                'seller_payout': price - platform_fee,
+                'seller_payout': item_price - platform_fee,
                 'shipping_address': '',
             }
         )
@@ -571,9 +580,8 @@ def payment(request, pk):
             order.stripe_payment_status = 'succeeded'
             order.paid_at = timezone.now()
             order.save()
-            if order.listing and order.listing.status != 'sold':
-                order.listing.status = 'sold'
-                order.listing.save(update_fields=['status'])
+            if order.listing:
+                order.listing.record_sale(order.quantity)
             return redirect('marketplace:order_detail', pk=pk)
 
     if order.listing:
@@ -602,10 +610,9 @@ def checkout_complete(request, pk):
             order.paid_at = timezone.now()
             order.save()
 
-            # Mark listing as sold
-            if order.listing and order.listing.status != 'sold':
-                order.listing.status = 'sold'
-                order.listing.save()
+            # Record sale on listing
+            if order.listing:
+                order.listing.record_sale(order.quantity)
 
     context = {
         'order': order,
@@ -649,10 +656,9 @@ def process_payment(request, pk):
             order.paid_at = timezone.now()
             order.save()
 
-            # Mark listing as sold
+            # Record sale on listing
             if order.listing:
-                order.listing.status = 'sold'
-                order.listing.save()
+                order.listing.record_sale(order.quantity)
 
             return JsonResponse({
                 'success': True,
@@ -887,10 +893,9 @@ def order_refund(request, pk):
                 order.refund_status = 'partial'
             order.save()
 
-            # Restore listing if full refund
+            # Restore listing stock if full refund
             if order.refund_status == 'full' and order.listing:
-                order.listing.status = 'active'
-                order.listing.save(update_fields=['status'])
+                order.listing.reverse_sale(order.quantity)
 
             # Send notification to buyer
             try:
@@ -959,10 +964,9 @@ def order_cancel(request, pk):
             order.status = 'cancelled'
             order.save()
 
-            # Restore listing
-            if order.listing and order.listing.status == 'sold':
-                order.listing.status = 'active'
-                order.listing.save(update_fields=['status'])
+            # Restore listing stock
+            if order.listing:
+                order.listing.reverse_sale(order.quantity)
 
             # Send notification to other party
             try:
