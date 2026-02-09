@@ -266,6 +266,26 @@
     </div>
 </div>
 
+<!-- Bulk Import Callout -->
+<div style="background: #fff; border-bottom: 1px solid var(--border-color);">
+    <div class="container py-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3" style="padding: 0.75rem 1.25rem; background: var(--gray-50); border-radius: 0.75rem; border: 1px solid var(--border-color);">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width: 42px; height: 42px; background: var(--gray-900); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i class="bi bi-upload text-white" style="font-size: 1.1rem;"></i>
+                </div>
+                <div>
+                    <div class="fw-bold" style="font-size: 0.95rem; color: var(--gray-900);">Got a lot to sell? Use Bulk Import</div>
+                    <div class="text-muted" style="font-size: 0.85rem;">Download our Excel template, fill it in, and upload hundreds of listings at once.</div>
+                </div>
+            </div>
+            <a href="{% url 'seller_tools:import_create' %}" class="btn btn-dark btn-sm fw-semibold">
+                <i class="bi bi-upload me-1"></i> Bulk Import
+            </a>
+        </div>
+    </div>
+</div>
+
 <!-- Stats Bar -->
 {% if stat_active_listings or stat_collectors %}
 <div style="background: #fff; border-bottom: 1px solid var(--border-color);">
@@ -410,7 +430,7 @@
                 <i class="bi bi-upload"></i>
             </div>
             <h5 class="fw-bold" style="font-size: 1.05rem;">Bulk Import</h5>
-            <p class="text-muted" style="font-size: 0.9rem;">Upload your inventory via CSV. List hundreds of items at once instead of one at a time.</p>
+            <p class="text-muted" style="font-size: 0.9rem;">Upload your inventory via Excel. List hundreds of items at once, then snap photos for all of them in one flow.</p>
         </div>
         <div class="col-md-4 text-center">
             <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
