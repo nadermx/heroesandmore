@@ -84,7 +84,10 @@ python manage.py test --verbosity=2                             # Verbose output
 - `/price-guide/` - Price guide and market data
 - `/scanner/` - Item scanner (image recognition)
 - `/seller/` - Seller dashboard and tools
+- `/sell/` - Sell landing page (redirects to listing create if authenticated)
 - `/admin/` - Django admin
+- `/api/v1/` - REST API root
+- `/api/docs/` - Swagger UI
 
 ## Key Models
 
@@ -134,24 +137,26 @@ Ansible playbooks are in the `ansible/` directory:
 
 **Important**: Copy `group_vars/vault.yml.example` to `group_vars/vault.yml` and add your secrets.
 
+**Ansible binary location**: `/home/john/heroesandmore/venv/bin/ansible-playbook` (installed in project venv, not system-wide).
+
 ### Quick Deploy (Code Only)
 For simple code updates without config changes:
 ```bash
-cd ansible
-ansible-playbook -i servers gitpull.yml
+cd /home/john/heroesandmore/ansible
+/home/john/heroesandmore/venv/bin/ansible-playbook -i servers gitpull.yml
 ```
 
 ### Full Deploy (With Config)
 For deployments that update config.py:
 ```bash
-cd ansible
-ansible-playbook -i servers deploy.yml
+cd /home/john/heroesandmore/ansible
+/home/john/heroesandmore/venv/bin/ansible-playbook -i servers deploy.yml
 ```
 
 ### Backup Database
 ```bash
-cd ansible
-ansible-playbook -i servers backup.yml
+cd /home/john/heroesandmore/ansible
+/home/john/heroesandmore/venv/bin/ansible-playbook -i servers backup.yml
 ```
 
 ### Check Logs & Debug
@@ -169,12 +174,12 @@ cd ansible
 
 Or manually:
 ```bash
-ansible -i servers all -m shell -a "tail -100 /var/log/heroesandmore/heroesandmore.log" --become
+/home/john/heroesandmore/venv/bin/ansible -i servers all -m shell -a "tail -100 /var/log/heroesandmore/heroesandmore.log" --become
 ```
 
 ### Restart Services
 ```bash
-ansible -i servers all -m shell -a "supervisorctl restart heroesandmore:*" --become
+/home/john/heroesandmore/venv/bin/ansible -i servers all -m shell -a "supervisorctl restart heroesandmore:*" --become
 # Or use: ./debug.sh restart
 ```
 
@@ -210,21 +215,6 @@ System logs in `/var/log/heroesandmore/`:
 | `celery.err.log` | Celery worker stderr (errors) |
 | `celerybeat.out.log` | Celery beat stdout |
 | `celerybeat.err.log` | Celery beat stderr (errors) |
-
-### Quick Debug Commands
-```bash
-# Check recent errors
-ssh heroesandmore@174.138.33.140 "sudo tail -50 /home/www/heroesandmore/logs/errors.log"
-
-# Check Stripe issues
-ssh heroesandmore@174.138.33.140 "sudo tail -50 /home/www/heroesandmore/logs/stripe.log"
-
-# Live tail errors
-ssh heroesandmore@174.138.33.140 "sudo tail -f /home/www/heroesandmore/logs/errors.log"
-
-# Search for specific error
-ssh heroesandmore@174.138.33.140 "sudo grep 'PermissionError' /home/www/heroesandmore/logs/*.log"
-```
 
 ### Adding Logging in Code
 ```python
@@ -442,24 +432,15 @@ sudo nano /etc/postfix/virtual
 sudo postmap /etc/postfix/virtual && sudo systemctl reload postfix
 ```
 
-## Error Pages
-
-Custom error pages in `templates/`:
-- `404.html` - Page not found
-- `403.html` - Access denied
-- `500.html` - Server error
-
-All are standalone HTML (don't extend base.html) for reliability when errors occur.
-
 ## GitHub Repositories
 
-Project is split across three repositories:
+Project is split across three standalone repositories (each in its own directory):
 
-| Repo | URL | Description |
-|------|-----|-------------|
-| Web | https://github.com/nadermx/heroesandmore | Django web app (this repo) |
-| Android | https://github.com/nadermx/heroesandmore-android | Native Android app (Kotlin) |
-| iOS | https://github.com/nadermx/heroesandmore-ios | Native iOS app (Swift/SwiftUI) |
+| Repo | URL | Local Path |
+|------|-----|------------|
+| Web | https://github.com/nadermx/heroesandmore | `~/heroesandmore/` (this repo) |
+| Android | https://github.com/nadermx/heroesandmore-android | `~/heroesandmore-android/` |
+| iOS | https://github.com/nadermx/heroesandmore-ios | `~/heroesandmore-ios/` |
 
 ## Team
 
@@ -475,10 +456,37 @@ Project is split across three repositories:
 - API tests use `rest_framework.test.APIClient` with JWT authentication
 - Test database uses SQLite in-memory for speed
 
+## Shared Utilities
+
+### Site Stats Pattern
+`items.views._get_site_stats()` returns dynamic platform stats (active listings, collectors count, total sold, avg rating). Used by the homepage, about page, and `/sell/` landing page. Import it when any view needs real-time platform numbers.
+
+### Custom Template Tags
+- **`seo_tags`** (`items/templatetags/seo_tags.py`): `absolute_url`, `absolute_static`, `absolute_media`, `json_ld_escape` — used in meta tags and JSON-LD structured data across templates
+- **`seller_tools_tags`** (`seller_tools/templatetags/seller_tools_tags.py`): `get_item` filter for template dictionary lookups
+
+### Frontend Error Logging
+`/api/log-error/` (POST) — JavaScript errors are sent here and logged to the `frontend` logger. Implemented in `app/views.py`.
+
+### Context Processor
+`app/context_processors.seo()` provides `site_url` and `default_og_image` to all templates.
+
+## Multi-Quantity Listings
+
+Fixed-price listings support multi-quantity (e.g., 20 of the same item). Auctions are always quantity=1.
+
+- `Listing.quantity` / `Listing.quantity_sold` / `Listing.quantity_available` (property)
+- `Listing.record_sale(qty)` — atomically decrements stock using `select_for_update()` + `F()`. Returns `True`/`False`.
+- `Listing.reverse_sale(qty)` — atomically restores stock (for refunds/cancellations)
+- **Never set `listing.status = 'sold'` directly** — always use `record_sale()` / `reverse_sale()`
+- `Order.quantity` tracks units per order; `item_price = unit_price * quantity`, shipping is flat per order
+
 ## Notes
-- The `collections` app uses `item_collections` as the related_name to avoid conflicts with Django's built-in collections module
+- The `collections` app uses `item_collections` as the related_name to avoid conflicts with Python's built-in collections module
 - All listing images are stored in `media/listings/`
 - User avatars are stored in `media/avatars/`
-- Platform fee is tier-based (see commission rates above)
+- Commission is tier-based per `SellerSubscription.commission_rate` (not the flat `PLATFORM_FEE_PERCENT` in settings, which is a base fallback)
 - Image scanner requires Google Cloud Vision API (configure credentials)
-- Custom template tags in `seller_tools/templatetags/seller_tools_tags.py` (e.g., `get_item` filter)
+- Error pages (`404.html`, `403.html`, `500.html`) are standalone HTML — they don't extend `base.html` for reliability
+- Django template syntax: `{% with %}` blocks cannot contain `{% else %}` — only `{% if %}` blocks can
+- Avoid `-webkit-appearance: none` on `.form-control` — it breaks native iOS keyboard behavior

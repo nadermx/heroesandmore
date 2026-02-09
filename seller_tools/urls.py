@@ -26,6 +26,12 @@ urlpatterns = [
     path('import/<int:pk>/process/', views.bulk_import_process, name='import_process'),
     path('import/template/', views.download_import_template, name='import_template'),
 
+    # Import photo capture flow
+    path('import/<int:pk>/photos/', views.import_photos, name='import_photos'),
+    path('import/<int:pk>/photos/<int:listing_id>/', views.import_photo_capture, name='import_photo_capture'),
+    path('import/<int:pk>/photos/<int:listing_id>/upload/', views.import_photo_upload, name='import_photo_upload'),
+    path('import/<int:pk>/photos/<int:listing_id>/delete/<int:position>/', views.import_photo_delete, name='import_photo_delete'),
+
     # Inventory management
     path('inventory/', views.inventory_list, name='inventory_list'),
     path('inventory/add/', views.inventory_add, name='inventory_add'),

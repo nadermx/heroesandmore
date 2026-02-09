@@ -27,14 +27,23 @@
                     </span>
                 </p>
             </div>
-            {% if bulk_import.status in 'validating,partial' %}
-            <form method="post" action="{% url 'seller_tools:import_process' pk=bulk_import.pk %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-dark">
-                    <i class="bi bi-play-fill me-1"></i> Process Import
-                </button>
-            </form>
-            {% endif %}
+            <div class="d-flex gap-2">
+                {% if bulk_import.status in 'validating,partial' %}
+                <form method="post" action="{% url 'seller_tools:import_process' pk=bulk_import.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-dark">
+                        <i class="bi bi-play-fill me-1"></i> Process Import
+                    </button>
+                </form>
+                {% endif %}
+                {% if bulk_import.status == 'completed' or bulk_import.status == 'partial' %}
+                {% if bulk_import.success_count > 0 %}
+                <a href="{% url 'seller_tools:import_photos' pk=bulk_import.pk %}" class="btn btn-primary">
+                    <i class="bi bi-camera me-1"></i> Add Photos
+                </a>
+                {% endif %}
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Photos - {{ listing.title|truncatewords:5 }} | HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2" style="font-size: 0.85rem;">
+                <li class="breadcrumb-item"><a href="{% url 'seller_tools:import_photos' pk=bulk_import.pk %}">Photos</a></li>
+                <li class="breadcrumb-item active">{{ current_num }} of {{ total_num }}</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 1.25rem; margin-bottom: 0.25rem; line-height: 1.3;">{{ listing.title }}</h1>
+        <div class="d-flex flex-wrap gap-2 mt-1" style="font-size: 0.85rem;">
+            {% if listing.condition %}
+            <span class="badge bg-light text-dark">{{ listing.get_condition_display }}</span>
+            {% endif %}
+            {% if listing.grading_service and listing.grade %}
+            <span class="badge bg-light text-dark">{{ listing.grading_service|upper }} {{ listing.grade }}</span>
+            {% endif %}
+            <span class="fw-bold text-success">${{ listing.price }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="container py-3">
+    <!-- Photo Grid: 3 columns -->
+    <div class="row g-2 mb-4" id="photo-grid">
+        {% for slot in slots %}
+        <div class="col-4">
+            {% include 'seller_tools/partials/photo_slot.html' with slot=slot bulk_import=bulk_import listing=listing %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Navigation -->
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <div class="d-flex gap-2">
+            {% if prev_id %}
+            <a href="{% url 'seller_tools:import_photo_capture' pk=bulk_import.pk listing_id=prev_id %}"
+               class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-chevron-left"></i> Prev
+            </a>
+            {% else %}
+            <button class="btn btn-outline-secondary btn-sm" disabled>
+                <i class="bi bi-chevron-left"></i> Prev
+            </button>
+            {% endif %}
+
+            {% if next_id %}
+            <a href="{% url 'seller_tools:import_photo_capture' pk=bulk_import.pk listing_id=next_id %}"
+               class="btn btn-outline-secondary btn-sm">
+                Next <i class="bi bi-chevron-right"></i>
+            </a>
+            {% else %}
+            <button class="btn btn-outline-secondary btn-sm" disabled>
+                Next <i class="bi bi-chevron-right"></i>
+            </button>
+            {% endif %}
+        </div>
+
+        <div class="d-flex gap-2">
+            {% if next_needing %}
+            <a href="{% url 'seller_tools:import_photo_capture' pk=bulk_import.pk listing_id=next_needing %}"
+               class="btn btn-primary btn-sm">
+                <i class="bi bi-camera me-1"></i>Next Needing Photos
+            </a>
+            {% endif %}
+
+            <a href="{% url 'seller_tools:import_photos' pk=bulk_import.pk %}"
+               class="btn btn-outline-dark btn-sm">
+                Done
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

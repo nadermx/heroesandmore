@@ -9,11 +9,15 @@ from django.utils import timezone
 from django.conf import settings
 from datetime import timedelta
 import csv
+import io
+import logging
 import stripe
 
 from .models import SellerSubscription, SubscriptionBillingHistory, BulkImport, BulkImportRow, InventoryItem
 from marketplace.models import Listing, Order, PaymentMethod
 from items.models import Category
+
+logger = logging.getLogger('seller_tools')
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -321,7 +325,6 @@ def bulk_import_create(request):
             rows = list(reader)
             bulk_import.total_rows = len(rows)
 
-            # Create row records
             for i, row in enumerate(rows, 1):
                 BulkImportRow.objects.create(
                     bulk_import=bulk_import,
@@ -329,6 +332,55 @@ def bulk_import_create(request):
                     data=dict(row)
                 )
 
+            bulk_import.status = 'validating'
+            bulk_import.save()
+
+        elif file_type == 'xlsx':
+            import openpyxl
+
+            file.seek(0)
+            try:
+                wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+            except Exception as e:
+                bulk_import.delete()
+                messages.error(request, f'Could not read Excel file: {e}')
+                return redirect('seller_tools:import_create')
+
+            ws = wb.active
+            rows_iter = ws.iter_rows(values_only=True)
+
+            # First row is headers
+            try:
+                header_row = next(rows_iter)
+            except StopIteration:
+                bulk_import.delete()
+                messages.error(request, 'Excel file is empty')
+                return redirect('seller_tools:import_create')
+
+            headers = [str(h).strip().lower() if h else '' for h in header_row]
+            row_count = 0
+
+            for i, row_values in enumerate(rows_iter, 1):
+                # Skip fully empty rows
+                if not any(v is not None and str(v).strip() for v in row_values):
+                    continue
+
+                row_data = {}
+                for col_idx, header in enumerate(headers):
+                    if not header:
+                        continue
+                    val = row_values[col_idx] if col_idx < len(row_values) else None
+                    row_data[header] = str(val).strip() if val is not None else ''
+
+                BulkImportRow.objects.create(
+                    bulk_import=bulk_import,
+                    row_number=i,
+                    data=row_data,
+                )
+                row_count += 1
+
+            wb.close()
+            bulk_import.total_rows = row_count
             bulk_import.status = 'validating'
             bulk_import.save()
 
@@ -382,44 +434,170 @@ def bulk_import_process(request, pk):
 
 @login_required
 def download_import_template(request):
-    """Download CSV template for bulk import"""
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="listing_import_template.csv"'
+    """Download Excel template for bulk import with dropdown validation"""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.datavalidation import DataValidation
 
-    writer = csv.writer(response)
-    writer.writerow([
-        'title',
-        'description',
-        'category',
-        'condition',
-        'price',
-        'quantity',
-        'grading_service',
-        'grade',
-        'cert_number',
-        'shipping_price',
-        'listing_type',
-        'auction_duration_days',
-        'allow_offers',
-    ])
+    wb = Workbook()
+
+    # --- Sheet 1: Listings (data entry) ---
+    ws = wb.active
+    ws.title = 'Listings'
+
+    headers = [
+        'title', 'description', 'category', 'condition', 'price', 'quantity',
+        'grading_service', 'grade', 'cert_number', 'shipping_price',
+        'listing_type', 'auction_duration_days', 'allow_offers',
+    ]
+    col_widths = [35, 50, 20, 14, 12, 10, 16, 8, 14, 14, 14, 20, 14]
+
+    header_font = Font(bold=True, color='FFFFFF', size=11)
+    header_fill = PatternFill(start_color='2B3035', end_color='2B3035', fill_type='solid')
+    thin_border = Border(
+        bottom=Side(style='thin', color='DDDDDD'),
+    )
+
+    for col_idx, (header, width) in enumerate(zip(headers, col_widths), 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center')
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
 
     # Example row
-    writer.writerow([
+    example = [
         '1986 Fleer Michael Jordan #57 PSA 10',
         'Beautiful PSA 10 gem mint example of the iconic rookie card.',
-        'trading-cards',
-        'mint',
-        '500000.00',
-        '1',
-        'psa',
-        '10',
-        '12345678',
-        '25.00',
-        'fixed',
-        '',
-        'no',
-    ])
+        'trading-cards', 'mint', '500000.00', '1',
+        'psa', '10', '12345678', '25.00', 'fixed', '', 'no',
+    ]
+    example_font = Font(color='888888', italic=True)
+    for col_idx, val in enumerate(example, 1):
+        cell = ws.cell(row=2, column=col_idx, value=val)
+        cell.font = example_font
+        cell.border = thin_border
 
+    # Freeze header row
+    ws.freeze_panes = 'A2'
+
+    # --- Sheet 2: Reference ---
+    ref = wb.create_sheet('Reference')
+    ref_header_font = Font(bold=True, color='FFFFFF', size=11)
+    ref_header_fill = PatternFill(start_color='0D6EFD', end_color='0D6EFD', fill_type='solid')
+
+    # Column A: Category Name, Column B: Category Slug
+    ref.cell(row=1, column=1, value='Category Name').font = ref_header_font
+    ref.cell(row=1, column=1).fill = ref_header_fill
+    ref.cell(row=1, column=2, value='Category Slug (use this)').font = ref_header_font
+    ref.cell(row=1, column=2).fill = ref_header_fill
+    ref.column_dimensions['A'].width = 30
+    ref.column_dimensions['B'].width = 25
+
+    categories = Category.objects.filter(is_active=True).order_by('name')
+    cat_slugs = []
+    for row_idx, cat in enumerate(categories, 2):
+        ref.cell(row=row_idx, column=1, value=cat.name)
+        ref.cell(row=row_idx, column=2, value=cat.slug)
+        cat_slugs.append(cat.slug)
+    cat_last_row = 1 + len(cat_slugs)
+
+    # Column D: Conditions
+    conditions = ['mint', 'near_mint', 'excellent', 'very_good', 'good', 'fair', 'poor']
+    ref.cell(row=1, column=4, value='Condition').font = ref_header_font
+    ref.cell(row=1, column=4).fill = ref_header_fill
+    ref.column_dimensions['D'].width = 16
+    for i, cond in enumerate(conditions, 2):
+        ref.cell(row=i, column=4, value=cond)
+
+    # Column F: Grading Services
+    grading_services = ['psa', 'bgs', 'cgc', 'sgc']
+    ref.cell(row=1, column=6, value='Grading Service').font = ref_header_font
+    ref.cell(row=1, column=6).fill = ref_header_fill
+    ref.column_dimensions['F'].width = 18
+    for i, gs in enumerate(grading_services, 2):
+        ref.cell(row=i, column=6, value=gs)
+
+    # Column H: Listing Types
+    ref.cell(row=1, column=8, value='Listing Type').font = ref_header_font
+    ref.cell(row=1, column=8).fill = ref_header_fill
+    ref.column_dimensions['H'].width = 14
+    ref.cell(row=2, column=8, value='fixed')
+    ref.cell(row=3, column=8, value='auction')
+
+    # Column J: Allow Offers
+    ref.cell(row=1, column=10, value='Allow Offers').font = ref_header_font
+    ref.cell(row=1, column=10).fill = ref_header_fill
+    ref.column_dimensions['J'].width = 14
+    ref.cell(row=2, column=10, value='yes')
+    ref.cell(row=3, column=10, value='no')
+
+    # --- Data Validation on Listings sheet ---
+    # Category dropdown (column C, rows 2-500)
+    if cat_slugs:
+        dv_cat = DataValidation(
+            type='list',
+            formula1=f"Reference!$B$2:$B${cat_last_row}",
+            allow_blank=True,
+        )
+        dv_cat.error = 'Please select a valid category from the Reference sheet'
+        dv_cat.errorTitle = 'Invalid Category'
+        dv_cat.prompt = 'Pick a category slug from the dropdown'
+        dv_cat.promptTitle = 'Category'
+        ws.add_data_validation(dv_cat)
+        dv_cat.add(f'C2:C500')
+
+    # Condition dropdown (column D)
+    dv_cond = DataValidation(
+        type='list',
+        formula1=f"Reference!$D$2:$D${1 + len(conditions)}",
+        allow_blank=True,
+    )
+    dv_cond.error = 'Please select a valid condition'
+    dv_cond.errorTitle = 'Invalid Condition'
+    ws.add_data_validation(dv_cond)
+    dv_cond.add('D2:D500')
+
+    # Grading service dropdown (column G)
+    dv_grade = DataValidation(
+        type='list',
+        formula1=f"Reference!$F$2:$F${1 + len(grading_services)}",
+        allow_blank=True,
+    )
+    dv_grade.error = 'Please select a valid grading service'
+    dv_grade.errorTitle = 'Invalid Grading Service'
+    ws.add_data_validation(dv_grade)
+    dv_grade.add('G2:G500')
+
+    # Listing type dropdown (column K)
+    dv_type = DataValidation(
+        type='list',
+        formula1="Reference!$H$2:$H$3",
+        allow_blank=True,
+    )
+    ws.add_data_validation(dv_type)
+    dv_type.add('K2:K500')
+
+    # Allow offers dropdown (column M)
+    dv_offers = DataValidation(
+        type='list',
+        formula1="Reference!$J$2:$J$3",
+        allow_blank=True,
+    )
+    ws.add_data_validation(dv_offers)
+    dv_offers.add('M2:M500')
+
+    # Write to response
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = 'attachment; filename="listing_import_template.xlsx"'
     return response
 
 
@@ -683,4 +861,174 @@ def payout_settings(request):
         'account': account,
         'balance': balance,
         'transfers': transfers.data if hasattr(transfers, 'data') else [],
+    })
+
+
+# --- Photo Capture Flow ---
+
+def _get_import_listings(bulk_import):
+    """Get all listings created by a bulk import."""
+    row_ids = bulk_import.rows.filter(
+        status='success', listing__isnull=False
+    ).values_list('listing_id', flat=True)
+    return Listing.objects.filter(id__in=row_ids).order_by('id')
+
+
+@login_required
+def import_photos(request, pk):
+    """Overview grid of all listings from an import needing photos."""
+    bulk_import = get_object_or_404(BulkImport, pk=pk, user=request.user)
+    listings = _get_import_listings(bulk_import)
+
+    listings_data = []
+    with_photos = 0
+    for listing in listings:
+        photo_count = sum(1 for i in range(1, 6) if getattr(listing, f'image{i}'))
+        if photo_count > 0:
+            with_photos += 1
+        listings_data.append({
+            'listing': listing,
+            'photo_count': photo_count,
+            'thumbnail': getattr(listing, 'image1') if getattr(listing, 'image1') else None,
+        })
+
+    total = len(listings_data)
+    progress = int((with_photos / total) * 100) if total else 0
+
+    return render(request, 'seller_tools/import_photos.html', {
+        'bulk_import': bulk_import,
+        'listings_data': listings_data,
+        'total': total,
+        'with_photos': with_photos,
+        'progress': progress,
+    })
+
+
+@login_required
+def import_photo_capture(request, pk, listing_id):
+    """Mobile-first photo capture page for a single listing."""
+    bulk_import = get_object_or_404(BulkImport, pk=pk, user=request.user)
+    listing = get_object_or_404(Listing, pk=listing_id, seller=request.user)
+
+    # Verify listing belongs to this import
+    if not bulk_import.rows.filter(listing=listing).exists():
+        messages.error(request, 'Listing does not belong to this import.')
+        return redirect('seller_tools:import_photos', pk=pk)
+
+    # Build photo slots
+    slots = []
+    for i in range(1, 6):
+        field = f'image{i}'
+        image = getattr(listing, field)
+        slots.append({
+            'position': i,
+            'label': 'Main' if i == 1 else f'Photo {i}',
+            'image': image if image else None,
+        })
+
+    # Navigation: prev/next listings in this import
+    all_listings = list(_get_import_listings(bulk_import).values_list('id', flat=True))
+    current_idx = all_listings.index(listing.id) if listing.id in all_listings else 0
+    prev_id = all_listings[current_idx - 1] if current_idx > 0 else None
+    next_id = all_listings[current_idx + 1] if current_idx < len(all_listings) - 1 else None
+
+    # Find next listing needing photos (batch query)
+    no_photo_ids = set(
+        Listing.objects.filter(id__in=all_listings, image1='')
+        .values_list('id', flat=True)
+    ) | set(
+        Listing.objects.filter(id__in=all_listings, image1__isnull=True)
+        .values_list('id', flat=True)
+    )
+    next_needing = None
+    # Look after current first, then wrap around
+    for lid in all_listings[current_idx + 1:] + all_listings[:current_idx]:
+        if lid in no_photo_ids:
+            next_needing = lid
+            break
+
+    return render(request, 'seller_tools/import_photo_capture.html', {
+        'bulk_import': bulk_import,
+        'listing': listing,
+        'slots': slots,
+        'prev_id': prev_id,
+        'next_id': next_id,
+        'next_needing': next_needing,
+        'current_num': current_idx + 1,
+        'total_num': len(all_listings),
+    })
+
+
+@login_required
+@require_POST
+def import_photo_upload(request, pk, listing_id):
+    """HTMX endpoint: upload a photo to a listing slot."""
+    bulk_import = get_object_or_404(BulkImport, pk=pk, user=request.user)
+    listing = get_object_or_404(Listing, pk=listing_id, seller=request.user)
+
+    if not bulk_import.rows.filter(listing=listing).exists():
+        return HttpResponse('Unauthorized', status=403)
+
+    if 'photo' not in request.FILES:
+        return HttpResponse('No file', status=400)
+
+    photo = request.FILES['photo']
+
+    # Find the target position (explicit via query param/POST or first empty)
+    position = request.GET.get('position') or request.POST.get('position')
+    if position:
+        position = int(position)
+    else:
+        position = None
+        for i in range(1, 6):
+            if not getattr(listing, f'image{i}'):
+                position = i
+                break
+        if position is None:
+            return HttpResponse('All slots full', status=400)
+
+    field = f'image{position}'
+    setattr(listing, field, photo)
+    listing.save(update_fields=[field])
+
+    image = getattr(listing, field)
+    return render(request, 'seller_tools/partials/photo_slot.html', {
+        'slot': {
+            'position': position,
+            'label': 'Main' if position == 1 else f'Photo {position}',
+            'image': image,
+        },
+        'bulk_import': bulk_import,
+        'listing': listing,
+    })
+
+
+@login_required
+@require_POST
+def import_photo_delete(request, pk, listing_id, position):
+    """HTMX endpoint: delete a photo from a listing slot."""
+    bulk_import = get_object_or_404(BulkImport, pk=pk, user=request.user)
+    listing = get_object_or_404(Listing, pk=listing_id, seller=request.user)
+
+    if not bulk_import.rows.filter(listing=listing).exists():
+        return HttpResponse('Unauthorized', status=403)
+
+    if position < 1 or position > 5:
+        return HttpResponse('Invalid position', status=400)
+
+    field = f'image{position}'
+    image_field = getattr(listing, field)
+    if image_field:
+        image_field.delete(save=False)
+    setattr(listing, field, '')
+    listing.save(update_fields=[field])
+
+    return render(request, 'seller_tools/partials/photo_slot.html', {
+        'slot': {
+            'position': position,
+            'label': 'Main' if position == 1 else f'Photo {position}',
+            'image': None,
+        },
+        'bulk_import': bulk_import,
+        'listing': listing,
     })

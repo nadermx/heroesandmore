@@ -309,6 +309,15 @@ def process_bulk_import(bulk_import_id):
             error_count += 1
             continue
 
+        # Parse quantity (fixed-price only, default 1)
+        quantity = 1
+        raw_qty = (data.get('quantity') or '').strip()
+        if raw_qty:
+            try:
+                quantity = max(1, int(raw_qty))
+            except (ValueError, TypeError):
+                quantity = 1
+
         listing = Listing.objects.create(
             seller=bulk_import.user,
             title=title,
@@ -322,6 +331,7 @@ def process_bulk_import(bulk_import_id):
             grading_service=grading_service,
             grade=grade,
             cert_number=cert_number,
+            quantity=quantity if listing_type == 'fixed' else 1,
             status='draft',
         )
 
