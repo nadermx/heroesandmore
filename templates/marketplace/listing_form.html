@@ -14,6 +14,15 @@
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-lg-8">
+            {% if not listing %}
+            <div class="d-flex align-items-center gap-3 mb-4 p-3" style="background: var(--gray-50); border: 1px solid var(--border-color); border-radius: 0.75rem;">
+                <i class="bi bi-upload" style="font-size: 1.25rem; color: var(--gray-600);"></i>
+                <div class="small">
+                    <strong>Have multiple items to list?</strong>
+                    <a href="{% url 'seller_tools:import_create' %}">Use Bulk Import</a> to upload an Excel spreadsheet with all your listings and photos at once.
+                </div>
+            </div>
+            {% endif %}
             <div class="card">
                 <div class="card-body p-4">
                     <form method="post" enctype="multipart/form-data">

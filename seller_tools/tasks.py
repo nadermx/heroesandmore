@@ -231,6 +231,56 @@ def send_renewal_reminders():
     return {'sent': sent}
 
 
+def _attach_row_images(listing, data, bulk_import_id):
+    """Attach images to a listing from URLs or uploaded filenames."""
+    import os
+    import requests as http_requests
+    from django.core.files.base import ContentFile
+    from django.core.files.storage import default_storage
+
+    updated_fields = []
+    for idx in range(1, 6):
+        img_ref = (data.get(f'image{idx}_url') or '').strip()
+        if not img_ref:
+            continue
+
+        field_name = f'image{idx}'
+
+        try:
+            if img_ref.startswith(('http://', 'https://')):
+                resp = http_requests.get(img_ref, timeout=15, stream=True)
+                resp.raise_for_status()
+                # Limit to 10MB
+                if int(resp.headers.get('content-length', 0)) > 10 * 1024 * 1024:
+                    logger.warning("Image too large (>10MB): %s", img_ref)
+                    continue
+                content = resp.content
+                if len(content) > 10 * 1024 * 1024:
+                    continue
+                filename = img_ref.split('/')[-1].split('?')[0] or f'image{idx}.jpg'
+                # Sanitize filename
+                filename = os.path.basename(filename)[:100]
+                getattr(listing, field_name).save(filename, ContentFile(content), save=False)
+                updated_fields.append(field_name)
+            else:
+                # Match against uploaded local files
+                filename = os.path.basename(img_ref)
+                upload_path = f'bulk_imports/{bulk_import_id}/images/{filename}'
+                if default_storage.exists(upload_path):
+                    with default_storage.open(upload_path) as f:
+                        getattr(listing, field_name).save(
+                            filename, ContentFile(f.read()), save=False
+                        )
+                    updated_fields.append(field_name)
+                else:
+                    logger.warning("Uploaded image not found: %s", filename)
+        except Exception as e:
+            logger.warning("Failed to attach image %s for listing %s: %s", img_ref, listing.id, e)
+
+    if updated_fields:
+        listing.save(update_fields=updated_fields)
+
+
 @shared_task
 def process_bulk_import(bulk_import_id):
     """Process a bulk import and create draft listings."""
@@ -334,6 +384,9 @@ def process_bulk_import(bulk_import_id):
             quantity=quantity if listing_type == 'fixed' else 1,
             status='draft',
         )
+
+        # Attach images from URLs or uploaded files
+        _attach_row_images(listing, data, bulk_import.id)
 
         if listing.listing_type == 'auction' and auction_duration:
             try:

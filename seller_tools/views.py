@@ -318,6 +318,14 @@ def bulk_import_create(request):
             auto_publish=request.POST.get('auto_publish') == 'on',
         )
 
+        # Save any uploaded image files for matching by filename
+        from django.core.files.storage import default_storage
+        images = request.FILES.getlist('images')
+        if images:
+            for img_file in images:
+                path = f'bulk_imports/{bulk_import.id}/images/{img_file.name}'
+                default_storage.save(path, img_file)
+
         # Parse the file and count rows
         if file_type == 'csv':
             content = file.read().decode('utf-8').splitlines()
@@ -450,8 +458,9 @@ def download_import_template(request):
         'title', 'description', 'category', 'condition', 'price', 'quantity',
         'grading_service', 'grade', 'cert_number', 'shipping_price',
         'listing_type', 'auction_duration_days', 'allow_offers',
+        'image1_url', 'image2_url', 'image3_url', 'image4_url', 'image5_url',
     ]
-    col_widths = [35, 50, 20, 14, 12, 10, 16, 8, 14, 14, 14, 20, 14]
+    col_widths = [35, 50, 20, 14, 12, 10, 16, 8, 14, 14, 14, 20, 14, 35, 35, 35, 35, 35]
 
     header_font = Font(bold=True, color='FFFFFF', size=11)
     header_fill = PatternFill(start_color='2B3035', end_color='2B3035', fill_type='solid')
@@ -472,6 +481,7 @@ def download_import_template(request):
         'Beautiful PSA 10 gem mint example of the iconic rookie card.',
         'trading-cards', 'mint', '500000.00', '1',
         'psa', '10', '12345678', '25.00', 'fixed', '', 'no',
+        'https://example.com/front.jpg', 'back-photo.jpg', '', '', '',
     ]
     example_font = Font(color='888888', italic=True)
     for col_idx, val in enumerate(example, 1):
@@ -532,6 +542,14 @@ def download_import_template(request):
     ref.column_dimensions['J'].width = 14
     ref.cell(row=2, column=10, value='yes')
     ref.cell(row=3, column=10, value='no')
+
+    # Column L: Image URL help
+    ref.cell(row=1, column=12, value='Image Columns Help').font = ref_header_font
+    ref.cell(row=1, column=12).fill = ref_header_fill
+    ref.column_dimensions['L'].width = 45
+    ref.cell(row=2, column=12, value='image1_url through image5_url accept:')
+    ref.cell(row=3, column=12, value='  - Web URLs: https://example.com/photo.jpg')
+    ref.cell(row=4, column=12, value='  - Filenames: my-photo.jpg (upload files with your Excel)')
 
     # --- Data Validation on Listings sheet ---
     # Category dropdown (column C, rows 2-500)

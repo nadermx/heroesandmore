@@ -28,9 +28,19 @@
                         {% csrf_token %}
 
                         <div class="mb-4">
-                            <label class="form-label">Upload File</label>
+                            <label class="form-label fw-semibold">Upload File</label>
                             <input type="file" name="file" class="form-control" accept=".csv,.xlsx" required>
                             <div class="form-text">Supported formats: CSV, Excel (.xlsx)</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Image Files <span class="fw-normal text-muted">(optional)</span></label>
+                            <input type="file" name="images" class="form-control" accept="image/*" multiple>
+                            <div class="form-text">
+                                Select photos from your computer. Put the matching filenames in the
+                                <code>image1_url</code>&ndash;<code>image5_url</code> columns of your spreadsheet.
+                                You can also use web URLs instead.
+                            </div>
                         </div>
 
                         <div class="mb-4">
@@ -92,6 +102,7 @@
                         <li><code>shipping_price</code> - Shipping cost</li>
                         <li><code>listing_type</code> - fixed or auction</li>
                         <li><code>allow_offers</code> - yes or no</li>
+                        <li><code>image1_url</code>&ndash;<code>image5_url</code> - Web URL or local filename</li>
                     </ul>
                 </div>
             </div>
