@@ -407,6 +407,9 @@ Email is self-hosted on the server using Postfix with OpenDKIM and PostSRSd.
 - **mail.heroesandmore.com** - SENDING domain (outbound emails, e.g., noreply@mail.heroesandmore.com)
 - **heroesandmore.com** - RECEIVING domain (inbound, forwards to team members)
 
+### Firewall
+Port 25 (SMTP) **must** be open for inbound mail delivery. This is configured in `ansible/security.yml`. If the firewall is ever reset, verify port 25 is allowed: `ufw allow 25/tcp`
+
 ### DNS Records (managed via DigitalOcean API)
 - SPF: `v=spf1 ip4:174.138.33.140 a ~all`
 - DKIM: `mail._domainkey.mail.heroesandmore.com`

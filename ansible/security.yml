@@ -91,6 +91,12 @@
         port: '443'
         proto: tcp
 
+    - name: Allow SMTP through firewall (inbound mail)
+      ufw:
+        rule: allow
+        port: '25'
+        proto: tcp
+
     - name: Enable UFW with default deny
       ufw:
         state: enabled
