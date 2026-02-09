@@ -10,7 +10,7 @@ HeroesAndMore is a collectibles marketplace and community platform built with Dj
 - **Backend**: Django 5.x, Python 3.12
 - **Database**: PostgreSQL (SQLite for local dev)
 - **Cache/Queue**: Redis, Celery
-- **Frontend**: Bootstrap 5, HTMX
+- **Frontend**: Bootstrap 5, HTMX (loaded globally in base.html with auto CSRF)
 - **Payments**: Stripe Connect
 - **Deployment**: Ansible, Nginx, Supervisor, DigitalOcean
 
@@ -114,7 +114,8 @@ python manage.py test --verbosity=2                             # Verbose output
 
 ### Seller Tools (seller_tools app)
 - `seller_tools.SellerSubscription` - Seller tiers (starter, basic, featured, premium)
-- `seller_tools.BulkImport` - Bulk listing imports from CSV
+- `seller_tools.BulkImport` - Bulk listing imports from Excel (.xlsx) or CSV, with post-import photo capture flow
+- `seller_tools.BulkImportRow` - Individual rows with JSON data, status, linked listing FK
 - `seller_tools.InventoryItem` - Pre-listing inventory management
 
 ### Alerts (alerts app)
@@ -483,6 +484,18 @@ Fixed-price listings support multi-quantity (e.g., 20 of the same item). Auction
 - `Listing.reverse_sale(qty)` — atomically restores stock (for refunds/cancellations)
 - **Never set `listing.status = 'sold'` directly** — always use `record_sale()` / `reverse_sale()`
 - `Order.quantity` tracks units per order; `item_price = unit_price * quantity`, shipping is flat per order
+
+## Dashboard Templates
+- **`templates/accounts/dashboard.html`** — User dashboard (general stats: listings, sales, purchases). Route: `/dashboard/`
+- **`seller_tools/templates/seller_tools/dashboard.html`** — Seller dashboard (subscription tier, commission, listing stats). Route: `/seller/`
+- `templates/accounts/seller_dashboard.html` exists but is **unused dead code** — the seller dashboard view renders `seller_tools/dashboard.html`
+
+## Bulk Import & Photo Capture Flow
+- Excel template download with dropdown validation (openpyxl) — categories, conditions, grading services
+- Supports both Excel (.xlsx) and CSV upload
+- Image columns (`image1_url`–`image5_url`) accept web URLs or local filenames from uploaded images
+- Post-import photo capture: mobile-first camera flow via HTMX at `/seller/import/<pk>/photos/`
+- Photo slots use `<input type="file" accept="image/*" capture="environment">` for rear camera on mobile
 
 ## Notes
 - The `collections` app uses `item_collections` as the related_name to avoid conflicts with Python's built-in collections module
