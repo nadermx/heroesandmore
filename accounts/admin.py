@@ -21,6 +21,7 @@ admin.site.unregister(EmailAddress)
 @admin.register(EmailAddress)
 class EmailAddressAdmin(BaseEmailAddressAdmin):
     list_display = ('email', 'user', 'primary', 'verified', 'signup_method')
+    ordering = ('-user__date_joined',)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
