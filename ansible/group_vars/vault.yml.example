@@ -28,5 +28,9 @@ vault_stripe_price_premium: "price_..."  # $99.99/month Premium tier
 vault_do_spaces_key: ""
 vault_do_spaces_secret: ""
 
+# Google OAuth (from console.cloud.google.com > APIs & Services > Credentials)
+vault_google_client_id: ""
+vault_google_client_secret: ""
+
 # Email password (if using authenticated SMTP)
 vault_email_host_password: ""

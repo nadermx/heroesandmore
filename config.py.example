@@ -46,6 +46,10 @@ EMAIL_HOST_PASSWORD = ''
 DEFAULT_FROM_EMAIL = 'HeroesAndMore <noreply@mail.heroesandmore.com>'
 SERVER_EMAIL = 'HeroesAndMore <noreply@mail.heroesandmore.com>'
 
+# Google OAuth (from console.cloud.google.com > APIs & Services > Credentials)
+GOOGLE_CLIENT_ID = ''
+GOOGLE_CLIENT_SECRET = ''
+
 # Debug mode - set to False in production
 DEBUG = True
 

@@ -158,13 +158,24 @@ LOGIN_URL = '/auth/signup/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
+# Google OAuth
+GOOGLE_CLIENT_ID = getattr(config, 'GOOGLE_CLIENT_ID', '')
+
 # Socialaccount providers
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': ['profile', 'email'],
         'AUTH_PARAMS': {'access_type': 'online'},
+        'APP': {
+            'client_id': GOOGLE_CLIENT_ID,
+            'secret': getattr(config, 'GOOGLE_CLIENT_SECRET', ''),
+        },
     }
 }
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_LOGIN_ON_GET = True
 
 # Redis and Celery
 REDIS_URL = getattr(config, 'REDIS_URL', 'redis://localhost:6379/0')
