@@ -71,4 +71,9 @@ app.conf.beat_schedule = {
         'task': 'alerts.tasks.check_ending_auctions',
         'schedule': crontab(minute='*/30'),  # Every 30 minutes
     },
+    # Relist reminders for expired listings (3 days after expiry)
+    'send-relist-reminders': {
+        'task': 'alerts.tasks.send_relist_reminders',
+        'schedule': crontab(hour=11, minute=0),  # Daily at 11 AM
+    },
 }

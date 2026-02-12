@@ -1,8 +1,11 @@
+import logging
 from celery import shared_task
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+
+logger = logging.getLogger('alerts')
 
 
 @shared_task
@@ -692,3 +695,115 @@ def send_cancellation_notification(order_id, cancelled_by):
         message=f'{other_party} has cancelled this order.',
         link=f'/marketplace/order/{order.id}/',
     )
+
+
+@shared_task
+def send_listing_expired_notification(listing_id):
+    """
+    Notify seller that their auction ended with no bids.
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Listing
+    from .models import Alert
+
+    try:
+        listing = Listing.objects.select_related(
+            'seller', 'seller__profile', 'category'
+        ).get(id=listing_id)
+    except Listing.DoesNotExist:
+        return
+
+    seller = listing.seller
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'listing': listing, 'seller': seller, 'site_url': site_url}
+
+    # Email to seller
+    if seller.email:
+        html_content = render_to_string('marketplace/emails/listing_expired.html', context)
+        try:
+            send_mail(
+                subject=f'Your auction ended without bids - {listing.title}',
+                message=f'Your auction for "{listing.title}" ended without any bids. You can relist it from your My Listings page.',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[seller.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+    # In-app alert
+    Alert.objects.create(
+        user=seller,
+        alert_type='listing_expired',
+        title=f'Auction expired: {listing.title}',
+        message=f'Your auction ended without any bids. You can relist it or adjust the price.',
+        link=f'/marketplace/my-listings/?status=expired',
+        listing=listing,
+    )
+
+
+@shared_task
+def send_relist_reminders():
+    """
+    Send reminders for listings that expired 3 days ago and haven't been relisted.
+    Runs daily.
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Listing
+    from .models import Alert
+
+    three_days_ago = timezone.now() - timedelta(days=3)
+    # Find listings expired ~3 days ago (within a 24-hour window)
+    expired_listings = Listing.objects.filter(
+        status='expired',
+        expired_at__date=three_days_ago.date(),
+    ).select_related('seller', 'seller__profile', 'category')
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    sent = 0
+
+    for listing in expired_listings:
+        # Skip if we already sent a relist reminder for this listing
+        already_reminded = Alert.objects.filter(
+            user=listing.seller,
+            listing=listing,
+            alert_type='relist_reminder',
+        ).exists()
+
+        if already_reminded:
+            continue
+
+        seller = listing.seller
+        context = {'listing': listing, 'seller': seller, 'site_url': site_url}
+
+        # Email
+        if seller.email:
+            html_content = render_to_string('marketplace/emails/relist_reminder.html', context)
+            try:
+                send_mail(
+                    subject=f'Still want to sell? - {listing.title}',
+                    message=f'Your listing "{listing.title}" expired 3 days ago. Relist it to give it another chance!',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[seller.email],
+                    html_message=html_content,
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+
+        # In-app alert
+        Alert.objects.create(
+            user=seller,
+            alert_type='relist_reminder',
+            title=f'Relist your item? {listing.title}',
+            message=f'Your listing expired 3 days ago. Consider relisting with a lower starting price.',
+            link=f'/marketplace/{listing.id}/relist/',
+            listing=listing,
+        )
+        sent += 1
+
+    if sent:
+        logger.info(f"Sent {sent} relist reminders")
+
+    return sent

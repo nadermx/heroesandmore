@@ -12,6 +12,7 @@ urlpatterns = [
     path('<int:pk>/edit/', views.listing_edit, name='listing_edit'),
     path('<int:pk>/publish/', views.listing_publish, name='listing_publish'),
     path('<int:pk>/cancel/', views.listing_cancel, name='listing_cancel'),
+    path('<int:pk>/relist/', views.listing_relist, name='listing_relist'),
     path('<int:pk>/save/', views.save_listing, name='save_listing'),
 
     # Bidding and offers

@@ -70,7 +70,16 @@ def end_auctions():
             else:
                 # No bids - mark as expired/unsold
                 listing.status = 'expired'
-                listing.save(update_fields=['status'])
+                listing.expired_at = timezone.now()
+                listing.save(update_fields=['status', 'expired_at'])
+
+                # Notify seller
+                try:
+                    from alerts.tasks import send_listing_expired_notification
+                    send_listing_expired_notification.delay(listing.id)
+                except Exception as e:
+                    logger.warning(f"Failed to send listing expired notification: {e}")
+
                 logger.info(f"Auction ended with no bids: Listing {listing.id}")
 
             processed += 1

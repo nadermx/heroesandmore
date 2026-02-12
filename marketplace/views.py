@@ -220,7 +220,7 @@ def listing_edit(request, pk):
     """Edit listing"""
     listing = get_object_or_404(Listing, pk=pk, seller=request.user)
 
-    if listing.status not in ['draft', 'active']:
+    if listing.status not in ['draft', 'active', 'expired']:
         messages.error(request, "This listing can no longer be edited.")
         return redirect('marketplace:listing_detail', pk=pk)
 
@@ -1057,6 +1057,56 @@ def my_orders(request):
         'orders': orders,
     }
     return render(request, 'marketplace/my_orders.html', context)
+
+
+@login_required
+def listing_relist(request, pk):
+    """Relist an expired or cancelled listing"""
+    listing = get_object_or_404(Listing, pk=pk, seller=request.user)
+
+    if listing.status not in ['expired', 'cancelled']:
+        messages.error(request, "Only expired or cancelled listings can be relisted.")
+        return redirect('marketplace:listing_detail', pk=pk)
+
+    # Check Stripe setup
+    if not request.user.profile.stripe_account_complete:
+        messages.warning(request, 'Please complete your seller setup before relisting.')
+        return redirect('marketplace:seller_setup')
+
+    # Check subscription listing limits
+    subscription = getattr(request.user, 'seller_subscription', None)
+    if subscription and not subscription.can_create_listing():
+        messages.error(request, 'You have reached your active listing limit. Upgrade your plan to list more items.')
+        return redirect('seller_tools:dashboard')
+
+    if request.method == 'POST':
+        if listing.listing_type == 'auction':
+            # Reset to draft so seller can set new auction_end
+            listing.status = 'draft'
+            listing.auction_end = None
+            listing.expired_at = None
+            listing.views = 0
+            listing.quantity_sold = 0
+            listing.times_extended = 0
+            listing.save()
+            # Delete old bids
+            listing.bids.all().delete()
+            messages.success(request, 'Listing reset to draft. Set a new auction end time and publish.')
+            return redirect('marketplace:listing_edit', pk=pk)
+        else:
+            # Fixed-price: reactivate immediately
+            listing.status = 'active'
+            listing.expired_at = None
+            listing.views = 0
+            listing.quantity_sold = 0
+            listing.save()
+            messages.success(request, 'Your listing is live again!')
+            return redirect('marketplace:listing_detail', pk=pk)
+
+    context = {
+        'listing': listing,
+    }
+    return render(request, 'marketplace/listing_relist_confirm.html', context)
 
 
 @login_required

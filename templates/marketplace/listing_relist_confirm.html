@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Relist - {{ listing.title }} - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 600px;">
+    <div class="card">
+        <div class="card-body p-4">
+            <h2 class="mb-3">Relist This Item?</h2>
+
+            <div class="d-flex align-items-center gap-3 mb-4 p-3 rounded" style="background: var(--gray-100);">
+                {% if listing.image1 %}
+                <img src="{{ listing.image1.url }}" class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
+                {% else %}
+                <div class="rounded bg-light d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                    <i class="bi bi-image text-muted"></i>
+                </div>
+                {% endif %}
+                <div>
+                    <h5 class="mb-1">{{ listing.title }}</h5>
+                    <span class="text-muted small">{{ listing.category.name }}</span>
+                </div>
+            </div>
+
+            {% if listing.listing_type == 'auction' %}
+            <p>This auction listing will be <strong>reset to draft</strong> so you can set a new auction end time. Old bids will be removed.</p>
+            <p class="text-muted small">After relisting, edit the listing to set a new end time and publish when ready.</p>
+            {% else %}
+            <p>This fixed-price listing will be <strong>reactivated immediately</strong> at <strong>${{ listing.price }}</strong>.</p>
+            {% endif %}
+
+            <div class="d-flex gap-2 mt-4">
+                <form action="{% url 'marketplace:listing_relist' pk=listing.pk %}" method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-dark">
+                        <i class="bi bi-arrow-repeat me-1"></i>
+                        {% if listing.listing_type == 'auction' %}Relist as Draft{% else %}Relist Now{% endif %}
+                    </button>
+                </form>
+                <a href="{% url 'marketplace:my_listings' %}?status=expired" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -77,6 +77,8 @@ class Alert(models.Model):
         ('review', 'New Review'),
         ('follower', 'New Follower'),
         ('wishlist_match', 'Wishlist Match'),
+        ('listing_expired', 'Listing Expired'),
+        ('relist_reminder', 'Relist Reminder'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='alerts')

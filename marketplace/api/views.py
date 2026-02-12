@@ -158,6 +158,50 @@ class ListingViewSet(viewsets.ModelViewSet):
 
         return Response(BidSerializer(bid).data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def relist(self, request, pk=None):
+        """Relist an expired or cancelled listing"""
+        listing = get_object_or_404(Listing, pk=pk, seller=request.user)
+
+        if listing.status not in ['expired', 'cancelled']:
+            return Response(
+                {'error': 'Only expired or cancelled listings can be relisted'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check Stripe setup
+        if not request.user.profile.stripe_account_complete:
+            return Response(
+                {'error': 'Please complete seller setup first'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check subscription listing limits
+        subscription = getattr(request.user, 'seller_subscription', None)
+        if subscription and not subscription.can_create_listing():
+            return Response(
+                {'error': 'Active listing limit reached. Upgrade your plan.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if listing.listing_type == 'auction':
+            listing.status = 'draft'
+            listing.auction_end = None
+            listing.expired_at = None
+            listing.views = 0
+            listing.quantity_sold = 0
+            listing.times_extended = 0
+            listing.save()
+            listing.bids.all().delete()
+        else:
+            listing.status = 'active'
+            listing.expired_at = None
+            listing.views = 0
+            listing.quantity_sold = 0
+            listing.save()
+
+        return Response(ListingDetailSerializer(listing).data)
+
     @action(detail=True, methods=['get'])
     def bids(self, request, pk=None):
         """Get bid history for a listing"""
