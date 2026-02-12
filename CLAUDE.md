@@ -278,6 +278,11 @@ For Ansible deploys, these go in `ansible/group_vars/vault.yml`.
 - `expire_grace_periods` - Downgrade expired subscriptions (daily 3:30 AM)
 - `send_renewal_reminders` - Email 3 days before renewal (daily 10 AM)
 
+### Listing & Alert Tasks
+- `marketplace.tasks.end_auctions` - End expired auctions, notify winners/sellers, expire no-bid listings (every 5 min)
+- `alerts.tasks.send_listing_expired_notification` - Email + in-app alert when auction ends with no bids
+- `alerts.tasks.send_relist_reminders` - Remind sellers about expired listings after 3 days (daily 11 AM)
+
 ## Market Data Architecture
 
 Price guide data is imported via `pricing/services/market_data.py`:
@@ -414,11 +419,13 @@ Port 25 (SMTP) **must** be open for inbound mail delivery. This is configured in
 ### DNS Records (managed via DigitalOcean API)
 - SPF: `v=spf1 ip4:174.138.33.140 a ~all`
 - DKIM: `mail._domainkey.mail.heroesandmore.com`
-- DMARC: `v=DMARC1; p=none; rua=mailto:postmaster@heroesandmore.com; fo=1`
+- DMARC: `v=DMARC1; p=none; fo=1`
 - PTR: `174.138.33.140` → `mail.heroesandmore.com` (set via DigitalOcean droplet name)
 
 ### Email Forwarding with SRS
 PostSRSd (Sender Rewriting Scheme) is configured to prevent SPF failures when forwarding external emails. Config: `/etc/default/postsrsd`
+
+**Important**: `SRS_EXCLUDE_DOMAINS=mail.heroesandmore.com,heroesandmore.com` must be set in `/etc/default/postsrsd` so that locally-originated transactional emails (from `noreply@mail.heroesandmore.com`) are NOT SRS-rewritten. Without this, SPF/DKIM alignment breaks and emails get rejected by Gmail/Outlook.
 
 ### Credentials
 API keys are stored in `~/.credentials/`:
@@ -496,6 +503,23 @@ Fixed-price listings support multi-quantity (e.g., 20 of the same item). Auction
 - Image columns (`image1_url`–`image5_url`) accept web URLs or local filenames from uploaded images
 - Post-import photo capture: mobile-first camera flow via HTMX at `/seller/import/<pk>/photos/`
 - Photo slots use `<input type="file" accept="image/*" capture="environment">` for rear camera on mobile
+
+## Authentication
+- Django allauth with email + Google OAuth (settings-based provider config, no SocialApp DB records)
+- allauth v65 uses HMAC email confirmation by default (`ACCOUNT_EMAIL_CONFIRMATION_HMAC = True`)
+- Google OAuth configured via `SOCIALACCOUNT_PROVIDERS` in settings.py with client ID/secret from config.py
+
+## Listing Expiration & Relist Flow
+- When `end_auctions` finds no-bid auctions past their end time, it sets `status='expired'` + `expired_at=now()`
+- Seller gets email (`listing_expired.html`) + in-app alert immediately
+- After 3 days, `send_relist_reminders` sends a follow-up email (`relist_reminder.html`)
+- Relist view (`/marketplace/<pk>/relist/`): auctions reset to draft (bids cleared), fixed-price reactivated immediately
+- Expired listings can also be edited directly (same as draft/active)
+
+## Social Media
+- Instagram: [@heroesandmoreofficial](https://www.instagram.com/heroesandmoreofficial)
+- Facebook: [Heroesandmore](https://www.facebook.com/people/Heroesandmore/61587374366802/)
+- TikTok: [@heroesandmoreofficial](https://www.tiktok.com/@heroesandmoreofficial)
 
 ## Notes
 - The `collections` app uses `item_collections` as the related_name to avoid conflicts with Python's built-in collections module
