@@ -520,6 +520,8 @@ Fixed-price listings support multi-quantity (e.g., 20 of the same item). Auction
 - Instagram: [@heroesandmoreofficial](https://www.instagram.com/heroesandmoreofficial)
 - Facebook: [Heroesandmore](https://www.facebook.com/people/Heroesandmore/61587374366802/)
 - TikTok: [@heroesandmoreofficial](https://www.tiktok.com/@heroesandmoreofficial)
+- YouTube: [@heroesandmore](https://youtube.com/@heroesandmore)
+- X/Twitter: [@heroesam](https://x.com/heroesam)
 
 ## Notes
 - The `collections` app uses `item_collections` as the related_name to avoid conflicts with Python's built-in collections module
