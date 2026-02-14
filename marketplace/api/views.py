@@ -10,7 +10,8 @@ from django.db.models import Q
 from decimal import Decimal
 
 from marketplace.models import (
-    Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent, AutoBid
+    Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent, AutoBid,
+    AuctionLotSubmission
 )
 from accounts.models import RecentlyViewed
 from api.permissions import IsOwnerOrReadOnly, IsBuyerOrSeller
@@ -24,7 +25,8 @@ from .serializers import (
     SavedListingSerializer, AuctionEventSerializer,
     AutoBidSerializer, AutoBidCreateSerializer,
     CheckoutSerializer, PaymentIntentSerializer, PaymentIntentResponseSerializer,
-    ListingImageUploadSerializer
+    ListingImageUploadSerializer,
+    AuctionLotSubmissionSerializer, AuctionLotSubmissionCreateSerializer
 )
 from .filters import ListingFilter, OrderFilter
 
@@ -907,3 +909,67 @@ class AutoBidDeleteView(views.APIView):
         auto_bid = get_object_or_404(AutoBid, pk=pk, user=request.user)
         auto_bid.deactivate()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AuctionLotSubmissionView(views.APIView):
+    """Submit a listing to a platform auction event (trusted sellers only)"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, slug):
+        """Submit a listing to a platform auction event"""
+        event = get_object_or_404(
+            AuctionEvent,
+            slug=slug,
+            is_platform_event=True,
+            accepting_submissions=True,
+        )
+
+        # Only trusted sellers
+        if not request.user.profile.is_trusted_seller:
+            return Response(
+                {'error': 'Only Trusted Sellers can submit lots to platform auctions'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Check deadline
+        if event.submission_deadline and timezone.now() > event.submission_deadline:
+            return Response(
+                {'error': 'Submission deadline has passed'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = AuctionLotSubmissionCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        listing = get_object_or_404(
+            Listing, pk=serializer.validated_data['listing_id'], seller=request.user
+        )
+
+        # Check not already submitted
+        if AuctionLotSubmission.objects.filter(auction_event=event, listing=listing).exists():
+            return Response(
+                {'error': 'This listing has already been submitted to this event'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        submission = AuctionLotSubmission.objects.create(
+            auction_event=event,
+            seller=request.user,
+            listing=listing,
+        )
+
+        return Response(
+            AuctionLotSubmissionSerializer(submission, context={'request': request}).data,
+            status=status.HTTP_201_CREATED
+        )
+
+
+class MySubmissionsView(generics.ListAPIView):
+    """List the current user's auction lot submissions"""
+    serializer_class = AuctionLotSubmissionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return AuctionLotSubmission.objects.filter(
+            seller=self.request.user
+        ).select_related('listing', 'auction_event').order_by('-submitted_at')

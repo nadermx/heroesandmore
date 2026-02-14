@@ -34,4 +34,8 @@ urlpatterns = [
     # Auto-bid
     path('auctions/autobid/', views.AutoBidListView.as_view(), name='autobid_list'),
     path('auctions/autobid/<int:pk>/', views.AutoBidDeleteView.as_view(), name='autobid_delete'),
+
+    # Auction lot submissions (trusted sellers)
+    path('auctions/platform/<slug:slug>/submit/', views.AuctionLotSubmissionView.as_view(), name='submit_lot'),
+    path('auctions/submissions/', views.MySubmissionsView.as_view(), name='my_submissions'),
 ]

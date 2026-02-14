@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.utils import timezone
 from marketplace.models import (
-    Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent, AutoBid
+    Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent, AutoBid,
+    AuctionLotSubmission
 )
 from accounts.api.serializers import PublicProfileSerializer
 
@@ -340,6 +341,7 @@ class AuctionEventSerializer(serializers.ModelSerializer):
             'id', 'name', 'slug', 'event_type', 'description',
             'cover_image', 'preview_start', 'bidding_start', 'bidding_end',
             'is_featured', 'is_platform_event', 'cadence', 'status',
+            'accepting_submissions', 'submission_deadline',
             'lot_count', 'total_bids', 'total_value',
             'is_live', 'time_remaining'
         ]
@@ -355,6 +357,36 @@ class AuctionEventSerializer(serializers.ModelSerializer):
         if remaining:
             return int(remaining.total_seconds())
         return None
+
+
+class AuctionLotSubmissionSerializer(serializers.ModelSerializer):
+    """Serializer for auction lot submissions"""
+    listing_id = serializers.IntegerField(source='listing.id', read_only=True)
+    listing_title = serializers.CharField(source='listing.title', read_only=True)
+    listing_image = serializers.SerializerMethodField()
+    event_name = serializers.CharField(source='auction_event.name', read_only=True)
+    event_slug = serializers.CharField(source='auction_event.slug', read_only=True)
+
+    class Meta:
+        model = AuctionLotSubmission
+        fields = [
+            'id', 'listing_id', 'listing_title', 'listing_image',
+            'event_name', 'event_slug', 'status', 'staff_notes',
+            'submitted_at', 'reviewed_at'
+        ]
+
+    def get_listing_image(self, obj):
+        if obj.listing.image1:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.listing.image1.url)
+            return obj.listing.image1.url
+        return None
+
+
+class AuctionLotSubmissionCreateSerializer(serializers.Serializer):
+    """Serializer for creating a lot submission"""
+    listing_id = serializers.IntegerField()
 
 
 class AutoBidSerializer(serializers.ModelSerializer):

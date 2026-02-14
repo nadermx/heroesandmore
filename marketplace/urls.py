@@ -8,6 +8,7 @@ urlpatterns = [
     # Platform Auctions
     path('auctions/', views.platform_auctions, name='platform_auctions'),
     path('auctions/<slug:slug>/', views.platform_auction_detail, name='platform_auction_detail'),
+    path('auctions/<slug:slug>/submit/', views.submit_auction_lot, name='submit_auction_lot'),
 
     # Listings
     path('', views.listing_list, name='listing_list'),

@@ -1,8 +1,10 @@
 from django.contrib import admin
+from django.db import models
 from django.utils.html import format_html
+from django.utils import timezone
 from .models import (
     Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent,
-    PaymentMethod, StripeEvent, Refund
+    PaymentMethod, StripeEvent, Refund, AuctionLotSubmission
 )
 
 
@@ -17,15 +19,23 @@ class PlatformLotInline(admin.TabularInline):
         return super().get_queryset(request).select_related('category')
 
 
+class AuctionLotSubmissionInline(admin.TabularInline):
+    model = AuctionLotSubmission
+    fields = ['seller', 'listing', 'status', 'staff_notes', 'submitted_at', 'reviewed_at']
+    readonly_fields = ['submitted_at', 'reviewed_at']
+    raw_id_fields = ['seller', 'listing']
+    extra = 0
+
+
 @admin.register(AuctionEvent)
 class AuctionEventAdmin(admin.ModelAdmin):
-    list_display = ['name', 'event_type', 'is_platform_event', 'cadence', 'status', 'bidding_start', 'bidding_end', 'total_lots', 'is_featured']
-    list_filter = ['is_platform_event', 'event_type', 'cadence', 'status', 'is_featured', 'bidding_start']
+    list_display = ['name', 'event_type', 'is_platform_event', 'cadence', 'status', 'accepting_submissions', 'bidding_start', 'bidding_end', 'total_lots', 'is_featured']
+    list_filter = ['is_platform_event', 'event_type', 'cadence', 'status', 'accepting_submissions', 'is_featured', 'bidding_start']
     search_fields = ['name', 'description']
     prepopulated_fields = {'slug': ('name',)}
     readonly_fields = ['total_lots', 'total_bids', 'total_value', 'created']
     raw_id_fields = ['created_by']
-    inlines = [PlatformLotInline]
+    inlines = [PlatformLotInline, AuctionLotSubmissionInline]
     actions = ['activate_platform_event']
 
     def activate_platform_event(self, request, queryset):
@@ -237,3 +247,40 @@ class RefundAdmin(admin.ModelAdmin):
             obj.order.id, obj.order.id
         )
     order_link.short_description = 'Order'
+
+
+@admin.register(AuctionLotSubmission)
+class AuctionLotSubmissionAdmin(admin.ModelAdmin):
+    list_display = ['listing', 'seller', 'auction_event', 'status', 'submitted_at', 'reviewed_at']
+    list_filter = ['status', 'auction_event', 'submitted_at']
+    search_fields = ['listing__title', 'seller__username', 'auction_event__name']
+    readonly_fields = ['submitted_at']
+    raw_id_fields = ['seller', 'listing', 'auction_event', 'reviewed_by']
+    actions = ['approve_submissions', 'reject_submissions']
+
+    def approve_submissions(self, request, queryset):
+        """Approve selected submissions and link listings to the auction event."""
+        for submission in queryset.filter(status='pending'):
+            listing = submission.listing
+            event = submission.auction_event
+            # Assign lot number (next available)
+            max_lot = event.listings.aggregate(max_lot=models.Max('lot_number'))['max_lot'] or 0
+            listing.auction_event = event
+            listing.lot_number = max_lot + 1
+            listing.save(update_fields=['auction_event', 'lot_number'])
+            submission.status = 'approved'
+            submission.reviewed_at = timezone.now()
+            submission.reviewed_by = request.user
+            submission.save(update_fields=['status', 'reviewed_at', 'reviewed_by'])
+        self.message_user(request, f'Approved {queryset.filter(status="approved").count()} submission(s).')
+    approve_submissions.short_description = "Approve selected submissions"
+
+    def reject_submissions(self, request, queryset):
+        """Reject selected submissions."""
+        count = queryset.filter(status='pending').update(
+            status='rejected',
+            reviewed_at=timezone.now(),
+            reviewed_by=request.user,
+        )
+        self.message_user(request, f'Rejected {count} submission(s).')
+    reject_submissions.short_description = "Reject selected submissions"

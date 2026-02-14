@@ -552,6 +552,9 @@
                         {% if listing.seller.profile.is_seller_verified %}
                         <i class="bi bi-patch-check-fill ms-1" style="color: var(--accent-success);" title="Verified Seller"></i>
                         {% endif %}
+                        {% if listing.seller.profile.is_trusted_seller %}
+                        <span class="badge ms-1" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff; font-size: 0.7em;"><i class="bi bi-award"></i> Trusted Seller</span>
+                        {% endif %}
                         <div class="d-flex align-items-center gap-3 mt-1">
                             {% if listing.seller.profile.rating %}
                             <span class="small">

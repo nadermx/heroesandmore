@@ -34,17 +34,28 @@ class StripeService:
     # Flat fee per transaction to cover Stripe processing costs ($0.30 + 2.9%)
     PLATFORM_FLAT_FEE = Decimal('0.30')
 
+    # Trusted seller commission discount (2%)
+    TRUSTED_SELLER_DISCOUNT = Decimal('0.02')
+    # Minimum commission rate floor
+    MIN_COMMISSION_RATE = Decimal('0.0395')
+
     @staticmethod
     def get_seller_commission_rate(seller):
-        """Get seller's commission rate based on subscription tier"""
+        """Get seller's commission rate based on subscription tier and trusted status"""
         from seller_tools.models import SellerSubscription
         try:
             sub = SellerSubscription.objects.get(user=seller)
             # Commission rates are stored as percentages (e.g., 12.95)
-            return sub.commission_rate / 100
+            rate = sub.commission_rate / 100
         except SellerSubscription.DoesNotExist:
             # Default to starter tier commission
-            return Decimal('0.1295')
+            rate = Decimal('0.1295')
+
+        # Apply trusted seller discount
+        if hasattr(seller, 'profile') and seller.profile.is_trusted_seller:
+            rate = max(rate - StripeService.TRUSTED_SELLER_DISCOUNT, StripeService.MIN_COMMISSION_RATE)
+
+        return rate
 
     @staticmethod
     def calculate_platform_fee(price, seller):

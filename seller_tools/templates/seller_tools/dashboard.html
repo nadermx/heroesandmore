@@ -11,8 +11,11 @@
                 <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Seller Dashboard</h1>
                 <p class="text-muted mb-0">
                     <span class="badge bg-dark">{{ subscription.get_tier_display }}</span>
+                    {% if request.user.profile.is_trusted_seller %}
+                    <span class="badge ms-1" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff;"><i class="bi bi-award"></i> Trusted Seller</span>
+                    {% endif %}
                     {% if subscription.tier != 'starter' %}
-                    <span class="ms-2 small">{{ subscription.commission_rate }}% commission</span>
+                    <span class="ms-2 small">{{ subscription.commission_rate }}% commission{% if request.user.profile.is_trusted_seller %} (2% trusted discount applied){% endif %}</span>
                     {% endif %}
                 </p>
             </div>
@@ -123,6 +126,52 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Trusted Seller -->
+            {% if not request.user.profile.is_trusted_seller %}
+            <div class="card mb-4" style="border-left: 4px solid #D4A017;">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-award" style="font-size: 1.25rem; color: #D4A017;"></i>
+                        <h6 class="fw-bold mb-0">Trusted Seller Program</h6>
+                    </div>
+                    <p class="text-muted small mb-3">Meet the requirements below to unlock lower commissions, a trusted badge, and the ability to submit lots to official platform auctions.</p>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center gap-2 small">
+                                {% if request.user.profile.total_sales_count >= 20 %}
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                                {% else %}
+                                <i class="bi bi-circle text-muted"></i>
+                                {% endif %}
+                                <span>20+ sales ({{ request.user.profile.total_sales_count }}/20)</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center gap-2 small">
+                                {% if request.user.profile.rating >= 4.5 and request.user.profile.rating_count >= 10 %}
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                                {% else %}
+                                <i class="bi bi-circle text-muted"></i>
+                                {% endif %}
+                                <span>4.5+ rating ({{ request.user.profile.rating|floatformat:1 }})</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center gap-2 small">
+                                {% if request.user.profile.seller_tier == 'featured' or request.user.profile.seller_tier == 'premium' %}
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                                {% else %}
+                                <i class="bi bi-circle text-muted"></i>
+                                {% endif %}
+                                <span>Featured or Premium tier</span>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="{% url 'trusted_seller' %}" class="btn btn-sm btn-outline-dark mt-3">Learn More</a>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Quick Actions -->
             <div class="card mb-4">

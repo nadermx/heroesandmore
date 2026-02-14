@@ -22,6 +22,20 @@ def sell_landing(request):
     return render(request, 'pages/sell.html', context)
 
 
+def trusted_seller_landing(request):
+    """Marketing page for the Trusted Seller program."""
+    is_trusted = (
+        request.user.is_authenticated
+        and hasattr(request.user, 'profile')
+        and request.user.profile.is_trusted_seller
+    )
+    context = {
+        'is_trusted': is_trusted,
+        **_get_site_stats(),
+    }
+    return render(request, 'pages/trusted_seller.html', context)
+
+
 @csrf_exempt
 @require_POST
 def log_frontend_error(request):

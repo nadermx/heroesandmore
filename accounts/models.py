@@ -73,6 +73,17 @@ class Profile(models.Model):
     def get_absolute_url(self):
         return reverse('accounts:profile', kwargs={'username': self.user.username})
 
+    @property
+    def qualifies_as_trusted_seller(self):
+        """Auto-qualify: 20+ completed sales, 4.5+ rating, 10+ reviews, Featured or Premium tier"""
+        from decimal import Decimal
+        return (
+            self.total_sales_count >= 20
+            and self.rating >= Decimal('4.5')
+            and self.rating_count >= 10
+            and self.seller_tier in ('featured', 'premium')
+        )
+
     def update_rating(self):
         from marketplace.models import Review
         reviews = Review.objects.filter(seller=self.user)

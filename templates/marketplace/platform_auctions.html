@@ -187,6 +187,24 @@
 </section>
 {% endif %}
 
+<!-- Trusted Seller Callout -->
+<section class="py-4" style="background: var(--gray-50);">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 rounded" style="background: #fff; border: 1px solid var(--border-color);">
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge px-2 py-2" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff;">
+                    <i class="bi bi-award" style="font-size: 1rem;"></i>
+                </span>
+                <div>
+                    <div class="fw-bold" style="font-size: 0.95rem;">Are you a Trusted Seller?</div>
+                    <div class="text-muted small">Submit your items for our next official auction event.</div>
+                </div>
+            </div>
+            <a href="{% url 'trusted_seller' %}" class="btn btn-outline-dark btn-sm">Learn More</a>
+        </div>
+    </div>
+</section>
+
 <!-- No Events -->
 {% if not live_events and not upcoming_events and not past_events %}
 <section class="section">

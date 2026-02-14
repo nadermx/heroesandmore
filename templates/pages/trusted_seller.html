@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load seo_tags %}
+
+{% block title %}Trusted Seller Program - HeroesAndMore{% endblock %}
+{% block meta_description %}Become a Trusted Seller on HeroesAndMore. Earn lower commissions, a gold badge on your listings, and submit items to official platform auctions.{% endblock %}
+{% block og_title %}Trusted Seller Program - HeroesAndMore{% endblock %}
+{% block og_description %}Earn lower commissions, a gold Trusted Seller badge, and access to platform auctions. Qualify automatically when you meet our seller performance criteria.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Trusted Seller Program",
+  "description": "Become a Trusted Seller on HeroesAndMore. Earn lower commissions, a gold badge, and access to official platform auctions.",
+  "url": "{{ site_url }}/trusted-seller/",
+  "publisher": {
+    "@type": "Organization",
+    "name": "HeroesAndMore",
+    "url": "https://heroesandmore.com"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is a Trusted Seller?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Trusted Sellers are top-performing sellers on HeroesAndMore who have demonstrated consistent quality through high sales volume, excellent ratings, and a premium subscription tier. They receive a gold badge, lower commission rates, and access to platform auction events."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I qualify for Trusted Seller status?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "You qualify automatically when you meet all three criteria: 20 or more completed sales, a seller rating of 4.5 or higher with at least 10 reviews, and an active Featured or Premium subscription tier."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What commission discount do Trusted Sellers get?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Trusted Sellers receive a 2% discount on their commission rate. For example, a Featured tier seller paying 7.95% commission would pay only 5.95% as a Trusted Seller. Premium tier sellers paying 5.95% would pay 3.95%."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do platform auctions work for Trusted Sellers?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "When a platform auction event is accepting submissions, Trusted Sellers can submit their listings for consideration. Our team reviews submissions and approved items are included in the official auction event, giving them premium visibility to all buyers."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I lose Trusted Seller status?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Trusted Seller status is checked daily. If your rating drops below 4.5, your review count falls below 10, or you downgrade from a Featured or Premium subscription, you will lose Trusted Seller status until you meet the criteria again."
+      }
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<section style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 4rem 0;">
+    <div class="container text-center">
+        <div class="mb-3">
+            <span class="badge px-3 py-2" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff; font-size: 0.9rem;">
+                <i class="bi bi-award me-1"></i> Trusted Seller Program
+            </span>
+        </div>
+        {% if is_trusted %}
+        <h1 class="fw-bold mb-3" style="font-size: 2.5rem;">You're a Trusted Seller!</h1>
+        <p class="text-white-50 mx-auto mb-4" style="max-width: 600px;">
+            Congratulations! You've earned Trusted Seller status. Enjoy lower commissions, your gold badge, and the ability to submit lots to official platform auctions.
+        </p>
+        <a href="{% url 'marketplace:platform_auctions' %}" class="btn btn-light fw-semibold px-4">
+            <i class="bi bi-hammer me-1"></i> View Platform Auctions
+        </a>
+        {% else %}
+        <h1 class="fw-bold mb-3" style="font-size: 2.5rem;">Become a Trusted Seller</h1>
+        <p class="text-white-50 mx-auto mb-4" style="max-width: 600px;">
+            Top sellers on HeroesAndMore earn Trusted Seller status automatically. Unlock exclusive benefits that help you sell more and earn more.
+        </p>
+        <a href="{% url 'sell' %}" class="btn btn-light fw-semibold px-4">
+            Start Selling
+        </a>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Benefits -->
+<section class="section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 style="font-size: 1.75rem;">Trusted Seller Benefits</h2>
+            <p class="text-muted">Three powerful perks that reward your performance.</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 text-center border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #D4A017, #B8860B); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+                            <i class="bi bi-hammer text-white" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <h5 class="fw-bold">Platform Auctions</h5>
+                        <p class="text-muted">Submit your items to official HeroesAndMore auction events. Get premium visibility and reach more buyers through curated events.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 text-center border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #D4A017, #B8860B); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+                            <i class="bi bi-award text-white" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <h5 class="fw-bold">Trusted Badge</h5>
+                        <p class="text-muted">A gold "Trusted Seller" badge appears on your profile and every listing. Buyers see it immediately and shop with confidence.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 text-center border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #D4A017, #B8860B); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+                            <i class="bi bi-percent text-white" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <h5 class="fw-bold">Lower Commissions</h5>
+                        <p class="text-muted">Get a 2% discount on your commission rate. Featured sellers pay 5.95% instead of 7.95%. Premium sellers pay just 3.95%.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How to Qualify -->
+<section class="section section-alt">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 style="font-size: 1.75rem;">How to Qualify</h2>
+            <p class="text-muted">Meet all three criteria and you'll be automatically promoted.</p>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-4">
+                <div class="card h-100 text-center border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
+                            {% if user.is_authenticated %}
+                                {% if user.profile.total_sales_count >= 20 %}
+                                <i class="bi bi-check-lg text-success" style="font-size: 1.5rem;"></i>
+                                {% else %}
+                                <span class="fw-bold">{{ user.profile.total_sales_count }}/20</span>
+                                {% endif %}
+                            {% else %}
+                            <i class="bi bi-cart-check"></i>
+                            {% endif %}
+                        </div>
+                        <h5 class="fw-bold">20+ Completed Sales</h5>
+                        <p class="text-muted small">Build your track record with at least 20 successful transactions on the platform.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 text-center border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
+                            {% if user.is_authenticated %}
+                                {% if user.profile.rating >= 4.5 and user.profile.rating_count >= 10 %}
+                                <i class="bi bi-check-lg text-success" style="font-size: 1.5rem;"></i>
+                                {% else %}
+                                <span class="fw-bold">{{ user.profile.rating|floatformat:1 }}</span>
+                                {% endif %}
+                            {% else %}
+                            <i class="bi bi-star"></i>
+                            {% endif %}
+                        </div>
+                        <h5 class="fw-bold">4.5+ Seller Rating</h5>
+                        <p class="text-muted small">Maintain a stellar reputation with at least a 4.5 average from 10 or more buyer reviews.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 text-center border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
+                            {% if user.is_authenticated %}
+                                {% if user.profile.seller_tier == 'featured' or user.profile.seller_tier == 'premium' %}
+                                <i class="bi bi-check-lg text-success" style="font-size: 1.5rem;"></i>
+                                {% else %}
+                                <i class="bi bi-arrow-up"></i>
+                                {% endif %}
+                            {% else %}
+                            <i class="bi bi-award"></i>
+                            {% endif %}
+                        </div>
+                        <h5 class="fw-bold">Featured or Premium Tier</h5>
+                        <p class="text-muted small">Subscribe to a Featured ($29.99/mo) or Premium ($99.99/mo) seller plan to unlock eligibility.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works -->
+<section class="section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 style="font-size: 1.75rem;">How It Works</h2>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-4 text-center">
+                <div style="width: 48px; height: 48px; background: var(--gray-900); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: #fff; font-weight: 700;">1</div>
+                <h5 class="fw-bold" style="font-size: 1.05rem;">Meet the Criteria</h5>
+                <p class="text-muted" style="font-size: 0.9rem;">Hit 20 sales, maintain a 4.5+ rating, and subscribe to Featured or Premium.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div style="width: 48px; height: 48px; background: var(--gray-900); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: #fff; font-weight: 700;">2</div>
+                <h5 class="fw-bold" style="font-size: 1.05rem;">Auto-Qualify</h5>
+                <p class="text-muted" style="font-size: 0.9rem;">Our system checks daily. Once you meet all criteria, you're automatically promoted.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div style="width: 48px; height: 48px; background: var(--gray-900); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: #fff; font-weight: 700;">3</div>
+                <h5 class="fw-bold" style="font-size: 1.05rem;">Enjoy the Benefits</h5>
+                <p class="text-muted" style="font-size: 0.9rem;">Your badge appears instantly, commission drops, and you can submit to platform auctions.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ -->
+<section class="section section-alt">
+    <div class="container">
+        <div class="text-center mb-4">
+            <h2 style="font-size: 1.75rem;">Frequently Asked Questions</h2>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="accordion" id="trustedFaq">
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#tfaq1">
+                                What is a Trusted Seller?
+                            </button>
+                        </h3>
+                        <div id="tfaq1" class="accordion-collapse collapse" data-bs-parent="#trustedFaq">
+                            <div class="accordion-body text-muted">
+                                Trusted Sellers are top-performing sellers on HeroesAndMore who have demonstrated consistent quality through high sales volume, excellent ratings, and a premium subscription tier. They receive a gold badge, lower commission rates, and access to platform auction events.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#tfaq2">
+                                How do I qualify?
+                            </button>
+                        </h3>
+                        <div id="tfaq2" class="accordion-collapse collapse" data-bs-parent="#trustedFaq">
+                            <div class="accordion-body text-muted">
+                                You qualify automatically when you meet all three criteria: 20 or more completed sales, a seller rating of 4.5 or higher with at least 10 reviews, and an active Featured or Premium subscription tier. Our system checks daily and promotes qualifying sellers automatically.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#tfaq3">
+                                What commission discount do I get?
+                            </button>
+                        </h3>
+                        <div id="tfaq3" class="accordion-collapse collapse" data-bs-parent="#trustedFaq">
+                            <div class="accordion-body text-muted">
+                                Trusted Sellers receive a 2% discount on their tier's commission rate. Featured sellers pay 5.95% instead of 7.95%. Premium sellers pay 3.95% instead of 5.95%. The discount is applied automatically to every sale.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#tfaq4">
+                                How do platform auctions work?
+                            </button>
+                        </h3>
+                        <div id="tfaq4" class="accordion-collapse collapse" data-bs-parent="#trustedFaq">
+                            <div class="accordion-body text-muted">
+                                When a platform auction event is accepting submissions, you can submit your listings for review. Our team reviews each submission and approved items are included in the official auction event. You keep ownership of your item&mdash;it just gets featured in a curated event with premium visibility.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#tfaq5">
+                                Can I lose Trusted Seller status?
+                            </button>
+                        </h3>
+                        <div id="tfaq5" class="accordion-collapse collapse" data-bs-parent="#trustedFaq">
+                            <div class="accordion-body text-muted">
+                                Yes. Trusted Seller status is checked daily. If your rating drops below 4.5, your review count falls below 10, or you downgrade from a Featured or Premium subscription, you will lose Trusted Seller status until you meet the criteria again.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section style="background: var(--gray-900); color: #fff; padding: 3rem 0;">
+    <div class="container text-center">
+        {% if is_trusted %}
+        <h2 style="font-size: 1.75rem; color: #fff; margin-bottom: 0.5rem;">Ready to submit to an auction?</h2>
+        <p style="color: var(--gray-400); margin-bottom: 1.5rem;">Browse upcoming platform events and submit your best items.</p>
+        <a href="{% url 'marketplace:platform_auctions' %}" class="btn btn-light fw-semibold px-4 py-2">
+            <i class="bi bi-hammer me-1"></i> View Platform Auctions
+        </a>
+        {% else %}
+        <h2 style="font-size: 1.75rem; color: #fff; margin-bottom: 0.5rem;">Ready to earn Trusted Seller status?</h2>
+        <p style="color: var(--gray-400); margin-bottom: 1.5rem;">Start selling and building your reputation today.</p>
+        <a href="{% url 'sell' %}" class="btn btn-light fw-semibold px-4 py-2">
+            Start Selling
+        </a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

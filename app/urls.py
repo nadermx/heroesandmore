@@ -10,7 +10,7 @@ from items.views import home, about
 from accounts.api.views import (
     GoogleAuthView, PasswordResetView, PasswordResetConfirmView, ChangePasswordView
 )
-from app.views import log_frontend_error, sell_landing
+from app.views import log_frontend_error, sell_landing, trusted_seller_landing
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -47,6 +47,9 @@ urlpatterns = [
 
     # Sell landing page (media buy destination)
     path('sell/', sell_landing, name='sell'),
+
+    # Trusted Seller program
+    path('trusted-seller/', trusted_seller_landing, name='trusted_seller'),
 
     # Static pages
     path('about/', about, name='about'),

@@ -231,6 +231,47 @@ def send_renewal_reminders():
     return {'sent': sent}
 
 
+@shared_task
+def update_trusted_seller_status():
+    """
+    Daily task (4 AM) - Update trusted seller status for all sellers.
+
+    Checks every seller against qualification criteria and updates
+    is_trusted_seller accordingly.
+    """
+    from accounts.models import Profile
+
+    # Get all profiles that have any sales (potential sellers)
+    profiles = Profile.objects.filter(total_sales_count__gt=0).select_related('user')
+
+    promoted = 0
+    demoted = 0
+
+    for profile in profiles:
+        qualified = profile.qualifies_as_trusted_seller
+        if qualified and not profile.is_trusted_seller:
+            profile.is_trusted_seller = True
+            profile.save(update_fields=['is_trusted_seller'])
+            promoted += 1
+            logger.info(
+                f"Promoted {profile.user.username} to trusted seller "
+                f"(sales={profile.total_sales_count}, rating={profile.rating}, tier={profile.seller_tier})"
+            )
+        elif not qualified and profile.is_trusted_seller:
+            profile.is_trusted_seller = False
+            profile.save(update_fields=['is_trusted_seller'])
+            demoted += 1
+            logger.info(
+                f"Demoted {profile.user.username} from trusted seller "
+                f"(sales={profile.total_sales_count}, rating={profile.rating}, tier={profile.seller_tier})"
+            )
+
+    if promoted or demoted:
+        logger.info(f"Trusted seller update: {promoted} promoted, {demoted} demoted")
+
+    return {'promoted': promoted, 'demoted': demoted}
+
+
 def _attach_row_images(listing, data, bulk_import_id):
     """Attach images to a listing from URLs or uploaded filenames."""
     import os

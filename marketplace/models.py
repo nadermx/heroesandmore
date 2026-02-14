@@ -49,6 +49,10 @@ class AuctionEvent(models.Model):
         ('monthly', 'Monthly'), ('quarterly', 'Quarterly'), ('special', 'Special/One-off')
     ], blank=True)
 
+    # Trusted seller submissions
+    accepting_submissions = models.BooleanField(default=False, help_text="Allow trusted sellers to submit lots")
+    submission_deadline = models.DateTimeField(null=True, blank=True)
+
     # Stats (cached)
     total_lots = models.IntegerField(default=0)
     total_bids = models.IntegerField(default=0)
@@ -572,3 +576,32 @@ class AutoBid(models.Model):
     def deactivate(self):
         self.is_active = False
         self.save(update_fields=['is_active', 'updated'])
+
+
+class AuctionLotSubmission(models.Model):
+    """
+    Trusted sellers can submit their listings for inclusion
+    in platform auction events.
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('withdrawn', 'Withdrawn'),
+    ]
+
+    auction_event = models.ForeignKey(AuctionEvent, on_delete=models.CASCADE, related_name='submissions')
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='auction_submissions')
+    listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='auction_submissions')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    staff_notes = models.TextField(blank=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='reviewed_submissions')
+
+    class Meta:
+        ordering = ['-submitted_at']
+        unique_together = ['auction_event', 'listing']
+
+    def __str__(self):
+        return f"{self.seller.username} submitted {self.listing.title} to {self.auction_event.name}"

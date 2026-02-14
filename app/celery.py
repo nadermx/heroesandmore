@@ -76,4 +76,9 @@ app.conf.beat_schedule = {
         'task': 'alerts.tasks.send_relist_reminders',
         'schedule': crontab(hour=11, minute=0),  # Daily at 11 AM
     },
+    # Update trusted seller status daily
+    'update-trusted-seller-status': {
+        'task': 'seller_tools.tasks.update_trusted_seller_status',
+        'schedule': crontab(hour=4, minute=0),  # Daily at 4 AM
+    },
 }

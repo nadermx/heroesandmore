@@ -79,6 +79,23 @@
     </div>
 </section>
 
+<!-- Submit Lot CTA -->
+{% if event.accepting_submissions and user.is_authenticated and user.profile.is_trusted_seller %}
+<section class="py-3" style="background: var(--gray-50); border-bottom: 1px solid var(--border-color);">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff;"><i class="bi bi-award"></i></span>
+                <span class="fw-semibold">You're a Trusted Seller! Submit your items to this event.</span>
+            </div>
+            <a href="{% url 'marketplace:submit_auction_lot' slug=event.slug %}" class="btn btn-dark btn-sm">
+                <i class="bi bi-send me-1"></i> Submit a Lot
+            </a>
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <!-- Lots Grid -->
 <section class="section">
     <div class="container">

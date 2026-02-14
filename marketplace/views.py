@@ -9,7 +9,7 @@ from datetime import timedelta
 from django.conf import settings
 from decimal import Decimal
 
-from .models import Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent
+from .models import Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent, AuctionLotSubmission
 from accounts.models import RecentlyViewed
 from .forms import ListingForm, OfferForm, ReviewForm, ShippingForm
 from items.models import Category
@@ -1276,3 +1276,63 @@ def platform_auction_detail(request, slug):
         'lots': lots,
     }
     return render(request, 'marketplace/platform_auction_detail.html', context)
+
+
+@login_required
+def submit_auction_lot(request, slug):
+    """Trusted sellers submit a listing for a platform auction event"""
+    event = get_object_or_404(
+        AuctionEvent,
+        slug=slug,
+        is_platform_event=True,
+        accepting_submissions=True,
+    )
+
+    # Only trusted sellers can submit
+    if not request.user.profile.is_trusted_seller:
+        messages.error(request, 'Only Trusted Sellers can submit lots to platform auctions.')
+        return redirect('marketplace:platform_auction_detail', slug=slug)
+
+    # Check submission deadline
+    if event.submission_deadline and timezone.now() > event.submission_deadline:
+        messages.error(request, 'The submission deadline for this event has passed.')
+        return redirect('marketplace:platform_auction_detail', slug=slug)
+
+    # Get user's eligible listings (active or draft, not already in an event)
+    eligible_listings = Listing.objects.filter(
+        seller=request.user,
+        status__in=['active', 'draft'],
+        auction_event__isnull=True,
+    ).exclude(
+        auction_submissions__auction_event=event,
+    ).order_by('-created')
+
+    if request.method == 'POST':
+        listing_id = request.POST.get('listing_id')
+        listing = get_object_or_404(Listing, pk=listing_id, seller=request.user)
+
+        # Check not already submitted
+        if AuctionLotSubmission.objects.filter(auction_event=event, listing=listing).exists():
+            messages.error(request, 'This listing has already been submitted to this event.')
+        else:
+            AuctionLotSubmission.objects.create(
+                auction_event=event,
+                seller=request.user,
+                listing=listing,
+            )
+            messages.success(request, f'"{listing.title}" has been submitted for review.')
+
+        return redirect('marketplace:submit_auction_lot', slug=slug)
+
+    # Get existing submissions
+    submissions = AuctionLotSubmission.objects.filter(
+        auction_event=event,
+        seller=request.user,
+    ).select_related('listing').order_by('-submitted_at')
+
+    context = {
+        'event': event,
+        'eligible_listings': eligible_listings,
+        'submissions': submissions,
+    }
+    return render(request, 'marketplace/submit_auction_lot.html', context)
