@@ -6,14 +6,45 @@ from .models import (
 )
 
 
+class PlatformLotInline(admin.TabularInline):
+    model = Listing
+    fk_name = 'auction_event'
+    fields = ['title', 'category', 'starting_bid', 'price', 'condition', 'lot_number', 'status', 'image1']
+    raw_id_fields = ['category']
+    extra = 0
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('category')
+
+
 @admin.register(AuctionEvent)
 class AuctionEventAdmin(admin.ModelAdmin):
-    list_display = ['name', 'event_type', 'status', 'bidding_start', 'bidding_end', 'total_lots', 'is_featured']
-    list_filter = ['event_type', 'status', 'is_featured', 'bidding_start']
+    list_display = ['name', 'event_type', 'is_platform_event', 'cadence', 'status', 'bidding_start', 'bidding_end', 'total_lots', 'is_featured']
+    list_filter = ['is_platform_event', 'event_type', 'cadence', 'status', 'is_featured', 'bidding_start']
     search_fields = ['name', 'description']
     prepopulated_fields = {'slug': ('name',)}
     readonly_fields = ['total_lots', 'total_bids', 'total_value', 'created']
     raw_id_fields = ['created_by']
+    inlines = [PlatformLotInline]
+    actions = ['activate_platform_event']
+
+    def activate_platform_event(self, request, queryset):
+        """Activate all draft listings in selected platform events and sync auction_end times."""
+        from django.contrib.auth.models import User
+
+        for event in queryset.filter(is_platform_event=True):
+            lots = event.listings.filter(status='draft')
+            count = lots.update(
+                status='active',
+                auction_end=event.bidding_end,
+                listing_type='auction',
+            )
+            # Update cached total_lots
+            event.total_lots = event.listings.filter(status='active').count()
+            event.status = 'live'
+            event.save(update_fields=['total_lots', 'status'])
+            self.message_user(request, f'{event.name}: activated {count} lots, event set to live.')
+    activate_platform_event.short_description = "Activate platform event (set lots live, sync end times)"
 
 
 @admin.register(Listing)
@@ -106,7 +137,7 @@ class OrderAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    actions = ['process_full_refund', 'retry_transfer']
+    actions = ['process_full_refund', 'retry_transfer', 'mark_shipped']
 
     def process_full_refund(self, request, queryset):
         """Process full refund for selected orders"""
@@ -133,6 +164,16 @@ class OrderAdmin(admin.ModelAdmin):
                 except Exception as e:
                     self.message_user(request, f"Transfer failed for Order #{order.id}: {e}", level='error')
     retry_transfer.short_description = "Retry seller transfer"
+
+    def mark_shipped(self, request, queryset):
+        """Bulk mark orders as shipped (useful for platform orders)"""
+        from django.utils import timezone
+        count = queryset.filter(status='paid').update(
+            status='shipped',
+            shipped_at=timezone.now(),
+        )
+        self.message_user(request, f"Marked {count} order(s) as shipped.")
+    mark_shipped.short_description = "Mark as shipped"
 
 
 @admin.register(Review)

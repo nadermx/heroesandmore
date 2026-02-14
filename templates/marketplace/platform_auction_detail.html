@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ event.name }} - Official Auction - HeroesAndMore{% endblock %}
+{% block meta_description %}{{ event.description|truncatewords:25 }}{% endblock %}
+
+{% block content %}
+<!-- Event Banner -->
+<section class="py-5" style="background: linear-gradient(135deg, var(--dark) 0%, #1a1a2e 100%);">
+    <div class="container text-white">
+        <div class="row align-items-center">
+            <div class="{% if event.cover_image %}col-lg-7{% else %}col-12{% endif %}">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="badge bg-warning text-dark px-2 py-1">
+                        <i class="bi bi-shield-check me-1"></i> Official
+                    </span>
+                    {% if event.is_live %}
+                    <span class="badge bg-danger px-2 py-1">
+                        <i class="bi bi-broadcast me-1"></i> Live Now
+                    </span>
+                    {% elif event.is_preview %}
+                    <span class="badge bg-info text-white px-2 py-1">Preview</span>
+                    {% elif event.is_ended %}
+                    <span class="badge bg-secondary px-2 py-1">Ended</span>
+                    {% else %}
+                    <span class="badge bg-info text-white px-2 py-1">Upcoming</span>
+                    {% endif %}
+                    {% if event.cadence %}
+                    <span class="badge bg-dark border border-secondary px-2 py-1">{{ event.get_cadence_display }}</span>
+                    {% endif %}
+                </div>
+                <h1 class="fw-bold mb-3">{{ event.name }}</h1>
+                {% if event.description %}
+                <p class="text-white-50 mb-4">{{ event.description }}</p>
+                {% endif %}
+
+                <!-- Timing Info -->
+                <div class="d-flex flex-wrap gap-4 mb-3">
+                    {% if event.is_live %}
+                    <div>
+                        <small class="text-white-50 d-block">Ends</small>
+                        <span class="fw-bold" data-countdown="{{ event.bidding_end|date:'c' }}">
+                            {{ event.bidding_end|naturaltime }}
+                        </span>
+                    </div>
+                    {% elif not event.is_ended %}
+                    <div>
+                        <small class="text-white-50 d-block">Bidding Opens</small>
+                        <span class="fw-bold">{{ event.bidding_start|date:"M d, Y g:i A" }}</span>
+                    </div>
+                    <div>
+                        <small class="text-white-50 d-block">Bidding Ends</small>
+                        <span class="fw-bold">{{ event.bidding_end|date:"M d, Y g:i A" }}</span>
+                    </div>
+                    {% else %}
+                    <div>
+                        <small class="text-white-50 d-block">Ended</small>
+                        <span class="fw-bold">{{ event.bidding_end|date:"M d, Y g:i A" }}</span>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <small class="text-white-50 d-block">Total Lots</small>
+                        <span class="fw-bold">{{ event.total_lots }}</span>
+                    </div>
+                    {% if event.total_bids %}
+                    <div>
+                        <small class="text-white-50 d-block">Total Bids</small>
+                        <span class="fw-bold">{{ event.total_bids }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% if event.cover_image %}
+            <div class="col-lg-5 d-none d-lg-block">
+                <img src="{{ event.cover_image.url }}" class="img-fluid rounded shadow" alt="{{ event.name }}" style="max-height: 300px; width: 100%; object-fit: cover;">
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Lots Grid -->
+<section class="section">
+    <div class="container">
+        {% if lots %}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="h4 mb-0">
+                <i class="bi bi-grid-3x3-gap me-2"></i>
+                Lots
+                <span class="text-muted small">({{ lots.paginator.count }})</span>
+            </h2>
+        </div>
+
+        <div class="row g-4">
+            {% for listing in lots %}
+            <div class="col-6 col-md-4 col-lg-3">
+                {% include 'components/listing_card.html' with listing=listing show_time=True %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if lots.has_other_pages %}
+        <nav class="mt-5 d-flex justify-content-center">
+            <ul class="pagination">
+                {% if lots.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ lots.previous_page_number }}">&laquo;</a>
+                </li>
+                {% endif %}
+                {% for num in lots.paginator.page_range %}
+                <li class="page-item {% if lots.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                {% if lots.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ lots.next_page_number }}">&raquo;</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-collection" style="font-size: 3rem; color: var(--gray-300);"></i>
+            <h4 class="mt-3 mb-2">No Lots Yet</h4>
+            <p class="text-muted">Lots for this event haven't been added yet. Check back closer to the start date.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Back to Auctions -->
+<section class="pb-5">
+    <div class="container text-center">
+        <a href="{% url 'marketplace:platform_auctions' %}" class="btn btn-outline-dark">
+            <i class="bi bi-arrow-left me-1"></i> All Official Auctions
+        </a>
+    </div>
+</section>
+{% endblock %}

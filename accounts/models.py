@@ -48,6 +48,10 @@ class Profile(models.Model):
     total_sales_count = models.IntegerField(default=0)
     total_sales_value = models.DecimalField(max_digits=14, decimal_places=2, default=0)
 
+    # Platform flags
+    is_platform_account = models.BooleanField(default=False)
+    is_trusted_seller = models.BooleanField(default=False)
+
     # Settings
     is_public = models.BooleanField(default=True)
     email_notifications = models.BooleanField(default=True)

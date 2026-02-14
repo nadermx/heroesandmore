@@ -523,6 +523,20 @@
 
             <!-- Seller Info -->
             <div class="seller-card mb-4">
+                {% if listing.is_platform_listing %}
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px; background: linear-gradient(135deg, var(--dark) 0%, #1a1a2e 100%);">
+                        <i class="bi bi-shield-check text-warning" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <span class="fw-bold" style="font-size: 1.1rem;">Sold by HeroesAndMore</span>
+                        <span class="badge bg-warning text-dark ms-2" style="font-size: 0.7em;">Official</span>
+                        <div class="mt-1">
+                            <span class="small text-muted">Curated and shipped by the HeroesAndMore team</span>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
                 <div class="d-flex align-items-center">
                     {% if listing.seller.profile.avatar %}
                     <img src="{{ listing.seller.profile.avatar.url }}" class="rounded-circle me-3" width="56" height="56" style="object-fit: cover;">
@@ -555,6 +569,7 @@
                         View Profile
                     </a>
                 </div>
+                {% endif %}
             </div>
 
             <!-- Item Details -->

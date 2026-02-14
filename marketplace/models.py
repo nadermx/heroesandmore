@@ -43,6 +43,12 @@ class AuctionEvent(models.Model):
     is_featured = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
 
+    # Platform auction
+    is_platform_event = models.BooleanField(default=False, help_text="Platform-controlled auction event")
+    cadence = models.CharField(max_length=20, choices=[
+        ('monthly', 'Monthly'), ('quarterly', 'Quarterly'), ('special', 'Special/One-off')
+    ], blank=True)
+
     # Stats (cached)
     total_lots = models.IntegerField(default=0)
     total_bids = models.IntegerField(default=0)
@@ -63,6 +69,8 @@ class AuctionEvent(models.Model):
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
+        if self.is_platform_event:
+            return reverse('marketplace:platform_auction_detail', kwargs={'slug': self.slug})
         return reverse('marketplace:auction_event_detail', kwargs={'slug': self.slug})
 
     def is_preview(self):
@@ -253,6 +261,10 @@ class Listing(models.Model):
             'hours': hours,
             'minutes': minutes,
         }
+
+    @property
+    def is_platform_listing(self):
+        return hasattr(self.seller, 'profile') and self.seller.profile.is_platform_account
 
     @property
     def quantity_available(self):

@@ -9,7 +9,7 @@ from datetime import timedelta
 from django.conf import settings
 from decimal import Decimal
 
-from .models import Listing, Bid, Offer, Order, Review, SavedListing
+from .models import Listing, Bid, Offer, Order, Review, SavedListing, AuctionEvent
 from accounts.models import RecentlyViewed
 from .forms import ListingForm, OfferForm, ReviewForm, ShippingForm
 from items.models import Category
@@ -250,8 +250,8 @@ def listing_publish(request, pk):
     """Publish draft listing"""
     listing = get_object_or_404(Listing, pk=pk, seller=request.user, status='draft')
 
-    # Verify seller has Stripe account set up
-    if not request.user.profile.stripe_account_complete:
+    # Verify seller has Stripe account set up (skip for platform account)
+    if not request.user.profile.is_platform_account and not request.user.profile.stripe_account_complete:
         messages.warning(request, 'Please complete your seller setup before publishing listings.')
         return redirect('marketplace:seller_setup')
 
@@ -1068,16 +1068,17 @@ def listing_relist(request, pk):
         messages.error(request, "Only expired or cancelled listings can be relisted.")
         return redirect('marketplace:listing_detail', pk=pk)
 
-    # Check Stripe setup
-    if not request.user.profile.stripe_account_complete:
+    # Check Stripe setup (skip for platform account)
+    if not request.user.profile.is_platform_account and not request.user.profile.stripe_account_complete:
         messages.warning(request, 'Please complete your seller setup before relisting.')
         return redirect('marketplace:seller_setup')
 
-    # Check subscription listing limits
-    subscription = getattr(request.user, 'seller_subscription', None)
-    if subscription and not subscription.can_create_listing():
-        messages.error(request, 'You have reached your active listing limit. Upgrade your plan to list more items.')
-        return redirect('seller_tools:dashboard')
+    # Check subscription listing limits (skip for platform account)
+    if not request.user.profile.is_platform_account:
+        subscription = getattr(request.user, 'seller_subscription', None)
+        if subscription and not subscription.can_create_listing():
+            messages.error(request, 'You have reached your active listing limit. Upgrade your plan to list more items.')
+            return redirect('seller_tools:dashboard')
 
     if request.method == 'POST':
         if listing.listing_type == 'auction':
@@ -1226,3 +1227,52 @@ def seller_stripe_dashboard(request):
     except Exception as e:
         messages.error(request, f'Unable to access Stripe dashboard: {e}')
         return redirect('seller_tools:dashboard')
+
+
+def platform_auctions(request):
+    """Landing page for official platform auction events"""
+    now = timezone.now()
+
+    live_events = AuctionEvent.objects.filter(
+        is_platform_event=True,
+        status='live',
+        bidding_start__lte=now,
+        bidding_end__gt=now,
+    ).order_by('bidding_end')
+
+    upcoming_events = AuctionEvent.objects.filter(
+        is_platform_event=True,
+        status__in=['draft', 'preview'],
+        bidding_start__gt=now,
+    ).order_by('bidding_start')
+
+    past_events = AuctionEvent.objects.filter(
+        is_platform_event=True,
+        status='ended',
+    ).order_by('-bidding_end')[:12]
+
+    context = {
+        'live_events': live_events,
+        'upcoming_events': upcoming_events,
+        'past_events': past_events,
+    }
+    return render(request, 'marketplace/platform_auctions.html', context)
+
+
+def platform_auction_detail(request, slug):
+    """Detail page for a specific platform auction event"""
+    event = get_object_or_404(AuctionEvent, slug=slug, is_platform_event=True)
+
+    lots = event.listings.select_related(
+        'seller', 'category', 'seller__profile'
+    ).order_by('lot_number', 'pk')
+
+    paginator = Paginator(lots, 24)
+    page = request.GET.get('page')
+    lots = paginator.get_page(page)
+
+    context = {
+        'event': event,
+        'lots': lots,
+    }
+    return render(request, 'marketplace/platform_auction_detail.html', context)

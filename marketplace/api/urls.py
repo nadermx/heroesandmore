@@ -25,6 +25,7 @@ urlpatterns = [
     path('payment/confirm/', views.PaymentConfirmView.as_view(), name='payment_confirm'),
 
     # Auction events
+    path('auctions/platform/', views.PlatformAuctionEventListView.as_view(), name='platform_auction_events'),
     path('auctions/events/', views.AuctionEventListView.as_view(), name='auction_events'),
     path('auctions/events/<slug:slug>/', views.AuctionEventDetailView.as_view(), name='auction_event_detail'),
     path('auctions/events/<slug:slug>/lots/', views.AuctionEventLotsView.as_view(), name='auction_event_lots'),

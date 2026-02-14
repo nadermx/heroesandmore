@@ -41,8 +41,9 @@ def end_auctions():
 
             if winning_bid:
                 # Create order for the winner
+                is_platform = hasattr(listing.seller, 'profile') and listing.seller.profile.is_platform_account
                 platform_fee = StripeService.calculate_platform_fee(winning_bid.amount, listing.seller)
-                seller_payout = winning_bid.amount - platform_fee
+                seller_payout = Decimal('0') if is_platform else winning_bid.amount - platform_fee
 
                 order = Order.objects.create(
                     buyer=winning_bid.bidder,

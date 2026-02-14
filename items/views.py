@@ -5,7 +5,7 @@ from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 from django.contrib.auth.models import User
 
 from .models import Category, Item
-from marketplace.models import Listing, Order, Review
+from marketplace.models import Listing, Order, Review, AuctionEvent
 
 
 def _get_site_stats():
@@ -47,11 +47,20 @@ def home(request):
         auction_end__gt=timezone.now()
     ).select_related('seller', 'category').order_by('auction_end')[:4]
 
+    # Get live/upcoming platform auction events
+    now = timezone.now()
+    platform_events = AuctionEvent.objects.filter(
+        is_platform_event=True,
+        status__in=['live', 'preview'],
+        bidding_end__gt=now,
+    ).order_by('bidding_start')[:3]
+
     context = {
         'categories': categories,
         'recent_listings': recent_listings,
         'trending_listings': trending_listings,
         'ending_soon': ending_soon,
+        'platform_events': platform_events,
         **_get_site_stats(),
     }
     return render(request, 'home.html', context)

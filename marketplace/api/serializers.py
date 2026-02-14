@@ -28,6 +28,7 @@ class ListingListSerializer(serializers.ModelSerializer):
     time_remaining = serializers.SerializerMethodField()
     bid_count = serializers.SerializerMethodField()
     quantity_available = serializers.SerializerMethodField()
+    is_platform_listing = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Listing
@@ -36,7 +37,8 @@ class ListingListSerializer(serializers.ModelSerializer):
             'condition', 'grading_service', 'grade', 'seller_username',
             'category_name', 'category_slug', 'primary_image',
             'auction_end', 'time_remaining', 'bid_count',
-            'shipping_price', 'views', 'created', 'quantity_available'
+            'shipping_price', 'views', 'created', 'quantity_available',
+            'is_platform_listing'
         ]
 
     def get_quantity_available(self, obj):
@@ -78,6 +80,7 @@ class ListingDetailSerializer(serializers.ModelSerializer):
     recent_sales = serializers.SerializerMethodField()
     time_remaining = serializers.SerializerMethodField()
     quantity_available = serializers.SerializerMethodField()
+    is_platform_listing = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Listing
@@ -90,7 +93,7 @@ class ListingDetailSerializer(serializers.ModelSerializer):
             'shipping_price', 'ships_from', 'auction_end', 'time_remaining',
             'reserve_price', 'no_reserve', 'starting_bid',
             'bid_count', 'high_bidder', 'is_saved', 'recent_sales',
-            'views', 'status', 'created'
+            'views', 'status', 'created', 'is_platform_listing'
         ]
 
     def get_quantity_available(self, obj):
@@ -336,7 +339,8 @@ class AuctionEventSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'slug', 'event_type', 'description',
             'cover_image', 'preview_start', 'bidding_start', 'bidding_end',
-            'is_featured', 'status', 'lot_count', 'total_bids', 'total_value',
+            'is_featured', 'is_platform_event', 'cadence', 'status',
+            'lot_count', 'total_bids', 'total_value',
             'is_live', 'time_remaining'
         ]
 

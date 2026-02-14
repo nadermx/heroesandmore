@@ -516,6 +516,18 @@ class AuctionEventLotsView(generics.ListAPIView):
         return event.listings.filter(status='active').order_by('lot_number')
 
 
+class PlatformAuctionEventListView(generics.ListAPIView):
+    """List platform auction events"""
+    serializer_class = AuctionEventSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return AuctionEvent.objects.filter(
+            is_platform_event=True,
+            status__in=['preview', 'live', 'ended']
+        ).order_by('-bidding_start')
+
+
 class EndingSoonView(generics.ListAPIView):
     """Get auctions ending soon (within 1 hour)"""
     serializer_class = ListingListSerializer

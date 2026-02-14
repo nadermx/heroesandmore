@@ -50,9 +50,12 @@ class StripeService:
     def calculate_platform_fee(price, seller):
         """Calculate platform fee: flat fee + percentage commission.
 
+        For platform accounts, the platform keeps the full price (no seller payout).
         This ensures we always cover Stripe's processing costs ($0.30 + 2.9%)
         even on low-dollar transactions.
         """
+        if hasattr(seller, 'profile') and seller.profile.is_platform_account:
+            return price
         commission_rate = StripeService.get_seller_commission_rate(seller)
         return (StripeService.PLATFORM_FLAT_FEE + price * commission_rate).quantize(Decimal('0.01'))
 

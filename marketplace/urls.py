@@ -5,6 +5,10 @@ from . import webhooks
 app_name = 'marketplace'
 
 urlpatterns = [
+    # Platform Auctions
+    path('auctions/', views.platform_auctions, name='platform_auctions'),
+    path('auctions/<slug:slug>/', views.platform_auction_detail, name='platform_auction_detail'),
+
     # Listings
     path('', views.listing_list, name='listing_list'),
     path('create/', views.listing_create, name='listing_create'),
