@@ -10,7 +10,7 @@ from items.views import home, about
 from accounts.api.views import (
     GoogleAuthView, PasswordResetView, PasswordResetConfirmView, ChangePasswordView
 )
-from app.views import log_frontend_error, sell_landing, trusted_seller_landing
+from app.views import contact, log_frontend_error, sell_landing, trusted_seller_landing
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -56,7 +56,7 @@ urlpatterns = [
     path('help/', TemplateView.as_view(template_name='pages/help.html'), name='help'),
     path('seller-guide/', TemplateView.as_view(template_name='pages/seller_guide.html'), name='seller_guide'),
     path('safety/', TemplateView.as_view(template_name='pages/safety.html'), name='safety'),
-    path('contact/', TemplateView.as_view(template_name='pages/contact.html'), name='contact'),
+    path('contact/', contact, name='contact'),
     path('terms/', TemplateView.as_view(template_name='pages/terms.html'), name='terms'),
     path('privacy/', TemplateView.as_view(template_name='pages/privacy.html'), name='privacy'),
     path('cookies/', TemplateView.as_view(template_name='pages/cookies.html'), name='cookies'),

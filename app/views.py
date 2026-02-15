@@ -1,5 +1,8 @@
 import json
 import logging
+from django.conf import settings
+from django.contrib import messages
+from django.core.mail import send_mail
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
@@ -9,6 +12,7 @@ from items.models import Category
 from items.views import _get_site_stats
 
 logger = logging.getLogger('frontend')
+app_logger = logging.getLogger('app')
 
 
 def sell_landing(request):
@@ -34,6 +38,45 @@ def trusted_seller_landing(request):
         **_get_site_stats(),
     }
     return render(request, 'pages/trusted_seller.html', context)
+
+
+def contact(request):
+    """Contact form page - sends email to support on submission."""
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        email = request.POST.get('email', '').strip()
+        subject = request.POST.get('subject', 'general')
+        message_text = request.POST.get('message', '').strip()
+
+        if not all([name, email, message_text]):
+            messages.error(request, 'Please fill in all required fields.')
+            return render(request, 'pages/contact.html')
+
+        subject_labels = {
+            'general': 'General Inquiry',
+            'buying': 'Buying Help',
+            'selling': 'Selling Help',
+            'account': 'Account Issues',
+            'report': 'Report a Problem',
+            'other': 'Other',
+        }
+        subject_label = subject_labels.get(subject, 'General Inquiry')
+
+        try:
+            send_mail(
+                subject=f'[Contact Form] {subject_label} — from {name}',
+                message=f'From: {name} <{email}>\nSubject: {subject_label}\n\n{message_text}',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=['support@heroesandmore.com'],
+                fail_silently=False,
+            )
+            messages.success(request, 'Your message has been sent! We\'ll get back to you within 24 hours.')
+            return redirect('contact')
+        except Exception:
+            app_logger.error('Contact form email failed', exc_info=True)
+            messages.error(request, 'Sorry, there was a problem sending your message. Please email us directly at support@heroesandmore.com.')
+
+    return render(request, 'pages/contact.html')
 
 
 @csrf_exempt
