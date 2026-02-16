@@ -26,10 +26,16 @@ def _get_site_stats():
 
 def home(request):
     """Homepage with featured items and categories"""
+    from django.utils import timezone
+    from datetime import timedelta
+
+    now = timezone.now()
+    one_hour_ago = now - timedelta(hours=1)
+
     # Get top-level categories
     categories = Category.objects.filter(parent=None, is_active=True).order_by('order')[:12]
 
-    # Get recent listings
+    # Get recent listings (Featured Lots)
     recent_listings = Listing.objects.filter(status='active').select_related(
         'seller', 'category'
     ).order_by('-created')[:12]
@@ -39,16 +45,34 @@ def home(request):
         'seller', 'category'
     ).order_by('-views')[:8]
 
-    # Get ending soon auctions
-    from django.utils import timezone
+    # Get ending soon auctions — annotated with save/bid counts for HOT LOT badge
     ending_soon = Listing.objects.filter(
         status='active',
         listing_type='auction',
-        auction_end__gt=timezone.now()
-    ).select_related('seller', 'category').order_by('auction_end')[:4]
+        auction_end__gt=now,
+    ).select_related('seller', 'category').annotate(
+        save_count=Count('saves'),
+        bid_count_total=Count('bids'),
+        recent_bids=Count('bids', filter=Q(bids__created__gte=one_hour_ago)),
+    ).order_by('auction_end')[:8]
+
+    # Bid Wars — auctions with most bidding activity in last hour
+    bid_wars = Listing.objects.filter(
+        status='active',
+        listing_type='auction',
+        auction_end__gt=now,
+        bids__created__gte=one_hour_ago,
+    ).select_related('seller', 'category').annotate(
+        recent_bids=Count('bids', filter=Q(bids__created__gte=one_hour_ago)),
+    ).order_by('-recent_bids')[:6]
+
+    # Curated Listings — high-grade/high-value graded items
+    curated_listings = Listing.objects.filter(
+        status='active',
+        is_graded=True,
+    ).select_related('seller', 'category').order_by('-price')[:8]
 
     # Get live/upcoming platform auction events
-    now = timezone.now()
     platform_events = AuctionEvent.objects.filter(
         is_platform_event=True,
         status__in=['live', 'preview'],
@@ -60,6 +84,8 @@ def home(request):
         'recent_listings': recent_listings,
         'trending_listings': trending_listings,
         'ending_soon': ending_soon,
+        'bid_wars': bid_wars,
+        'curated_listings': curated_listings,
         'platform_events': platform_events,
         **_get_site_stats(),
     }

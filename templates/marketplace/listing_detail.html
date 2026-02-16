@@ -160,6 +160,64 @@
         overflow-y: auto;
     }
 
+    /* Sticky Bid Bar */
+    .sticky-bid-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border-top: 2px solid var(--gray-200);
+        padding: 0.75rem 0;
+        z-index: 1040;
+        box-shadow: 0 -4px 12px rgba(22,36,71,0.1);
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+    }
+
+    .sticky-bid-bar.visible {
+        transform: translateY(0);
+    }
+
+    /* Social proof pulse */
+    .social-proof-pulse {
+        animation: social-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes social-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    /* Countdown urgency */
+    .countdown-timer.urgency-warning {
+        background: #FEE2E2;
+        color: #DC2626;
+    }
+
+    .countdown-timer.urgency-critical {
+        background: #DC2626;
+        color: #fff;
+        animation: countdown-pulse 0.5s ease-in-out infinite;
+    }
+
+    @keyframes countdown-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.03); }
+    }
+
+    /* Quick bid buttons */
+    .quick-bid-btn {
+        font-weight: 600;
+        transition: all 0.15s;
+    }
+
+    .quick-bid-btn:hover {
+        background-color: var(--brand-navy);
+        color: #fff;
+        transform: translateY(-1px);
+    }
+
     /* Image Zoom Lightbox */
     .zoom-overlay {
         position: fixed;
@@ -340,7 +398,7 @@
                         </div>
                         <div class="col-auto">
                             {% if listing.time_remaining and not listing.is_auction_ended %}
-                            <div class="countdown-timer">
+                            <div class="countdown-timer" id="countdownTimer" data-auction-end="{{ auction_end_iso }}">
                                 <i class="bi bi-clock"></i>
                                 <span id="countdown">
                                     {% with remaining=listing.time_remaining_parts %}
@@ -357,9 +415,35 @@
                             {% endif %}
                         </div>
                     </div>
+
+                    <!-- Social Proof -->
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        {% if watcher_count %}
+                        <span class="badge bg-light text-dark">
+                            <i class="bi bi-eye"></i> {{ watcher_count }} watching
+                        </span>
+                        {% endif %}
+                        {% if recent_bid_count %}
+                        <span class="badge bg-light text-dark social-proof-pulse">
+                            <i class="bi bi-lightning-fill" style="color: var(--brand-primary);"></i> {{ recent_bid_count }} bid{{ recent_bid_count|pluralize }} in last minute
+                        </span>
+                        {% endif %}
+                        {% if bid_war_active %}
+                        <span class="badge social-proof-pulse" style="background: linear-gradient(135deg, #FF6B6B, #E63946); color: #fff;">
+                            <i class="bi bi-fire"></i> Bid war active
+                        </span>
+                        {% endif %}
+                    </div>
                     {% else %}
                     <span class="text-muted small text-uppercase" style="letter-spacing: 0.05em;">Price</span>
                     <div class="price-display">${{ listing.price|intcomma }}</div>
+                    {% if watcher_count %}
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <span class="badge bg-light text-dark">
+                            <i class="bi bi-eye"></i> {{ watcher_count }} watching
+                        </span>
+                    </div>
+                    {% endif %}
                     {% endif %}
 
                     <div class="text-muted small mt-2">
@@ -377,6 +461,12 @@
                             <i class="bi bi-graph-up-arrow text-success"></i>
                             <span class="small fw-semibold text-uppercase" style="letter-spacing: 0.05em;">Recent Sales</span>
                         </div>
+                        {% if comps_range %}
+                        <div class="mb-2" style="font-size: 0.95rem;">
+                            <strong>Recent Comps:</strong>
+                            <span style="color: var(--brand-navy);">${{ comps_range.low|intcomma }} &ndash; ${{ comps_range.high|intcomma }}</span>
+                        </div>
+                        {% endif %}
                         <div class="recent-sales-ticker">
                             {% for sale in recent_sales %}
                             <span class="badge bg-light text-dark me-1 mb-1" style="font-size: 0.8rem;">
@@ -436,11 +526,11 @@
             {% if user.is_authenticated and user != listing.seller %}
             <div class="d-grid gap-2 mb-4">
                 {% if listing.listing_type == 'auction' and not listing.is_auction_ended %}
-                <form method="post" action="{% url 'marketplace:place_bid' pk=listing.pk %}">
+                <form method="post" action="{% url 'marketplace:place_bid' pk=listing.pk %}" id="bidForm">
                     {% csrf_token %}
                     <div class="input-group input-group-lg mb-2">
                         <span class="input-group-text">$</span>
-                        <input type="number" name="amount" class="form-control" step="0.01"
+                        <input type="number" name="amount" id="bidAmount" class="form-control" step="0.01"
                                min="{{ listing.get_current_price|add:1 }}"
                                placeholder="Enter bid amount" required>
                         <button type="submit" class="btn btn-dark action-button">
@@ -448,7 +538,38 @@
                         </button>
                     </div>
                     <small class="text-muted">Minimum bid: ${{ listing.get_current_price|add:1|intcomma }}</small>
+                    <!-- Quick Bid Buttons -->
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="btn btn-outline-dark btn-sm quick-bid-btn" data-increment="10">+$10</button>
+                        <button type="button" class="btn btn-outline-dark btn-sm quick-bid-btn" data-increment="25">+$25</button>
+                        <button type="button" class="btn btn-outline-dark btn-sm quick-bid-btn" data-increment="50">+$50</button>
+                    </div>
                 </form>
+
+                <!-- Bid History -->
+                {% if bids %}
+                <div class="card mt-3">
+                    <div class="card-body p-3">
+                        <h6 class="fw-bold mb-2" style="font-size: 0.85rem;">Bid History</h6>
+                        <div class="bid-history">
+                            <table class="table table-sm table-borderless mb-0" style="font-size: 0.8rem;">
+                                <tbody>
+                                    {% for bid in bids %}
+                                    <tr{% if forloop.first %} style="color: var(--brand-primary); font-weight: 600;"{% endif %}>
+                                        <td>
+                                            {% if forloop.first %}<i class="bi bi-trophy-fill" style="color: var(--brand-gold);"></i> {% endif %}
+                                            {{ bid.bidder.username }}
+                                        </td>
+                                        <td class="text-end fw-semibold">${{ bid.amount|intcomma }}</td>
+                                        <td class="text-end text-muted">{{ bid.created|timesince }} ago</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 {% elif listing.listing_type == 'fixed' and listing.status == 'active' and listing.quantity_available > 0 %}
                 {% if listing.quantity > 1 %}
                 <div class="d-flex align-items-center gap-3 mb-2">
@@ -774,6 +895,35 @@
     </div>
 </div>
 
+<!-- Sticky Bid Bar (auction only, authenticated non-seller) -->
+{% if listing.listing_type == 'auction' and not listing.is_auction_ended and user.is_authenticated and user != listing.seller %}
+<div class="sticky-bid-bar" id="stickyBidBar">
+    <div class="container">
+        <form method="post" action="{% url 'marketplace:place_bid' pk=listing.pk %}" class="d-flex align-items-center gap-3">
+            {% csrf_token %}
+            <div class="d-none d-md-block">
+                <span class="text-muted small">Current:</span>
+                <strong style="color: var(--brand-primary);">${{ listing.get_current_price|intcomma }}</strong>
+            </div>
+            {% if auction_end_iso %}
+            <div class="d-none d-md-block">
+                <span class="countdown-timer py-1 px-2" style="font-size: 0.8rem;" id="stickyCountdown" data-auction-end="{{ auction_end_iso }}">
+                    <i class="bi bi-clock"></i>
+                    <span id="stickyCountdownText"></span>
+                </span>
+            </div>
+            {% endif %}
+            <div class="input-group ms-auto" style="max-width: 300px;">
+                <span class="input-group-text">$</span>
+                <input type="number" name="amount" id="stickyBidAmount" class="form-control" step="0.01"
+                       min="{{ listing.get_current_price|add:1 }}" placeholder="Bid" required>
+                <button type="submit" class="btn btn-dark fw-semibold">Place Bid</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <!-- Zoom Lightbox -->
 <div class="zoom-overlay" id="zoomOverlay">
     <button class="zoom-close" onclick="closeZoom()" aria-label="Close">&times;</button>
@@ -848,6 +998,102 @@ function switchImage(thumb, imageUrl) {
             buyBtn.innerHTML = '<i class="bi bi-bag me-2"></i> Buy Now — $' + total;
         }
     }
+})();
+
+// Quick Bid Buttons
+(function() {
+    var currentPrice = {{ listing.get_current_price }};
+    var btns = document.querySelectorAll('.quick-bid-btn');
+    var bidInput = document.getElementById('bidAmount');
+    var stickyInput = document.getElementById('stickyBidAmount');
+
+    btns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var inc = parseInt(this.getAttribute('data-increment'));
+            var val = currentPrice + inc;
+            if (bidInput) bidInput.value = val;
+            if (stickyInput) stickyInput.value = val;
+        });
+    });
+
+    // Sync bid inputs bidirectionally
+    if (bidInput && stickyInput) {
+        bidInput.addEventListener('input', function() { stickyInput.value = this.value; });
+        stickyInput.addEventListener('input', function() { bidInput.value = this.value; });
+    }
+})();
+
+// Sticky Bid Bar
+(function() {
+    var bidForm = document.getElementById('bidForm');
+    var stickyBar = document.getElementById('stickyBidBar');
+    if (!bidForm || !stickyBar) return;
+
+    var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+                stickyBar.classList.remove('visible');
+            } else {
+                stickyBar.classList.add('visible');
+            }
+        });
+    }, { threshold: 0 });
+    observer.observe(bidForm);
+})();
+
+// Countdown Timer
+(function() {
+    var timerEl = document.getElementById('countdownTimer');
+    var countdownSpan = document.getElementById('countdown');
+    var stickyTimerEl = document.getElementById('stickyCountdown');
+    var stickySpan = document.getElementById('stickyCountdownText');
+
+    if (!timerEl) return;
+    var endStr = timerEl.getAttribute('data-auction-end');
+    if (!endStr) return;
+    var endTime = new Date(endStr).getTime();
+
+    function tick() {
+        var now = new Date().getTime();
+        var diff = endTime - now;
+        if (diff <= 0) {
+            if (countdownSpan) countdownSpan.textContent = 'Ended';
+            if (stickySpan) stickySpan.textContent = 'Ended';
+            return;
+        }
+        var d = Math.floor(diff / 86400000);
+        var h = Math.floor((diff % 86400000) / 3600000);
+        var m = Math.floor((diff % 3600000) / 60000);
+        var s = Math.floor((diff % 60000) / 1000);
+        var text;
+        if (d > 0) text = d + 'd ' + h + 'h ' + m + 'm ' + s + 's';
+        else if (h > 0) text = h + 'h ' + m + 'm ' + s + 's';
+        else if (m > 0) text = m + 'm ' + s + 's';
+        else text = s + 's';
+
+        if (countdownSpan) countdownSpan.textContent = text;
+        if (stickySpan) stickySpan.textContent = text;
+
+        // Urgency classes
+        if (diff < 10000) {
+            timerEl.classList.add('urgency-critical');
+            timerEl.classList.remove('urgency-warning');
+            if (stickyTimerEl) {
+                stickyTimerEl.classList.add('urgency-critical');
+                stickyTimerEl.classList.remove('urgency-warning');
+            }
+        } else if (diff < 60000) {
+            timerEl.classList.add('urgency-warning');
+            timerEl.classList.remove('urgency-critical');
+            if (stickyTimerEl) {
+                stickyTimerEl.classList.add('urgency-warning');
+                stickyTimerEl.classList.remove('urgency-critical');
+            }
+        }
+    }
+
+    tick();
+    setInterval(tick, 1000);
 })();
 
 // Image Zoom

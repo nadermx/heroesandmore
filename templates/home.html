@@ -106,8 +106,86 @@
 </section>
 {% endif %}
 
-<!-- Categories -->
+<!-- Ending Soon — FOMO Grid -->
+{% if ending_soon %}
+<section class="section section-alt">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">
+                <i class="bi bi-clock" style="color: var(--accent-warning);"></i>
+                Ending Soon &mdash; Don't Miss Out
+            </h2>
+            <a href="{% url 'marketplace:listing_list' %}?type=auction&sort=ending" class="btn btn-outline-dark btn-sm">All Auctions</a>
+        </div>
+        <div class="row g-4">
+            {% for listing in ending_soon %}
+            <div class="col-6 col-md-4 col-lg-3">
+                {% include 'components/listing_card.html' with listing=listing show_time=True %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Featured Lots (Recently Listed) -->
 <section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Featured Lots</h2>
+            <a href="{% url 'marketplace:listing_list' %}?sort=newest" class="btn btn-outline-dark btn-sm">View All</a>
+        </div>
+        <div class="row g-4">
+            {% for listing in recent_listings %}
+            <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+                {% include 'components/listing_card.html' with listing=listing %}
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="bi bi-inbox display-1 text-muted"></i>
+                    </div>
+                    <h5>No listings yet</h5>
+                    <p class="text-muted mb-4">Be the first to list an item on the marketplace.</p>
+                    <a href="{% url 'marketplace:listing_create' %}" class="btn btn-dark">Create Listing</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Bid Wars Happening Now -->
+{% if bid_wars %}
+<section class="section" style="background: linear-gradient(180deg, var(--gray-50) 0%, #fff 100%);">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">
+                <i class="bi bi-lightning-fill" style="color: var(--brand-primary);"></i>
+                Bid Wars Happening Now
+            </h2>
+        </div>
+        <div class="row g-4">
+            {% for listing in bid_wars %}
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="bid-war-card">
+                    {% include 'components/listing_card.html' with listing=listing show_time=True %}
+                    <div class="bid-war-overlay">
+                        <span class="badge bg-warning text-dark">
+                            <i class="bi bi-lightning-fill"></i> +{{ listing.recent_bids }} bids
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Browse Categories -->
+<section class="section section-alt">
     <div class="container">
         <div class="section-header">
             <h2 class="section-title">Browse Categories</h2>
@@ -122,7 +200,6 @@
                 </a>
             </div>
             {% empty %}
-            <!-- Default categories if none exist -->
             <div class="col-6 col-sm-4 col-md-3 col-lg-2">
                 <a href="#" class="category-card h-100">
                     <i class="bi bi-suit-spade icon"></i>
@@ -164,70 +241,20 @@
     </div>
 </section>
 
-<!-- Recently Listed -->
-<section class="section section-alt">
-    <div class="container">
-        <div class="section-header">
-            <h2 class="section-title">Just Listed</h2>
-            <a href="{% url 'marketplace:listing_list' %}?sort=newest" class="btn btn-outline-dark btn-sm">View All</a>
-        </div>
-        <div class="row g-4">
-            {% for listing in recent_listings %}
-            <div class="col-6 col-md-4 col-lg-3 col-xl-2">
-                {% include 'components/listing_card.html' with listing=listing %}
-            </div>
-            {% empty %}
-            <div class="col-12">
-                <div class="text-center py-5">
-                    <div class="mb-3">
-                        <i class="bi bi-inbox display-1 text-muted"></i>
-                    </div>
-                    <h5>No listings yet</h5>
-                    <p class="text-muted mb-4">Be the first to list an item on the marketplace.</p>
-                    <a href="{% url 'marketplace:listing_create' %}" class="btn btn-dark">Create Listing</a>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</section>
-
-<!-- Trending / Hot Items -->
-{% if trending_listings %}
+<!-- Curated for Serious Collectors -->
+{% if curated_listings %}
 <section class="section">
     <div class="container">
         <div class="section-header">
             <h2 class="section-title">
-                <span style="color: var(--accent-danger);">Trending Now</span>
+                <i class="bi bi-gem" style="color: var(--brand-gold);"></i>
+                Curated for Serious Collectors
             </h2>
-            <a href="{% url 'marketplace:listing_list' %}?sort=popular" class="btn btn-outline-dark btn-sm">View All</a>
         </div>
         <div class="row g-4">
-            {% for listing in trending_listings %}
+            {% for listing in curated_listings %}
             <div class="col-6 col-md-4 col-lg-3">
                 {% include 'components/listing_card.html' with listing=listing %}
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</section>
-{% endif %}
-
-<!-- Ending Soon Auctions -->
-{% if ending_soon %}
-<section class="section section-alt">
-    <div class="container">
-        <div class="section-header">
-            <h2 class="section-title">
-                <i class="bi bi-clock" style="color: var(--accent-warning);"></i>
-                Ending Soon
-            </h2>
-            <a href="{% url 'marketplace:listing_list' %}?type=auction&sort=ending" class="btn btn-outline-dark btn-sm">All Auctions</a>
-        </div>
-        <div class="row g-4">
-            {% for listing in ending_soon %}
-            <div class="col-6 col-md-4 col-lg-3">
-                {% include 'components/listing_card.html' with listing=listing show_time=True %}
             </div>
             {% endfor %}
         </div>
@@ -237,7 +264,7 @@
 
 <!-- Official Platform Auctions -->
 {% if platform_events %}
-<section class="section">
+<section class="section section-alt">
     <div class="container">
         <div class="section-header">
             <h2 class="section-title">
@@ -290,247 +317,107 @@
 </section>
 {% endif %}
 
-<!-- New Features Showcase -->
-<section class="section">
-    <div class="container">
+<!-- Why Heroes & More -->
+<section class="section" style="position: relative; overflow: hidden;">
+    <img src="{% static 'images/logo-transparent.png' %}" alt="" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; opacity: 0.04; pointer-events: none;">
+    <div class="container position-relative">
         <div class="text-center mb-5">
-            <h2 class="mb-3">Powerful Tools for Collectors</h2>
-            <p class="text-secondary" style="max-width: 600px; margin: 0 auto;">Everything you need to value, identify, and manage your collection.</p>
+            <h2 class="mb-3">Why Heroes &amp; More</h2>
         </div>
         <div class="row g-4">
             <div class="col-md-4">
-                <div class="card h-100 text-center p-4">
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <i class="bi bi-graph-up display-4" style="color: var(--brand-cyan);"></i>
-                        </div>
-                        <h4>Price Guide</h4>
-                        <p class="text-muted">Track market values, view price history, and get alerts when items drop below your target price.</p>
-                        <a href="{% url 'pricing:price_guide_list' %}" class="btn btn-outline-dark">
-                            Browse Price Guide
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card h-100 text-center p-4">
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <i class="bi bi-camera display-4" style="color: var(--brand-primary);"></i>
-                        </div>
-                        <h4>Item Scanner</h4>
-                        <p class="text-muted">Snap a photo to instantly identify your collectibles and get pricing data. Works with graded slabs too!</p>
-                        <a href="{% url 'scanner:home' %}" class="btn btn-outline-dark">
-                            Try Scanner
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card h-100 text-center p-4">
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <i class="bi bi-collection display-4" style="color: var(--brand-gold);"></i>
-                        </div>
-                        <h4>Collection Tracking</h4>
-                        <p class="text-muted">Organize your collection, track purchase prices, and watch your portfolio value grow over time.</p>
-                        <a href="{% url 'collections:my_collections' %}" class="btn btn-outline-dark">
-                            My Collections
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Trending in Price Guide -->
-<section class="section section-alt">
-    <div class="container">
-        <div class="section-header">
-            <h2 class="section-title">
-                <i class="bi bi-fire" style="color: var(--accent-danger);"></i>
-                Trending in Price Guide
-            </h2>
-            <a href="{% url 'pricing:trending' %}" class="btn btn-outline-dark btn-sm">View All Trending</a>
-        </div>
-        <div class="row g-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <p class="mb-2">Track real-time market values for trading cards, comics, and more.</p>
-                                <p class="text-muted small mb-0">Prices updated from sales across HeroesAndMore and major auction houses.</p>
-                            </div>
-                            <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                                <a href="{% url 'pricing:price_guide_list' %}" class="btn btn-dark">
-                                    <i class="bi bi-graph-up me-2"></i>Explore Price Guide
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Seller Tools Promo -->
-<section class="section">
-    <div class="container">
-        <div class="row align-items-center">
-            <div class="col-lg-6 mb-4 mb-lg-0">
-                <h2 class="mb-3">Powerful Seller Tools</h2>
-                <p class="text-secondary mb-4">Everything you need to run your collectibles business. Bulk import listings, manage inventory, and track your sales analytics.</p>
-                <ul class="list-unstyled">
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i> Bulk import from CSV</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i> Inventory management</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i> Sales analytics dashboard</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i> Flexible subscription tiers</li>
-                </ul>
-                <a href="{% url 'seller_tools:dashboard' %}" class="btn btn-dark">
-                    <i class="bi bi-shop me-2"></i>Seller Dashboard
-                </a>
-            </div>
-            <div class="col-lg-6">
-                <div class="card bg-dark text-white">
-                    <div class="card-body p-4">
-                        <h5 class="mb-3">Subscription Tiers</h5>
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <div class="border border-secondary rounded p-3 text-center">
-                                    <div class="h5 mb-1">Starter</div>
-                                    <div class="small text-muted">Free</div>
-                                    <div class="small">50 listings</div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="border border-secondary rounded p-3 text-center">
-                                    <div class="h5 mb-1">Basic</div>
-                                    <div class="small text-muted">$9.99/mo</div>
-                                    <div class="small">200 listings</div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="border border-secondary rounded p-3 text-center">
-                                    <div class="h5 mb-1">Featured</div>
-                                    <div class="small text-muted">$29.99/mo</div>
-                                    <div class="small">1000 listings</div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="border border-warning rounded p-3 text-center">
-                                    <div class="h5 mb-1">Premium</div>
-                                    <div class="small text-warning">$99.99/mo</div>
-                                    <div class="small">Unlimited</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Why Choose Us - Features -->
-<section class="section">
-    <div class="container">
-        <div class="text-center mb-5">
-            <h2 class="mb-3">Why Collectors Choose Us</h2>
-            <p class="text-secondary" style="max-width: 600px; margin: 0 auto;">Everything you need to buy, sell, and manage your collection in one place.</p>
-        </div>
-        <div class="row g-4">
-            <div class="col-md-6 col-lg-3">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i class="bi bi-shield-check"></i>
+                        <i class="bi bi-percent"></i>
                     </div>
-                    <h5 class="feature-title">Secure Transactions</h5>
-                    <p class="feature-desc">Protected payments with Stripe. Buyer protection on every purchase.</p>
+                    <h5 class="feature-title">Lower Fees. Higher Returns.</h5>
+                    <p class="feature-desc">Starting at 5.95% commission &mdash; a fraction of what the big platforms charge. More of your money stays where it belongs: with you.</p>
                 </div>
             </div>
-            <div class="col-md-6 col-lg-3">
+            <div class="col-md-4">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i class="bi bi-graph-up-arrow"></i>
+                        <i class="bi bi-heart"></i>
                     </div>
-                    <h5 class="feature-title">Price Tracking</h5>
-                    <p class="feature-desc">Real-time market values. Track your collection's worth over time.</p>
+                    <h5 class="feature-title">Collector-First Marketplace</h5>
+                    <p class="feature-desc">Built by collectors, for collectors. Price tracking, collection management, and a community that speaks your language.</p>
                 </div>
             </div>
-            <div class="col-md-6 col-lg-3">
+            <div class="col-md-4">
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="bi bi-award"></i>
                     </div>
-                    <h5 class="feature-title">Grading Support</h5>
-                    <p class="feature-desc">PSA, BGS, CGC certified items. Verified authentication.</p>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-3">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="bi bi-people"></i>
-                    </div>
-                    <h5 class="feature-title">Active Community</h5>
-                    <p class="feature-desc">Forums, messaging, and follows. Connect with fellow collectors.</p>
+                    <h5 class="feature-title">Built for Serious Buyers &amp; Sellers</h5>
+                    <p class="feature-desc">Trusted Seller badges, buyer protection, graded item support, and curated platform auctions for the best inventory.</p>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- CTA Section -->
-{% if not user.is_authenticated %}
-<section class="section" style="background: var(--gray-900); color: #fff;">
-    <div class="container">
-        <div class="row align-items-center">
-            <div class="col-lg-8 mb-4 mb-lg-0">
-                <h2 style="color: #fff; font-size: 2.25rem; margin-bottom: 1rem;">Start Your Collection Today</h2>
-                <p style="color: var(--gray-400); font-size: 1.1rem; margin: 0;">Join thousands of collectors. Free to sign up, only pay when you sell.</p>
-            </div>
-            <div class="col-lg-4 text-lg-end">
-                <a href="{% url 'account_signup' %}" class="btn btn-light btn-lg">
-                    Create Free Account
-                </a>
-            </div>
+<!-- WHERE LEGENDS LIVE Final CTA -->
+<section class="section" style="background: var(--gradient-hero); color: #fff; padding: 5rem 0; position: relative;">
+    <img src="{% static 'images/logo-transparent.png' %}" alt="" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; opacity: 0.06; pointer-events: none;">
+    <div class="container text-center position-relative">
+        <h2 style="font-size: 3rem; font-weight: 800; color: #fff; letter-spacing: -0.02em;">WHERE LEGENDS LIVE</h2>
+        <p style="color: rgba(255,255,255,0.7); font-size: 1.15rem; max-width: 500px; margin: 1rem auto 2rem;">
+            The premium destination for serious collectors. Start bidding or consign your collection today.
+        </p>
+        <div class="d-flex flex-wrap justify-content-center gap-3">
+            <a href="{% url 'marketplace:listing_list' %}?type=auction" class="btn btn-light btn-lg">Start Bidding</a>
+            <a href="{% url 'sell' %}" class="btn btn-outline-light btn-lg">Consign With Us</a>
         </div>
     </div>
 </section>
-{% endif %}
+{% endblock %}
 
-<!-- How It Works -->
-<section class="section section-alt">
-    <div class="container">
-        <div class="text-center mb-5">
-            <h2 class="mb-3">How It Works</h2>
-            <p class="text-secondary">Get started in minutes</p>
-        </div>
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="text-center">
-                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" style="width: 80px; height: 80px; background: linear-gradient(135deg, #162447, #1B2838); font-size: 2rem; font-weight: 800; color: #fff;">1</div>
-                    <h5>Create Your Account</h5>
-                    <p class="text-secondary">Sign up for free in seconds. No credit card required to browse or buy.</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="text-center">
-                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" style="width: 80px; height: 80px; background: linear-gradient(135deg, #162447, #1B2838); font-size: 2rem; font-weight: 800; color: #fff;">2</div>
-                    <h5>List or Browse</h5>
-                    <p class="text-secondary">Create listings in minutes or browse thousands of collectibles from trusted sellers.</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="text-center">
-                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" style="width: 80px; height: 80px; background: linear-gradient(135deg, #162447, #1B2838); font-size: 2rem; font-weight: 800; color: #fff;">3</div>
-                    <h5>Buy, Sell, Collect</h5>
-                    <p class="text-secondary">Secure checkout, seller ratings, and collection tracking all in one place.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
+{% block extra_js %}
+<script>
+// Countdown ticker for all [data-countdown] elements
+(function() {
+    var countdowns = document.querySelectorAll('[data-countdown]');
+    if (!countdowns.length) return;
+
+    function updateCountdowns() {
+        var now = new Date().getTime();
+        countdowns.forEach(function(el) {
+            var end = new Date(el.getAttribute('data-countdown')).getTime();
+            var diff = end - now;
+            if (diff <= 0) {
+                el.textContent = 'Ended';
+                el.closest('.time-remaining')?.classList.add('text-muted');
+                return;
+            }
+            var d = Math.floor(diff / 86400000);
+            var h = Math.floor((diff % 86400000) / 3600000);
+            var m = Math.floor((diff % 3600000) / 60000);
+            var s = Math.floor((diff % 60000) / 1000);
+            if (d > 0) {
+                el.textContent = d + 'd ' + h + 'h';
+            } else if (h > 0) {
+                el.textContent = h + 'h ' + m + 'm';
+            } else if (m > 0) {
+                el.textContent = m + 'm ' + s + 's';
+            } else {
+                el.textContent = s + 's';
+            }
+            // Urgency classes
+            var parent = el.closest('.time-remaining');
+            if (parent) {
+                if (diff < 10000) {
+                    parent.classList.add('urgency-critical');
+                    parent.classList.remove('urgency-warning');
+                } else if (diff < 60000) {
+                    parent.classList.add('urgency-warning');
+                    parent.classList.remove('urgency-critical');
+                }
+            }
+        });
+    }
+
+    updateCountdowns();
+    setInterval(updateCountdowns, 1000);
+})();
+</script>
 {% endblock %}

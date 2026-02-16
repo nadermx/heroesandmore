@@ -986,6 +986,35 @@
             from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        /* HOT LOT Badge */
+        .badge-hot-lot {
+            background: linear-gradient(135deg, #FF6B6B, #E63946);
+            color: #fff;
+            animation: badge-shimmer 2.5s infinite;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Bid War Card */
+        .bid-war-card {
+            position: relative;
+            animation: bid-war-glow 2s ease-in-out infinite;
+        }
+
+        .bid-war-overlay {
+            position: absolute;
+            bottom: 60px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 2;
+        }
+
+        @keyframes bid-war-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(230,57,70,0); }
+            50% { box-shadow: 0 0 0 3px rgba(230,57,70,0.3); }
+        }
     </style>
 
     {% block extra_css %}{% endblock %}

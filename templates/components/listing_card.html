@@ -27,6 +27,9 @@
             {% if listing.quantity > 1 and listing.listing_type == 'fixed' %}
             <span class="badge bg-info text-white">{{ listing.quantity_available }} avail</span>
             {% endif %}
+            {% if listing.recent_bids and listing.recent_bids >= 5 or listing.save_count and listing.save_count >= 10 %}
+            <span class="badge badge-hot-lot"><i class="bi bi-fire"></i> HOT LOT</span>
+            {% endif %}
         </div>
 
         <!-- Quick actions -->

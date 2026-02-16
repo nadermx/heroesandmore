@@ -125,6 +125,28 @@ def listing_detail(request, pk):
     if listing.price_guide_item:
         recent_sales = listing.price_guide_item.sales.order_by('-sale_date')[:6]
 
+    # Social proof
+    watcher_count = listing.saves.count()
+
+    recent_bid_count = 0
+    bid_war_active = False
+    if listing.listing_type == 'auction':
+        one_minute_ago = timezone.now() - timedelta(minutes=1)
+        recent_bid_count = listing.bids.filter(created__gte=one_minute_ago).count()
+        five_minutes_ago = timezone.now() - timedelta(minutes=5)
+        bid_war_active = listing.bids.filter(created__gte=five_minutes_ago).count() >= 3
+
+    # Comps range
+    comps_range = None
+    if recent_sales:
+        prices = [s.sale_price for s in recent_sales]
+        comps_range = {'low': min(prices), 'high': max(prices)}
+
+    # ISO timestamp for JS countdown
+    auction_end_iso = None
+    if listing.listing_type == 'auction' and listing.auction_end:
+        auction_end_iso = listing.auction_end.isoformat()
+
     context = {
         'listing': listing,
         'is_saved': is_saved,
@@ -134,6 +156,11 @@ def listing_detail(request, pk):
         'related': related,
         'seller_listings': seller_listings,
         'recent_sales': recent_sales,
+        'watcher_count': watcher_count,
+        'recent_bid_count': recent_bid_count,
+        'bid_war_active': bid_war_active,
+        'comps_range': comps_range,
+        'auction_end_iso': auction_end_iso,
     }
     return render(request, 'marketplace/listing_detail.html', context)
 
