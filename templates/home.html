@@ -120,8 +120,8 @@
 
         {% for event in platform_events %}
         {% if forloop.first %}
-        <!-- Featured Event — Hero Banner -->
-        <div class="rounded-3 overflow-hidden mb-4" style="position: relative; {% if event.cover_image %}background: #000;{% else %}background: linear-gradient(135deg, var(--brand-primary) 0%, #0d1117 100%);{% endif %}">
+        <!-- Featured Event — Hero Banner (entire banner is clickable) -->
+        <a href="{{ event.get_absolute_url }}" class="d-block rounded-3 overflow-hidden mb-4 text-decoration-none" style="position: relative; {% if event.cover_image %}background: #000;{% else %}background: linear-gradient(135deg, var(--brand-primary) 0%, #0d1117 100%);{% endif %} transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 30px rgba(0,0,0,0.4)';" onmouseout="this.style.transform='';this.style.boxShadow='';">
             {% if event.cover_image %}
             <img src="{{ event.cover_image.url }}" alt="{{ event.name }}" style="width: 100%; height: 280px; object-fit: cover; object-position: {{ event.cover_image_position_x }}% {{ event.cover_image_position_y }}%; opacity: 0.6;">
             {% else %}
@@ -139,9 +139,7 @@
                         {% endif %}
                         <span class="badge bg-warning text-dark px-2 py-1"><i class="bi bi-shield-check"></i> Official</span>
                     </div>
-                    <h3 class="fw-bold mb-2" style="color: #fff; font-size: 1.75rem;">
-                        <a href="{{ event.get_absolute_url }}" class="text-decoration-none text-white">{{ event.name }}</a>
-                    </h3>
+                    <h3 class="fw-bold mb-2" style="color: #fff; font-size: 1.75rem;">{{ event.name }}</h3>
                     {% if event.description %}
                     <p style="color: rgba(255,255,255,0.7); margin-bottom: 1rem;">{{ event.description|truncatewords:25 }}</p>
                     {% endif %}
@@ -157,19 +155,10 @@
                         <span><i class="bi bi-clock me-1"></i> Starts {{ event.bidding_start|naturaltime }}</span>
                         {% endif %}
                     </div>
-                    <div class="d-flex flex-wrap gap-2">
-                        {% if event.is_live %}
-                        <a href="{{ event.get_absolute_url }}" class="btn btn-light"><i class="bi bi-hammer me-1"></i> Browse & Bid</a>
-                        {% else %}
-                        <a href="{{ event.get_absolute_url }}" class="btn btn-light"><i class="bi bi-eye me-1"></i> View Event</a>
-                        {% endif %}
-                        {% if event.accepting_submissions and user.is_authenticated and user.profile.is_trusted_seller %}
-                        <a href="{% url 'marketplace:submit_auction_lot' slug=event.slug %}" class="btn btn-outline-light"><i class="bi bi-send me-1"></i> Submit Your Lots</a>
-                        {% endif %}
-                    </div>
+                    <span class="btn btn-light"><i class="bi bi-eye me-1"></i> View Event</span>
                 </div>
             </div>
-        </div>
+        </a>
         {% else %}
         {% if forloop.counter == 2 %}
         <div class="row g-3">
