@@ -133,7 +133,7 @@ class SaleRecord(models.Model):
     sale_price = models.DecimalField(max_digits=12, decimal_places=2)
     sale_date = models.DateTimeField()
     source = models.CharField(max_length=20, choices=SOURCES)
-    source_url = models.URLField(blank=True)
+    source_url = models.URLField(max_length=500, blank=True)
 
     grading_company = models.CharField(max_length=10, blank=True)
     grade = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
