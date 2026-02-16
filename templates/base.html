@@ -1210,6 +1210,25 @@
                     </ul>
                 </div>
             </div>
+            <!-- Newsletter -->
+            <div class="py-4 mb-3" style="border-top: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <div class="row align-items-center">
+                    <div class="col-lg-5 mb-3 mb-lg-0">
+                        <h6 class="mb-1" style="color: #fff;"><i class="bi bi-envelope me-2"></i>Stay in the Loop</h6>
+                        <small style="color: var(--gray-400);">Auction alerts, price trends, and collector news. No spam.</small>
+                    </div>
+                    <div class="col-lg-7">
+                        <form hx-post="{% url 'newsletter_subscribe' %}" hx-swap="innerHTML" hx-target="#footer-newsletter-result">
+                            {% csrf_token %}
+                            <div class="d-flex gap-2">
+                                <input type="email" name="email" class="form-control" placeholder="your@email.com" required style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff;">
+                                <button type="submit" class="btn btn-light btn-sm px-3 flex-shrink-0">Subscribe</button>
+                            </div>
+                            <div id="footer-newsletter-result" class="mt-2 small"></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
             <div class="footer-bottom">
                 <div class="d-flex flex-wrap justify-content-center gap-3 mb-3">
                     <a href="{% url 'terms' %}">Terms of Service</a>
