@@ -106,6 +106,117 @@
 </section>
 {% endif %}
 
+<!-- Official Platform Auctions — Prime Position -->
+{% if platform_events %}
+<section class="section" style="background: linear-gradient(135deg, #0d1117 0%, #1a1a2e 50%, #16213e 100%); color: #fff; padding: 3rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+            <h2 class="mb-0" style="font-size: 1.5rem; font-weight: 700; color: #fff;">
+                <i class="bi bi-shield-check" style="color: #D4A017;"></i>
+                Official Auctions
+            </h2>
+            <a href="{% url 'marketplace:platform_auctions' %}" class="btn btn-outline-light btn-sm">View All Events</a>
+        </div>
+
+        {% for event in platform_events %}
+        {% if forloop.first %}
+        <!-- Featured Event — Hero Banner -->
+        <div class="rounded-3 overflow-hidden mb-4" style="position: relative; {% if event.cover_image %}background: #000;{% else %}background: linear-gradient(135deg, var(--brand-primary) 0%, #0d1117 100%);{% endif %}">
+            {% if event.cover_image %}
+            <img src="{{ event.cover_image.url }}" alt="{{ event.name }}" style="width: 100%; height: 280px; object-fit: cover; object-position: {{ event.cover_image_position_x }}% {{ event.cover_image_position_y }}%; opacity: 0.6;">
+            {% else %}
+            <div style="height: 280px;"></div>
+            {% endif %}
+            <div style="position: absolute; inset: 0; display: flex; align-items: center; padding: 2rem;">
+                <div style="max-width: 600px;">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        {% if event.is_live %}
+                        <span class="badge bg-danger px-2 py-1"><i class="bi bi-broadcast me-1"></i> Live Now</span>
+                        {% elif event.accepting_submissions %}
+                        <span class="badge px-2 py-1" style="background: #D4A017; color: #fff;"><i class="bi bi-send me-1"></i> Submissions Open</span>
+                        {% else %}
+                        <span class="badge bg-info text-white px-2 py-1">Upcoming</span>
+                        {% endif %}
+                        <span class="badge bg-warning text-dark px-2 py-1"><i class="bi bi-shield-check"></i> Official</span>
+                    </div>
+                    <h3 class="fw-bold mb-2" style="color: #fff; font-size: 1.75rem;">
+                        <a href="{{ event.get_absolute_url }}" class="text-decoration-none text-white">{{ event.name }}</a>
+                    </h3>
+                    {% if event.description %}
+                    <p style="color: rgba(255,255,255,0.7); margin-bottom: 1rem;">{{ event.description|truncatewords:25 }}</p>
+                    {% endif %}
+                    <div class="d-flex flex-wrap align-items-center gap-3 mb-3" style="color: rgba(255,255,255,0.6); font-size: 0.9rem;">
+                        {% if event.total_lots %}
+                        <span><i class="bi bi-collection me-1"></i> {{ event.total_lots }} lot{{ event.total_lots|pluralize }}</span>
+                        {% endif %}
+                        {% if event.is_live %}
+                        <span class="text-danger fw-bold"><i class="bi bi-clock me-1"></i> Ends {{ event.bidding_end|naturaltime }}</span>
+                        {% elif event.accepting_submissions and event.submission_deadline %}
+                        <span><i class="bi bi-clock me-1"></i> Submit by {{ event.submission_deadline|date:"M d" }}</span>
+                        {% else %}
+                        <span><i class="bi bi-clock me-1"></i> Starts {{ event.bidding_start|naturaltime }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if event.is_live %}
+                        <a href="{{ event.get_absolute_url }}" class="btn btn-light"><i class="bi bi-hammer me-1"></i> Browse & Bid</a>
+                        {% else %}
+                        <a href="{{ event.get_absolute_url }}" class="btn btn-light"><i class="bi bi-eye me-1"></i> View Event</a>
+                        {% endif %}
+                        {% if event.accepting_submissions and user.is_authenticated and user.profile.is_trusted_seller %}
+                        <a href="{% url 'marketplace:submit_auction_lot' slug=event.slug %}" class="btn btn-outline-light"><i class="bi bi-send me-1"></i> Submit Your Lots</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        {% if forloop.counter == 2 %}
+        <div class="row g-3">
+        {% endif %}
+            <!-- Additional Events as Cards -->
+            <div class="col-md-6">
+                <div class="rounded-3 overflow-hidden h-100" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+                    <div class="d-flex h-100">
+                        {% if event.cover_image %}
+                        <div style="width: 140px; flex-shrink: 0;">
+                            <img src="{{ event.cover_image.url }}" alt="{{ event.name }}" style="width: 100%; height: 100%; object-fit: cover; object-position: {{ event.cover_image_position_x }}% {{ event.cover_image_position_y }}%;">
+                        </div>
+                        {% endif %}
+                        <div class="p-3 d-flex flex-column justify-content-center">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                {% if event.is_live %}
+                                <span class="badge bg-danger" style="font-size: 0.7rem;">Live</span>
+                                {% elif event.accepting_submissions %}
+                                <span class="badge" style="background: #D4A017; color: #fff; font-size: 0.7rem;">Submissions Open</span>
+                                {% else %}
+                                <span class="badge bg-info text-white" style="font-size: 0.7rem;">Upcoming</span>
+                                {% endif %}
+                            </div>
+                            <h6 class="fw-bold mb-1" style="color: #fff;">
+                                <a href="{{ event.get_absolute_url }}" class="text-decoration-none text-white">{{ event.name }}</a>
+                            </h6>
+                            <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem;">
+                                {% if event.is_live %}
+                                <i class="bi bi-clock"></i> Ends {{ event.bidding_end|naturaltime }}
+                                {% else %}
+                                <i class="bi bi-clock"></i> {{ event.bidding_start|date:"M d, Y" }}
+                                {% endif %}
+                                {% if event.total_lots %} &middot; {{ event.total_lots }} lot{{ event.total_lots|pluralize }}{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% if forloop.last %}
+        </div>
+        {% endif %}
+        {% endif %}
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
 <!-- Ending Soon — FOMO Grid -->
 {% if ending_soon %}
 <section class="section section-alt">
@@ -262,61 +373,6 @@
 </section>
 {% endif %}
 
-<!-- Official Platform Auctions -->
-{% if platform_events %}
-<section class="section section-alt">
-    <div class="container">
-        <div class="section-header">
-            <h2 class="section-title">
-                <i class="bi bi-shield-check" style="color: var(--accent-warning);"></i>
-                Official Auctions
-            </h2>
-            <a href="{% url 'marketplace:platform_auctions' %}" class="btn btn-outline-dark btn-sm">View All</a>
-        </div>
-        <div class="row g-4">
-            {% for event in platform_events %}
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 shadow-sm" style="overflow: hidden;">
-                    {% if event.cover_image %}
-                    <a href="{% url 'marketplace:platform_auction_detail' slug=event.slug %}">
-                        <img src="{{ event.cover_image.url }}" class="card-img-top" alt="{{ event.name }}" style="height: 180px; object-fit: cover;">
-                    </a>
-                    {% else %}
-                    <a href="{% url 'marketplace:platform_auction_detail' slug=event.slug %}" class="d-flex align-items-center justify-content-center" style="height: 180px; background: linear-gradient(135deg, var(--primary) 0%, var(--dark) 100%);">
-                        <i class="bi bi-hammer text-white" style="font-size: 2.5rem; opacity: 0.5;"></i>
-                    </a>
-                    {% endif %}
-                    <div class="card-body">
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            {% if event.is_live %}
-                            <span class="badge bg-danger">Live Now</span>
-                            {% else %}
-                            <span class="badge bg-info text-white">Upcoming</span>
-                            {% endif %}
-                            <span class="badge bg-warning text-dark"><i class="bi bi-shield-check"></i> Official</span>
-                        </div>
-                        <h5 class="card-title fw-bold mb-2">
-                            <a href="{% url 'marketplace:platform_auction_detail' slug=event.slug %}" class="text-decoration-none text-dark">
-                                {{ event.name }}
-                            </a>
-                        </h5>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted small">{{ event.total_lots }} lot{{ event.total_lots|pluralize }}</span>
-                            {% if event.is_live %}
-                            <span class="text-danger small fw-bold"><i class="bi bi-clock"></i> Ends {{ event.bidding_end|naturaltime }}</span>
-                            {% else %}
-                            <span class="text-primary small fw-bold"><i class="bi bi-clock"></i> Starts {{ event.bidding_start|naturaltime }}</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</section>
-{% endif %}
-
 <!-- Why Heroes & More -->
 <section class="section" style="position: relative; overflow: hidden;">
     <img src="{% static 'images/logo-transparent.png' %}" alt="" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; opacity: 0.04; pointer-events: none;">
@@ -351,6 +407,28 @@
                     <h5 class="feature-title">Built for Serious Buyers &amp; Sellers</h5>
                     <p class="feature-desc">Trusted Seller badges, buyer protection, graded item support, and curated platform auctions for the best inventory.</p>
                 </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Newsletter Signup -->
+<section class="section section-alt" style="padding: 3rem 0;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="text-center mb-4">
+                    <h2 class="fw-bold mb-2">Stay in the Loop</h2>
+                    <p class="text-muted">Get auction alerts, price trends, and collector news. No spam, unsubscribe anytime.</p>
+                </div>
+                <form id="newsletter-form" hx-post="{% url 'newsletter_subscribe' %}" hx-swap="innerHTML" hx-target="#newsletter-result">
+                    {% csrf_token %}
+                    <div class="d-flex flex-column flex-sm-row gap-2 justify-content-center" style="max-width: 500px; margin: 0 auto;">
+                        <input type="email" name="email" class="form-control form-control-lg" placeholder="your@email.com" required style="flex: 1;">
+                        <button type="submit" class="btn btn-dark btn-lg">Subscribe</button>
+                    </div>
+                    <div id="newsletter-result" class="text-center mt-2 small"></div>
+                </form>
             </div>
         </div>
     </div>

@@ -34,7 +34,7 @@
                 <div class="card h-100 border-0 shadow-sm" style="overflow: hidden;">
                     {% if event.cover_image %}
                     <a href="{% url 'marketplace:platform_auction_detail' slug=event.slug %}">
-                        <img src="{{ event.cover_image.url }}" class="card-img-top" alt="{{ event.name }}" style="height: 200px; object-fit: cover;">
+                        <img src="{{ event.cover_image.url }}" class="card-img-top" alt="{{ event.name }}" style="height: 200px; object-fit: cover; object-position: {{ event.cover_image_position_x }}% {{ event.cover_image_position_y }}%;">
                     </a>
                     {% else %}
                     <a href="{% url 'marketplace:platform_auction_detail' slug=event.slug %}" class="d-flex align-items-center justify-content-center" style="height: 200px; background: linear-gradient(135deg, var(--primary) 0%, var(--dark) 100%);">
@@ -95,7 +95,7 @@
                 <div class="card h-100 border-0 shadow-sm" style="overflow: hidden;">
                     {% if event.cover_image %}
                     <a href="{% url 'marketplace:platform_auction_detail' slug=event.slug %}">
-                        <img src="{{ event.cover_image.url }}" class="card-img-top" alt="{{ event.name }}" style="height: 200px; object-fit: cover;">
+                        <img src="{{ event.cover_image.url }}" class="card-img-top" alt="{{ event.name }}" style="height: 200px; object-fit: cover; object-position: {{ event.cover_image_position_x }}% {{ event.cover_image_position_y }}%;">
                     </a>
                     {% else %}
                     <a href="{% url 'marketplace:platform_auction_detail' slug=event.slug %}" class="d-flex align-items-center justify-content-center" style="height: 200px; background: var(--gray-100);">
@@ -156,7 +156,7 @@
                 <div class="card h-100 border-0 shadow-sm" style="overflow: hidden; opacity: 0.85;">
                     {% if event.cover_image %}
                     <a href="{% url 'marketplace:platform_auction_detail' slug=event.slug %}">
-                        <img src="{{ event.cover_image.url }}" class="card-img-top" alt="{{ event.name }}" style="height: 200px; object-fit: cover; filter: grayscale(30%);">
+                        <img src="{{ event.cover_image.url }}" class="card-img-top" alt="{{ event.name }}" style="height: 200px; object-fit: cover; object-position: {{ event.cover_image_position_x }}% {{ event.cover_image_position_y }}%; filter: grayscale(30%);">
                     </a>
                     {% else %}
                     <a href="{% url 'marketplace:platform_auction_detail' slug=event.slug %}" class="d-flex align-items-center justify-content-center" style="height: 200px; background: var(--gray-200);">

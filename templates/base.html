@@ -1130,6 +1130,27 @@
     </div>
     {% endif %}
 
+    <!-- Trusted Seller Auction Banner -->
+    {% if banner_auction_event %}
+    <div id="trusted-seller-banner" class="d-none" style="background: linear-gradient(90deg, #D4A017 0%, #B8860B 100%); color: #fff; padding: 0.5rem 0; font-size: 0.875rem;">
+        <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <span>
+                <i class="bi bi-shield-check me-1"></i>
+                <strong>Official Auction accepting submissions</strong> &mdash; {{ banner_auction_event.name }}
+            </span>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{% url 'marketplace:submit_auction_lot' slug=banner_auction_event.slug %}" class="btn btn-sm btn-light py-0 px-2" style="font-size: 0.8rem;">Submit Your Lots</a>
+                <button type="button" class="btn-close btn-close-white" style="font-size: 0.6rem;" aria-label="Close" onclick="this.closest('#trusted-seller-banner').remove(); sessionStorage.setItem('auction_banner_dismissed','1');"></button>
+            </div>
+        </div>
+    </div>
+    <script>
+    if (!sessionStorage.getItem('auction_banner_dismissed')) {
+        document.getElementById('trusted-seller-banner').classList.remove('d-none');
+    }
+    </script>
+    {% endif %}
+
     <!-- Main Content -->
     <main>
         {% block content %}{% endblock %}

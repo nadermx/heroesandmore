@@ -1,3 +1,4 @@
+import secrets
 from django.db import models
 from django.contrib.auth.models import User
 from django.urls import reverse
@@ -79,6 +80,7 @@ class Alert(models.Model):
         ('wishlist_match', 'Wishlist Match'),
         ('listing_expired', 'Listing Expired'),
         ('relist_reminder', 'Relist Reminder'),
+        ('auction_event', 'Auction Event'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='alerts')
@@ -221,3 +223,48 @@ class PriceAlert(models.Model):
 
     def __str__(self):
         return f"Alert: {self.price_guide_item.name} under ${self.target_price}"
+
+
+class NewsletterSubscriber(models.Model):
+    FREQUENCY_CHOICES = [
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+    ]
+
+    email = models.EmailField(unique=True)
+    user = models.OneToOneField(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='newsletter_subscription'
+    )
+    is_verified = models.BooleanField(default=False)
+    verification_token = models.CharField(max_length=64, unique=True)
+
+    # Preferences
+    categories = models.ManyToManyField(
+        'items.Category', blank=True,
+        help_text="Interested categories (empty = all/general)"
+    )
+    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='weekly')
+
+    # Tracking
+    subscribed_at = models.DateTimeField(auto_now_add=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    unsubscribed_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    # Unsubscribe
+    unsubscribe_token = models.CharField(max_length=64, unique=True)
+
+    class Meta:
+        ordering = ['-subscribed_at']
+
+    def __str__(self):
+        status = 'active' if self.is_active and self.is_verified else 'unverified' if not self.is_verified else 'inactive'
+        return f"{self.email} ({status})"
+
+    def save(self, *args, **kwargs):
+        if not self.verification_token:
+            self.verification_token = secrets.token_urlsafe(32)
+        if not self.unsubscribe_token:
+            self.unsubscribe_token = secrets.token_urlsafe(32)
+        super().save(*args, **kwargs)

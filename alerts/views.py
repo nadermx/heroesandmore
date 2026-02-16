@@ -1,12 +1,16 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.core.paginator import Paginator
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.conf import settings
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 from urllib.parse import parse_qs
 
-from .models import Wishlist, WishlistItem, Alert, SavedSearch
+from .models import Wishlist, WishlistItem, Alert, SavedSearch, NewsletterSubscriber
 from .forms import WishlistForm, WishlistItemForm, SavedSearchForm
 from items.models import Category
 
@@ -336,3 +340,162 @@ def saved_search_delete(request, pk):
         'search': search,
     }
     return render(request, 'alerts/saved_search_confirm_delete.html', context)
+
+
+# Newsletter
+def newsletter_subscribe(request):
+    """Subscribe to the newsletter. Accepts POST (standard or HTMX)."""
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+        is_htmx = request.headers.get('HX-Request')
+
+        if not email:
+            if is_htmx:
+                return HttpResponse('<span class="text-danger">Please enter an email address.</span>')
+            messages.error(request, 'Please enter an email address.')
+            return redirect('home')
+
+        # Check if already subscribed
+        existing = NewsletterSubscriber.objects.filter(email=email).first()
+        if existing:
+            if existing.is_verified and existing.is_active:
+                if is_htmx:
+                    return HttpResponse('<span class="text-info">You are already subscribed!</span>')
+                messages.info(request, 'You are already subscribed!')
+                return redirect('home')
+            elif not existing.is_verified:
+                # Resend verification
+                _send_verification_email(existing)
+                if is_htmx:
+                    return HttpResponse('<span class="text-success">Verification email resent. Check your inbox!</span>')
+                messages.info(request, 'Verification email resent. Check your inbox!')
+                return redirect('home')
+            else:
+                # Reactivate
+                existing.is_active = True
+                existing.unsubscribed_at = None
+                existing.save(update_fields=['is_active', 'unsubscribed_at'])
+                if is_htmx:
+                    return HttpResponse('<span class="text-success">Welcome back! Your subscription has been reactivated.</span>')
+                messages.success(request, 'Welcome back! Your subscription has been reactivated.')
+                return redirect('home')
+
+        # Create new subscriber
+        subscriber = NewsletterSubscriber(email=email)
+        if request.user.is_authenticated:
+            subscriber.user = request.user
+        subscriber.save()
+
+        # Save category preferences if provided
+        cat_ids = request.POST.getlist('categories')
+        if cat_ids:
+            subscriber.categories.set(Category.objects.filter(id__in=cat_ids))
+
+        # Send verification email
+        _send_verification_email(subscriber)
+
+        if is_htmx:
+            return HttpResponse('<span class="text-success">Check your email to verify your subscription!</span>')
+        messages.success(request, 'Check your email to verify your subscription!')
+        return redirect('home')
+
+    # GET — show standalone subscribe page
+    categories = Category.objects.filter(parent=None, is_active=True).order_by('order')
+    return render(request, 'alerts/newsletter_subscribe.html', {'categories': categories})
+
+
+def newsletter_verify(request, token):
+    """Verify newsletter email address."""
+    subscriber = get_object_or_404(NewsletterSubscriber, verification_token=token)
+
+    if subscriber.is_verified:
+        messages.info(request, 'Your email is already verified.')
+        return redirect('newsletter_preferences', token=subscriber.unsubscribe_token)
+
+    subscriber.is_verified = True
+    subscriber.verified_at = timezone.now()
+    subscriber.save(update_fields=['is_verified', 'verified_at'])
+
+    # Send welcome email
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'subscriber': subscriber, 'site_url': site_url}
+    html_content = render_to_string('alerts/emails/newsletter_welcome.html', context)
+    try:
+        send_mail(
+            subject='Welcome to the HeroesAndMore Newsletter!',
+            message='You are now subscribed to the HeroesAndMore newsletter.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[subscriber.email],
+            html_message=html_content,
+            fail_silently=True,
+        )
+    except Exception:
+        pass
+
+    messages.success(request, 'Email verified! You can manage your preferences below.')
+    return redirect('newsletter_preferences', token=subscriber.unsubscribe_token)
+
+
+def newsletter_preferences(request, token):
+    """Manage newsletter category preferences and frequency."""
+    subscriber = get_object_or_404(NewsletterSubscriber, unsubscribe_token=token, is_active=True)
+
+    if request.method == 'POST':
+        # Update frequency
+        frequency = request.POST.get('frequency', 'weekly')
+        if frequency in dict(NewsletterSubscriber.FREQUENCY_CHOICES):
+            subscriber.frequency = frequency
+            subscriber.save(update_fields=['frequency'])
+
+        # Update categories
+        cat_ids = request.POST.getlist('categories')
+        if cat_ids:
+            subscriber.categories.set(Category.objects.filter(id__in=cat_ids))
+        else:
+            subscriber.categories.clear()
+
+        messages.success(request, 'Preferences updated!')
+        return redirect('newsletter_preferences', token=token)
+
+    categories = Category.objects.filter(parent=None, is_active=True).order_by('order')
+    selected_cat_ids = set(subscriber.categories.values_list('id', flat=True))
+
+    return render(request, 'alerts/newsletter_preferences.html', {
+        'subscriber': subscriber,
+        'categories': categories,
+        'selected_cat_ids': selected_cat_ids,
+    })
+
+
+def newsletter_unsubscribe(request, token):
+    """One-click unsubscribe."""
+    subscriber = get_object_or_404(NewsletterSubscriber, unsubscribe_token=token)
+
+    if not subscriber.is_active:
+        messages.info(request, 'You are already unsubscribed.')
+        return render(request, 'alerts/newsletter_unsubscribed.html')
+
+    subscriber.is_active = False
+    subscriber.unsubscribed_at = timezone.now()
+    subscriber.save(update_fields=['is_active', 'unsubscribed_at'])
+
+    messages.success(request, 'You have been unsubscribed from the newsletter.')
+    return render(request, 'alerts/newsletter_unsubscribed.html')
+
+
+def _send_verification_email(subscriber):
+    """Send newsletter verification email."""
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'subscriber': subscriber, 'site_url': site_url}
+    html_content = render_to_string('alerts/emails/newsletter_verify.html', context)
+    try:
+        send_mail(
+            subject='Verify your HeroesAndMore newsletter subscription',
+            message=f'Verify your email: {site_url}/newsletter/verify/{subscriber.verification_token}/',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[subscriber.email],
+            html_message=html_content,
+            fail_silently=True,
+        )
+    except Exception:
+        pass

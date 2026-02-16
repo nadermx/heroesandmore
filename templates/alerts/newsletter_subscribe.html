@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Newsletter - HeroesAndMore{% endblock %}
+{% block meta_description %}Subscribe to the HeroesAndMore newsletter for the latest collectibles news, auction events, and price guide updates.{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container" style="max-width: 600px;">
+        <div class="text-center mb-4">
+            <h1 class="fw-bold">Stay in the Loop</h1>
+            <p class="text-muted">Get the latest on auctions, price trends, and collector news delivered to your inbox.</p>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" action="{% url 'newsletter_subscribe' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="email" class="form-label fw-semibold">Email Address</label>
+                        <input type="email" name="email" id="email" class="form-control form-control-lg" placeholder="you@example.com" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Interests <span class="text-muted fw-normal">(optional)</span></label>
+                        <div class="row g-2">
+                            {% for cat in categories %}
+                            <div class="col-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="categories" value="{{ cat.id }}" id="cat_{{ cat.id }}">
+                                    <label class="form-check-label" for="cat_{{ cat.id }}">{{ cat.name }}</label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-dark btn-lg w-100">Subscribe</button>
+                    <p class="text-muted small mt-3 mb-0 text-center">You can unsubscribe anytime. We respect your inbox.</p>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

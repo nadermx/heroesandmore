@@ -52,12 +52,22 @@ def seller_dashboard(request):
         count=Count('id')
     )
 
+    # Auction events accepting submissions (for trusted sellers)
+    auction_events_accepting = []
+    if hasattr(request.user, 'profile') and request.user.profile.is_trusted_seller:
+        from marketplace.models import AuctionEvent
+        auction_events_accepting = AuctionEvent.objects.filter(
+            is_platform_event=True,
+            accepting_submissions=True,
+        ).order_by('submission_deadline')[:5]
+
     return render(request, 'seller_tools/dashboard.html', {
         'subscription': subscription,
         'active_listings': active_listings,
         'pending_orders': pending_orders,
         'recent_sales': recent_sales,
         'monthly_sales': monthly_sales,
+        'auction_events_accepting': auction_events_accepting,
     })
 
 

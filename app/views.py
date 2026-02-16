@@ -1,4 +1,5 @@
 import json
+import time
 import logging
 from django.conf import settings
 from django.contrib import messages
@@ -43,6 +44,24 @@ def trusted_seller_landing(request):
 def contact(request):
     """Contact form page - sends email to support on submission."""
     if request.method == 'POST':
+        # Honeypot check — bots fill hidden fields
+        if request.POST.get('website', ''):
+            app_logger.warning(f"Contact form spam blocked (honeypot): {request.POST.get('email', '')}")
+            messages.success(request, 'Your message has been sent! We\'ll get back to you within 24 hours.')
+            return redirect('contact')
+
+        # Timestamp check — form submitted too fast (< 3 seconds = bot)
+        form_ts = request.POST.get('_ts', '')
+        if form_ts:
+            try:
+                elapsed = time.time() - float(form_ts)
+                if elapsed < 3:
+                    app_logger.warning(f"Contact form spam blocked (too fast: {elapsed:.1f}s): {request.POST.get('email', '')}")
+                    messages.success(request, 'Your message has been sent! We\'ll get back to you within 24 hours.')
+                    return redirect('contact')
+            except (ValueError, TypeError):
+                pass
+
         name = request.POST.get('name', '').strip()
         email = request.POST.get('email', '').strip()
         subject = request.POST.get('subject', 'general')

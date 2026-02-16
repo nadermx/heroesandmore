@@ -11,6 +11,7 @@ from accounts.api.views import (
     GoogleAuthView, PasswordResetView, PasswordResetConfirmView, ChangePasswordView
 )
 from app.views import contact, log_frontend_error, sell_landing, trusted_seller_landing
+from alerts.views import newsletter_subscribe, newsletter_verify, newsletter_preferences, newsletter_unsubscribe
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -50,6 +51,12 @@ urlpatterns = [
 
     # Trusted Seller program
     path('trusted-seller/', trusted_seller_landing, name='trusted_seller'),
+
+    # Newsletter
+    path('newsletter/subscribe/', newsletter_subscribe, name='newsletter_subscribe'),
+    path('newsletter/verify/<str:token>/', newsletter_verify, name='newsletter_verify'),
+    path('newsletter/preferences/<str:token>/', newsletter_preferences, name='newsletter_preferences'),
+    path('newsletter/unsubscribe/<str:token>/', newsletter_unsubscribe, name='newsletter_unsubscribe'),
 
     # Static pages
     path('about/', about, name='about'),

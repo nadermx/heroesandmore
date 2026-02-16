@@ -28,8 +28,14 @@
             <div class="card h-100">
                 <div class="card-body p-4">
                     <h4 class="fw-bold mb-4">Send us a message</h4>
-                    <form method="post">
+                    <form method="post" id="contact-form">
                         {% csrf_token %}
+                        <!-- Honeypot — hidden from humans, bots fill it -->
+                        <div style="position: absolute; left: -9999px;" aria-hidden="true">
+                            <label for="website">Website</label>
+                            <input type="text" name="website" id="website" tabindex="-1" autocomplete="off">
+                        </div>
+                        <input type="hidden" name="_ts" id="form-ts">
                         <div class="mb-3">
                             <label class="form-label">Name</label>
                             <input type="text" class="form-control" name="name" required>
@@ -55,6 +61,7 @@
                         </div>
                         <button type="submit" class="btn btn-dark w-100">Send Message</button>
                     </form>
+                    <script>document.getElementById('form-ts').value = (Date.now() / 1000).toFixed(0);</script>
                 </div>
             </div>
         </div>

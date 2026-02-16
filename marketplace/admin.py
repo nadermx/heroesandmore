@@ -33,10 +33,104 @@ class AuctionEventAdmin(admin.ModelAdmin):
     list_filter = ['is_platform_event', 'event_type', 'cadence', 'status', 'accepting_submissions', 'is_featured', 'bidding_start']
     search_fields = ['name', 'description']
     prepopulated_fields = {'slug': ('name',)}
-    readonly_fields = ['total_lots', 'total_bids', 'total_value', 'created']
+    readonly_fields = ['total_lots', 'total_bids', 'total_value', 'created', 'cover_image_preview']
     raw_id_fields = ['created_by']
     inlines = [PlatformLotInline, AuctionLotSubmissionInline]
     actions = ['activate_platform_event']
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'slug', 'event_type', 'description')
+        }),
+        ('Timing', {
+            'fields': ('preview_start', 'bidding_start', 'bidding_end')
+        }),
+        ('Cover Image & Focal Point', {
+            'fields': ('cover_image', 'cover_image_preview', 'cover_image_position_x', 'cover_image_position_y'),
+            'description': 'Upload a cover image, then click on the preview to set the focal point. The crosshair shows where the image will be centered when cropped.'
+        }),
+        ('Display', {
+            'fields': ('is_featured', 'status')
+        }),
+        ('Platform Auction', {
+            'fields': ('is_platform_event', 'cadence', 'accepting_submissions', 'submission_deadline'),
+            'classes': ('collapse',)
+        }),
+        ('Stats', {
+            'fields': ('total_lots', 'total_bids', 'total_value', 'created'),
+            'classes': ('collapse',)
+        }),
+        ('Created By', {
+            'fields': ('created_by',),
+        }),
+    )
+
+    def cover_image_preview(self, obj):
+        if obj.cover_image:
+            return format_html('''
+                <div id="focal-point-container" style="position: relative; display: inline-block; max-width: 600px; cursor: crosshair; border: 2px solid #ccc; border-radius: 4px; overflow: hidden;">
+                    <img id="focal-point-image" src="{}" style="max-width: 600px; height: auto; display: block; object-fit: cover; object-position: {}% {}%;" />
+                    <div id="focal-point-crosshair" style="position: absolute; width: 30px; height: 30px; border: 2px solid #E63946; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; left: {}%; top: {}%; box-shadow: 0 0 0 2px rgba(255,255,255,0.8), inset 0 0 0 1px rgba(230,57,70,0.5);">
+                        <div style="position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #E63946;"></div>
+                        <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #E63946;"></div>
+                    </div>
+                </div>
+                <div style="margin-top: 8px; color: #666; font-size: 12px;">
+                    Click on the image to set the focal point. Current: <strong id="focal-point-display">{}%, {}%</strong>
+                </div>
+                <div id="focal-point-crop-preview" style="margin-top: 12px; width: 300px; height: 120px; overflow: hidden; border: 1px solid #ddd; border-radius: 4px;">
+                    <img src="{}" style="width: 100%; height: 100%; object-fit: cover; object-position: {}% {}%;" id="focal-point-crop-img" />
+                </div>
+                <div style="color: #999; font-size: 11px; margin-top: 4px;">Crop preview (how it appears on homepage)</div>
+                <script>
+                (function() {{
+                    var container = document.getElementById('focal-point-container');
+                    var crosshair = document.getElementById('focal-point-crosshair');
+                    var display = document.getElementById('focal-point-display');
+                    var cropImg = document.getElementById('focal-point-crop-img');
+                    var xInput = document.getElementById('id_cover_image_position_x');
+                    var yInput = document.getElementById('id_cover_image_position_y');
+
+                    container.addEventListener('click', function(e) {{
+                        var rect = container.getBoundingClientRect();
+                        var x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+                        var y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+                        x = Math.max(0, Math.min(100, x));
+                        y = Math.max(0, Math.min(100, y));
+                        crosshair.style.left = x + '%';
+                        crosshair.style.top = y + '%';
+                        display.textContent = x + '%, ' + y + '%';
+                        cropImg.style.objectPosition = x + '% ' + y + '%';
+                        if (xInput) xInput.value = x;
+                        if (yInput) yInput.value = y;
+                    }});
+                }})();
+                </script>
+            ''',
+                obj.cover_image.url,
+                obj.cover_image_position_x, obj.cover_image_position_y,
+                obj.cover_image_position_x, obj.cover_image_position_y,
+                obj.cover_image_position_x, obj.cover_image_position_y,
+                obj.cover_image.url,
+                obj.cover_image_position_x, obj.cover_image_position_y,
+            )
+        return "No cover image uploaded yet."
+    cover_image_preview.short_description = "Focal Point Preview"
+
+    def save_model(self, request, obj, form, change):
+        """Override to trigger notifications when submissions open."""
+        if change:
+            old_obj = AuctionEvent.objects.get(pk=obj.pk)
+            was_accepting = old_obj.accepting_submissions
+        else:
+            was_accepting = False
+
+        super().save_model(request, obj, form, change)
+
+        # Trigger notification when accepting_submissions changes to True
+        if obj.accepting_submissions and not was_accepting and obj.is_platform_event:
+            from alerts.tasks import notify_trusted_sellers_new_event
+            notify_trusted_sellers_new_event.delay(obj.id)
+            self.message_user(request, 'Trusted sellers will be notified about this event.')
 
     def activate_platform_event(self, request, queryset):
         """Activate all draft listings in selected platform events and sync auction_end times."""

@@ -40,6 +40,8 @@ class AuctionEvent(models.Model):
 
     # Display
     cover_image = models.ImageField(upload_to='auction_events/', blank=True)
+    cover_image_position_x = models.IntegerField(default=50, help_text="Horizontal focal point (0-100%)")
+    cover_image_position_y = models.IntegerField(default=50, help_text="Vertical focal point (0-100%)")
     is_featured = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
 

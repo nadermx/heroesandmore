@@ -72,11 +72,12 @@ def home(request):
         is_graded=True,
     ).select_related('seller', 'category').order_by('-price')[:8]
 
-    # Get live/upcoming platform auction events
+    # Get live/upcoming/accepting-submissions platform auction events
     platform_events = AuctionEvent.objects.filter(
         is_platform_event=True,
-        status__in=['live', 'preview'],
-        bidding_end__gt=now,
+    ).filter(
+        Q(status__in=['live', 'preview'], bidding_end__gt=now) |
+        Q(accepting_submissions=True, status='draft')
     ).order_by('bidding_start')[:3]
 
     context = {

@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}Unsubscribed - HeroesAndMore{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container text-center" style="max-width: 500px;">
+        <i class="bi bi-envelope-x" style="font-size: 3rem; color: var(--gray-400);"></i>
+        <h2 class="mt-3 mb-3">You've been unsubscribed</h2>
+        <p class="text-muted mb-4">You won't receive any more newsletter emails from us. If this was a mistake, you can always resubscribe.</p>
+        <a href="{% url 'newsletter_subscribe' %}" class="btn btn-outline-dark">Resubscribe</a>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Newsletter Preferences - HeroesAndMore{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container" style="max-width: 600px;">
+        <div class="text-center mb-4">
+            <h1 class="fw-bold">Newsletter Preferences</h1>
+            <p class="text-muted">Customize what you receive from HeroesAndMore.</p>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div class="mb-3">
+                    <span class="text-muted small">Subscribed as:</span>
+                    <strong>{{ subscriber.email }}</strong>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Frequency</label>
+                        <select name="frequency" class="form-select">
+                            {% for value, label in subscriber.FREQUENCY_CHOICES %}
+                            <option value="{{ value }}" {% if subscriber.frequency == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Categories of Interest</label>
+                        <p class="text-muted small mb-2">Leave all unchecked for general updates on everything.</p>
+                        <div class="row g-2">
+                            {% for cat in categories %}
+                            <div class="col-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="categories" value="{{ cat.id }}" id="cat_{{ cat.id }}" {% if cat.id in selected_cat_ids %}checked{% endif %}>
+                                    <label class="form-check-label" for="cat_{{ cat.id }}">{{ cat.name }}</label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-dark w-100">Save Preferences</button>
+                </form>
+
+                <hr class="my-4">
+                <div class="text-center">
+                    <a href="{% url 'newsletter_unsubscribe' token=subscriber.unsubscribe_token %}" class="text-muted small">Unsubscribe from newsletter</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

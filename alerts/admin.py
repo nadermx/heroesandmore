@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Wishlist, WishlistItem, Alert, SavedSearch
+from .models import Wishlist, WishlistItem, Alert, SavedSearch, NewsletterSubscriber
 
 
 @admin.register(Wishlist)
@@ -32,3 +32,13 @@ class SavedSearchAdmin(admin.ModelAdmin):
     list_filter = ['notify_email', 'category', 'created']
     search_fields = ['name', 'user__username', 'query']
     raw_id_fields = ['user', 'category']
+
+
+@admin.register(NewsletterSubscriber)
+class NewsletterSubscriberAdmin(admin.ModelAdmin):
+    list_display = ['email', 'is_verified', 'is_active', 'frequency', 'subscribed_at', 'verified_at']
+    list_filter = ['is_verified', 'is_active', 'frequency', 'subscribed_at']
+    search_fields = ['email', 'user__username']
+    readonly_fields = ['verification_token', 'unsubscribe_token', 'subscribed_at', 'verified_at', 'unsubscribed_at']
+    raw_id_fields = ['user']
+    filter_horizontal = ['categories']

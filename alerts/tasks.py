@@ -744,6 +744,68 @@ def send_listing_expired_notification(listing_id):
 
 
 @shared_task
+def notify_trusted_sellers_new_event(event_id):
+    """
+    Notify all trusted sellers when a platform event opens for submissions.
+    Triggered from AuctionEventAdmin.save_model().
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import AuctionEvent
+    from accounts.models import Profile
+    from .models import Alert
+
+    try:
+        event = AuctionEvent.objects.get(id=event_id)
+    except AuctionEvent.DoesNotExist:
+        logger.error(f"notify_trusted_sellers_new_event: event {event_id} not found")
+        return
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'event': event, 'site_url': site_url}
+
+    trusted_profiles = Profile.objects.filter(
+        is_trusted_seller=True
+    ).select_related('user')
+
+    sent = 0
+    for profile in trusted_profiles:
+        user = profile.user
+        if not user.is_active:
+            continue
+
+        # Create in-app alert
+        Alert.objects.create(
+            user=user,
+            alert_type='auction_event',
+            title=f'Official Auction: {event.name}',
+            message=f'A new platform auction is accepting submissions! Deadline: {event.submission_deadline.strftime("%b %d, %Y") if event.submission_deadline else "TBD"}. Submit your best lots now.',
+            link=f'/marketplace/auctions/{event.slug}/submit/',
+        )
+
+        # Send email
+        if user.email:
+            html_content = render_to_string(
+                'marketplace/emails/auction_event_submissions_open.html', context
+            )
+            try:
+                send_mail(
+                    subject=f'Submit Your Lots: {event.name} - HeroesAndMore',
+                    message=f'A new official auction "{event.name}" is now accepting submissions from Trusted Sellers. Submit your lots at {site_url}/marketplace/auctions/{event.slug}/submit/',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    html_message=html_content,
+                    fail_silently=True,
+                )
+            except Exception as e:
+                logger.error(f"Failed to send auction event email to {user.email}: {e}")
+
+        sent += 1
+
+    logger.info(f"Notified {sent} trusted sellers about event '{event.name}'")
+    return sent
+
+
+@shared_task
 def send_relist_reminders():
     """
     Send reminders for listings that expired 3 days ago and haven't been relisted.
