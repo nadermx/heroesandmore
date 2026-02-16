@@ -401,28 +401,6 @@
     </div>
 </section>
 
-<!-- Newsletter Signup -->
-<section class="section section-alt" style="padding: 3rem 0;">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="text-center mb-4">
-                    <h2 class="fw-bold mb-2">Stay in the Loop</h2>
-                    <p class="text-muted">Get auction alerts, price trends, and collector news. No spam, unsubscribe anytime.</p>
-                </div>
-                <form id="newsletter-form" hx-post="{% url 'newsletter_subscribe' %}" hx-swap="innerHTML" hx-target="#newsletter-result">
-                    {% csrf_token %}
-                    <div class="d-flex flex-column flex-sm-row gap-2 justify-content-center" style="max-width: 500px; margin: 0 auto;">
-                        <input type="email" name="email" class="form-control form-control-lg" placeholder="your@email.com" required style="flex: 1;">
-                        <button type="submit" class="btn btn-dark btn-lg">Subscribe</button>
-                    </div>
-                    <div id="newsletter-result" class="text-center mt-2 small"></div>
-                </form>
-            </div>
-        </div>
-    </div>
-</section>
-
 <!-- WHERE LEGENDS LIVE Final CTA -->
 <section class="section" style="background: var(--gradient-hero); color: #fff; padding: 5rem 0; position: relative;">
     <img src="{% static 'images/logo-transparent.png' %}" alt="" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; opacity: 0.06; pointer-events: none;">
