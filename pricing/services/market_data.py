@@ -23,6 +23,64 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
+# Free proxy list — refreshed on first use per process
+_proxy_cache = {'proxies': [], 'fetched': None}
+
+
+def _get_free_proxies() -> List[str]:
+    """Fetch and cache a list of free HTTP proxies. Returns list of proxy URLs."""
+    now = datetime.now()
+    # Refresh every 30 minutes
+    if _proxy_cache['proxies'] and _proxy_cache['fetched'] and (now - _proxy_cache['fetched']).seconds < 1800:
+        return _proxy_cache['proxies']
+
+    proxies = []
+    try:
+        r = requests.get(
+            'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies'
+            '&proxy_format=protocolipport&format=text&protocol=http&timeout=5000',
+            timeout=10,
+        )
+        for line in r.text.strip().split('\n'):
+            line = line.strip()
+            if line:
+                proxies.append(line)
+    except Exception as e:
+        logger.debug(f"Failed to fetch proxy list: {e}")
+
+    if proxies:
+        _proxy_cache['proxies'] = proxies
+        _proxy_cache['fetched'] = now
+        logger.info(f"Loaded {len(proxies)} free proxies")
+
+    return proxies
+
+
+def _make_proxied_request(url: str, session: requests.Session, timeout: int = 30, **kwargs) -> Optional[requests.Response]:
+    """
+    Try a request through free proxies. Falls back to direct if all fail.
+    Tries up to 5 random proxies before giving up.
+    """
+    import random
+    proxies = _get_free_proxies()
+
+    if proxies:
+        sample = random.sample(proxies, min(5, len(proxies)))
+        for proxy in sample:
+            try:
+                resp = session.get(url, proxies={'http': proxy, 'https': proxy}, timeout=timeout, **kwargs)
+                if resp.status_code == 200 and 'Pardon Our Interruption' not in resp.text:
+                    return resp
+            except Exception:
+                continue
+
+    # Fallback: try direct
+    try:
+        return session.get(url, timeout=timeout, **kwargs)
+    except Exception as e:
+        logger.error(f"Direct request also failed for {url}: {e}")
+        return None
+
 
 def download_image_for_item(price_guide_item, image_url: str, source: str) -> bool:
     """
@@ -124,7 +182,9 @@ class EbayMarketData:
             url += f"&_sacat={category_id}"
 
         try:
-            response = self.session.get(url, timeout=30)
+            response = _make_proxied_request(url, self.session, timeout=30)
+            if not response:
+                return []
             response.raise_for_status()
 
             return self._parse_search_results(response.text, limit)
@@ -134,11 +194,16 @@ class EbayMarketData:
             return []
 
     def _parse_search_results(self, html: str, limit: int) -> List[Dict]:
-        """Parse eBay search results page"""
+        """Parse eBay search results page (handles both old .s-item and new .s-card layouts)"""
         soup = BeautifulSoup(html, 'html.parser')
         results = []
 
-        # Find listing items - eBay uses various class patterns
+        # Try new layout first (.s-card), fall back to old (.s-item)
+        cards = soup.select('.s-card--horizontal')
+        if cards:
+            return self._parse_card_results(cards, limit)
+
+        # Legacy .s-item layout
         items = soup.select('.s-item, .srp-results .s-item__wrapper')[:limit]
 
         for item in items:
@@ -158,7 +223,7 @@ class EbayMarketData:
                 if not title or title == 'Shop on eBay':
                     continue
 
-                # Extract price - look for the sold price (usually green)
+                # Extract price
                 price_elem = item.select_one('.s-item__price, .s-item__price span')
                 if not price_elem:
                     continue
@@ -176,11 +241,10 @@ class EbayMarketData:
                 img_elem = item.select_one('.s-item__image img')
                 if img_elem:
                     img_src = img_elem.get('src', '')
-                    # Skip eBay placeholder images
                     if img_src and 'ebaystatic.com/images/a/' not in img_src:
                         image_url = img_src
 
-                # Extract sale date (eBay shows "Sold <date>")
+                # Extract sale date
                 date_elem = item.select_one('.s-item__title--tagblock, .s-item__ended-date, .POSITIVE')
                 sale_date = None
                 if date_elem:
@@ -202,6 +266,67 @@ class EbayMarketData:
 
             except Exception as e:
                 logger.debug(f"Failed to parse eBay item: {e}")
+                continue
+
+        return results
+
+    def _parse_card_results(self, cards: list, limit: int) -> List[Dict]:
+        """Parse new eBay .s-card layout (2025+)"""
+        results = []
+
+        for card in cards[:limit]:
+            try:
+                # Extract title
+                title_div = card.select_one('.s-card__title')
+                if not title_div:
+                    continue
+                title = title_div.get_text(strip=True)
+
+                # Skip promo cards
+                if not title or 'Shop on eBay' in title:
+                    continue
+
+                # Extract price
+                price_el = card.select_one('.s-card__price')
+                if not price_el:
+                    continue
+                price = self._parse_price(price_el.get_text(strip=True))
+                if price <= 0:
+                    continue
+
+                # Extract URL
+                link = card.select_one('a.s-card__link[href*="/itm/"]')
+                item_url = link['href'] if link else ''
+
+                # Extract image URL
+                image_url = ''
+                img_elem = card.select_one('img.s-card__image')
+                if img_elem:
+                    # Prefer data-defer-load (full size) over src (may be lazy placeholder)
+                    img_src = img_elem.get('data-defer-load') or img_elem.get('src', '')
+                    if img_src and 'ebaystatic.com/rs/' not in img_src:
+                        image_url = img_src
+
+                # Extract sale date
+                sale_date = None
+                tagline = card.select_one('.s-card__tagline')
+                if tagline:
+                    sale_date = self._parse_sold_date(tagline.get_text(strip=True))
+                if not sale_date:
+                    sale_date = timezone.now()
+
+                results.append({
+                    'title': title,
+                    'price': price,
+                    'currency': 'USD',
+                    'sale_date': sale_date,
+                    'url': item_url,
+                    'image_url': image_url,
+                    'source': 'ebay'
+                })
+
+            except Exception as e:
+                logger.debug(f"Failed to parse eBay card: {e}")
                 continue
 
         return results
@@ -295,7 +420,9 @@ class HeritageAuctionsData:
         }
 
         try:
-            response = self.session.get(url, params=params, timeout=30)
+            response = _make_proxied_request(url, self.session, timeout=30, params=params)
+            if not response:
+                return []
             response.raise_for_status()
 
             return self._parse_results_page(response.text, limit)
@@ -415,7 +542,9 @@ class GoCollectData:
         params = {'q': query}
 
         try:
-            response = self.session.get(url, params=params, timeout=30)
+            response = _make_proxied_request(url, self.session, timeout=30, params=params)
+            if not response:
+                return []
             response.raise_for_status()
 
             return self._parse_search_results(response.text, limit)
@@ -439,7 +568,9 @@ class GoCollectData:
             comic_url = f"{self.BASE_URL}{comic_url}"
 
         try:
-            response = self.session.get(comic_url, timeout=30)
+            response = _make_proxied_request(comic_url, self.session, timeout=30)
+            if not response:
+                return []
             response.raise_for_status()
 
             return self._parse_comic_sales(response.text, limit)
