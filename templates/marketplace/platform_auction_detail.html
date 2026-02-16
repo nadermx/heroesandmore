@@ -28,6 +28,11 @@
                     {% if event.cadence %}
                     <span class="badge bg-dark border border-secondary px-2 py-1">{{ event.get_cadence_display }}</span>
                     {% endif %}
+                    {% if event.accepting_submissions %}
+                    <span class="badge px-2 py-1" style="background: #D4A017; color: #fff;">
+                        <i class="bi bi-send me-1"></i> Accepting Submissions
+                    </span>
+                    {% endif %}
                 </div>
                 <h1 class="fw-bold mb-3">{{ event.name }}</h1>
                 {% if event.description %}
@@ -80,17 +85,28 @@
 </section>
 
 <!-- Submit Lot CTA -->
-{% if event.accepting_submissions and user.is_authenticated and user.profile.is_trusted_seller %}
-<section class="py-3" style="background: var(--gray-50); border-bottom: 1px solid var(--border-color);">
+{% if event.accepting_submissions %}
+<section class="py-3" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border-bottom: 1px solid #f59e0b33;">
     <div class="container">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div class="d-flex align-items-center gap-2">
-                <span class="badge" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff;"><i class="bi bi-award"></i></span>
-                <span class="fw-semibold">You're a Trusted Seller! Submit your items to this event.</span>
+                <span class="badge px-2 py-2" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff;"><i class="bi bi-send" style="font-size: 0.9rem;"></i></span>
+                <div>
+                    <span class="fw-bold" style="color: #92400e;">Submissions Open</span>
+                    {% if event.submission_deadline %}
+                    <span class="text-muted small ms-2"><i class="bi bi-clock me-1"></i>Deadline: {{ event.submission_deadline|date:"M d, Y" }}</span>
+                    {% endif %}
+                </div>
             </div>
+            {% if user.is_authenticated and user.profile.is_trusted_seller %}
             <a href="{% url 'marketplace:submit_auction_lot' slug=event.slug %}" class="btn btn-dark btn-sm">
                 <i class="bi bi-send me-1"></i> Submit a Lot
             </a>
+            {% else %}
+            <a href="{% url 'trusted_seller' %}" class="btn btn-outline-dark btn-sm">
+                <i class="bi bi-award me-1"></i> Become a Trusted Seller to Submit
+            </a>
+            {% endif %}
         </div>
     </div>
 </section>
