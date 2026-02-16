@@ -6,13 +6,13 @@
 
 {% block content %}
 <!-- Hero -->
-<section style="background: linear-gradient(135deg, var(--dark) 0%, #1a1a2e 100%); padding: 2.5rem 0 2rem;">
+<section style="background: linear-gradient(135deg, #162447 0%, #1a1a2e 100%); padding: 2.5rem 0 2rem;">
     <div class="container text-center text-white">
         <span class="badge bg-warning text-dark mb-2 px-3 py-2" style="font-size: 0.85rem;">
             <i class="bi bi-shield-check me-1"></i> Official Platform Events
         </span>
-        <h1 class="fw-bold mb-2" style="font-size: 2rem;">HeroesAndMore Auctions</h1>
-        <p class="text-white-50 mx-auto mb-0" style="max-width: 600px; font-size: 0.95rem;">
+        <h1 class="fw-bold mb-2" style="font-size: 2rem; color: #fff;">HeroesAndMore Auctions</h1>
+        <p class="mx-auto mb-0" style="max-width: 600px; font-size: 0.95rem; color: rgba(255,255,255,0.6);">
             Curated auction events featuring premium collectibles, rare finds, and exclusive items.
         </p>
     </div>
@@ -35,7 +35,7 @@
                         <img src="{{ event.cover_image.url }}" class="card-img-top" alt="{{ event.name }}" style="height: 220px; object-fit: cover; object-position: {{ event.cover_image_position_x }}% {{ event.cover_image_position_y }}%;">
                     </a>
                     {% else %}
-                    <a href="{% url 'marketplace:platform_auction_detail' slug=event.slug %}" class="d-flex align-items-center justify-content-center" style="height: 220px; background: linear-gradient(135deg, var(--primary) 0%, var(--dark) 100%);">
+                    <a href="{% url 'marketplace:platform_auction_detail' slug=event.slug %}" class="d-flex align-items-center justify-content-center" style="height: 220px; background: linear-gradient(135deg, var(--brand-primary) 0%, #162447 100%);">
                         <i class="bi bi-hammer text-white" style="font-size: 3rem; opacity: 0.5;"></i>
                     </a>
                     {% endif %}
@@ -82,7 +82,7 @@
 <section style="padding: 2.5rem 0; {% if not live_events %}{% else %}background: var(--gray-50);{% endif %}">
     <div class="container">
         <h2 class="h5 fw-bold mb-3">
-            <i class="bi bi-calendar-event" style="color: var(--primary);"></i>
+            <i class="bi bi-calendar-event" style="color: var(--brand-primary);"></i>
             Upcoming Events
         </h2>
         <div class="row g-4">
