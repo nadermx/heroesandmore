@@ -76,8 +76,8 @@
                 </div>
             </div>
             {% if event.cover_image %}
-            <div class="col-lg-5 d-none d-lg-block">
-                <img src="{{ event.cover_image.url }}" class="img-fluid rounded shadow" alt="{{ event.name }}" style="max-height: 300px; width: 100%; object-fit: cover; object-position: {{ event.cover_image_position_x }}% {{ event.cover_image_position_y }}%;">
+            <div class="col-lg-5 mt-4 mt-lg-0">
+                <img src="{{ event.cover_image.url }}" class="img-fluid rounded shadow" alt="{{ event.name }}" style="max-height: 400px; width: 100%; object-fit: contain;">
             </div>
             {% endif %}
         </div>

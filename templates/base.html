@@ -778,13 +778,7 @@
         }
 
         footer::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--brand-primary), var(--brand-cyan), var(--brand-gold));
+            display: none;
         }
 
         footer h5, footer h6 {
@@ -1211,18 +1205,18 @@
                 </div>
             </div>
             <!-- Newsletter -->
-            <div class="py-4 mb-3" style="border-top: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div class="py-4 px-4 mb-3 rounded" style="background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);">
                 <div class="row align-items-center">
                     <div class="col-lg-5 mb-3 mb-lg-0">
-                        <h6 class="mb-1" style="color: #fff;"><i class="bi bi-envelope me-2"></i>Stay in the Loop</h6>
-                        <small style="color: var(--gray-400);">Auction alerts, price trends, and collector news. No spam.</small>
+                        <h5 class="mb-1 fw-bold" style="color: #fff; font-size: 1.1rem; text-transform: none; letter-spacing: 0;"><i class="bi bi-envelope-fill me-2" style="color: var(--brand-cyan);"></i>Stay in the Loop</h5>
+                        <p class="mb-0" style="color: rgba(255,255,255,0.75); font-size: 0.95rem;">Auction alerts, price trends, and collector news. No spam.</p>
                     </div>
                     <div class="col-lg-7">
                         <form hx-post="{% url 'newsletter_subscribe' %}" hx-swap="innerHTML" hx-target="#footer-newsletter-result">
                             {% csrf_token %}
                             <div class="d-flex gap-2">
-                                <input type="email" name="email" class="form-control" placeholder="your@email.com" required style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff;">
-                                <button type="submit" class="btn btn-light btn-sm px-3 flex-shrink-0">Subscribe</button>
+                                <input type="email" name="email" class="form-control form-control-lg" placeholder="your@email.com" required style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #fff; font-size: 1rem;">
+                                <button type="submit" class="btn px-4 flex-shrink-0 fw-bold" style="background: var(--brand-cyan); color: #fff; font-size: 0.95rem;">Subscribe</button>
                             </div>
                             <div id="footer-newsletter-result" class="mt-2 small"></div>
                         </form>
