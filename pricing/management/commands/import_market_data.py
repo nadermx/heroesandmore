@@ -66,6 +66,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Show detailed output'
         )
+        parser.add_argument(
+            '--skip-images',
+            action='store_true',
+            help='Skip downloading images for items'
+        )
 
     def handle(self, *args, **options):
         source = options['source']
@@ -74,6 +79,8 @@ class Command(BaseCommand):
         days = options['days']
         dry_run = options['dry_run']
         verbose = options['verbose']
+        skip_images = options['skip_images']
+        download_images = not skip_images and not dry_run
 
         if dry_run:
             self.stdout.write(self.style.WARNING('DRY RUN - No data will be saved'))
@@ -86,23 +93,23 @@ class Command(BaseCommand):
 
         try:
             if source in ('all', 'ebay'):
-                count = self.import_ebay(category, limit, dry_run, verbose)
+                count = self.import_ebay(category, limit, dry_run, verbose, download_images)
                 total_imported += count
                 self.stdout.write(self.style.SUCCESS(f'eBay: {count} sales imported'))
 
             if source in ('all', 'heritage'):
                 # Sports
-                count = self.import_heritage('sports', days, dry_run, verbose)
+                count = self.import_heritage('sports', days, dry_run, verbose, download_images)
                 total_imported += count
                 self.stdout.write(self.style.SUCCESS(f'Heritage (sports): {count} sales imported'))
 
                 # Comics
-                count = self.import_heritage('comics', days, dry_run, verbose)
+                count = self.import_heritage('comics', days, dry_run, verbose, download_images)
                 total_imported += count
                 self.stdout.write(self.style.SUCCESS(f'Heritage (comics): {count} sales imported'))
 
             if source in ('all', 'gocollect'):
-                count = self.import_gocollect(limit, dry_run, verbose)
+                count = self.import_gocollect(limit, dry_run, verbose, download_images)
                 total_imported += count
                 self.stdout.write(self.style.SUCCESS(f'GoCollect: {count} sales imported'))
 
@@ -113,10 +120,10 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f'Total imported: {total_imported} sales'))
         self.stdout.write(f'Completed at {timezone.now()}')
 
-    def import_ebay(self, category, limit, dry_run, verbose):
+    def import_ebay(self, category, limit, dry_run, verbose, download_images=True):
         """Import from eBay"""
         from pricing.models import PriceGuideItem
-        from pricing.services.market_data import EbayMarketData, MarketDataImporter
+        from pricing.services.market_data import EbayMarketData, MarketDataImporter, download_image_for_item
 
         self.stdout.write('Importing from eBay...')
 
@@ -145,12 +152,21 @@ class Command(BaseCommand):
                     if importer._record_sale(item, result):
                         count += 1
 
+            # Download image if item doesn't have one
+            if download_images and not item.image:
+                for result in results:
+                    if result.get('image_url'):
+                        if download_image_for_item(item, result['image_url'], 'ebay'):
+                            if verbose:
+                                self.stdout.write(f'    Downloaded image for {item.name}')
+                            break
+
         return count
 
-    def import_heritage(self, heritage_category, days, dry_run, verbose):
+    def import_heritage(self, heritage_category, days, dry_run, verbose, download_images=True):
         """Import from Heritage Auctions"""
         from pricing.models import PriceGuideItem
-        from pricing.services.market_data import HeritageAuctionsData, MarketDataImporter
+        from pricing.services.market_data import HeritageAuctionsData, MarketDataImporter, download_image_for_item
 
         self.stdout.write(f'Importing from Heritage Auctions ({heritage_category})...')
 
@@ -174,14 +190,19 @@ class Command(BaseCommand):
                     if not dry_run:
                         if importer._record_sale(item, result):
                             count += 1
+                    # Download image if item doesn't have one
+                    if download_images and not item.image and result.get('image_url'):
+                        if download_image_for_item(item, result['image_url'], 'heritage'):
+                            if verbose:
+                                self.stdout.write(f'      Downloaded image for {item.name}')
                     break
 
         return count
 
-    def import_gocollect(self, limit, dry_run, verbose):
+    def import_gocollect(self, limit, dry_run, verbose, download_images=True):
         """Import from GoCollect"""
         from pricing.models import PriceGuideItem
-        from pricing.services.market_data import GoCollectData, MarketDataImporter
+        from pricing.services.market_data import GoCollectData, MarketDataImporter, download_image_for_item
 
         self.stdout.write('Importing from GoCollect...')
 
@@ -206,6 +227,12 @@ class Command(BaseCommand):
             results = gocollect.search_comics(search_query, limit=10)
 
             for result in results:
+                # Download image if item doesn't have one
+                if download_images and not item.image and result.get('image_url'):
+                    if download_image_for_item(item, result['image_url'], 'gocollect'):
+                        if verbose:
+                            self.stdout.write(f'    Downloaded image for {item.name}')
+
                 sales = gocollect.get_comic_sales(result.get('url', ''), limit=10)
 
                 for sale in sales:

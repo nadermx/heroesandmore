@@ -184,7 +184,7 @@ def import_ebay_market_data(category_slug: str = None, limit: int = 100):
     Runs twice daily at 6 AM and 6 PM.
     """
     from .models import PriceGuideItem
-    from .services.market_data import EbayMarketData, MarketDataImporter
+    from .services.market_data import EbayMarketData, MarketDataImporter, download_image_for_item
 
     logger.info(f"Starting eBay market data import (category: {category_slug})")
 
@@ -206,6 +206,13 @@ def import_ebay_market_data(category_slug: str = None, limit: int = 100):
                 if importer._record_sale(item, result):
                     total_imported += 1
 
+            # Download image if item doesn't have one
+            if not item.image:
+                for result in results:
+                    if result.get('image_url'):
+                        if download_image_for_item(item, result['image_url'], 'ebay'):
+                            break
+
             # Update stats after import
             if results:
                 update_price_guide_stats.delay(item.id)
@@ -225,7 +232,7 @@ def import_heritage_market_data(category: str = 'sports', days_back: int = 7):
     Runs twice daily at 6 AM and 6 PM.
     """
     from .models import PriceGuideItem
-    from .services.market_data import HeritageAuctionsData, MarketDataImporter
+    from .services.market_data import HeritageAuctionsData, MarketDataImporter, download_image_for_item
 
     logger.info(f"Starting Heritage Auctions import (category: {category})")
 
@@ -246,6 +253,9 @@ def import_heritage_market_data(category: str = 'sports', days_back: int = 7):
                 if importer._record_sale(item, result):
                     total_imported += 1
                     matched_items.add(item.id)
+                # Download image if item doesn't have one
+                if not item.image and result.get('image_url'):
+                    download_image_for_item(item, result['image_url'], 'heritage')
                 break
 
     # Update stats for matched items
@@ -264,7 +274,7 @@ def import_gocollect_market_data(limit: int = 50):
     Runs twice daily at 6 AM and 6 PM.
     """
     from .models import PriceGuideItem
-    from .services.market_data import GoCollectData, MarketDataImporter
+    from .services.market_data import GoCollectData, MarketDataImporter, download_image_for_item
 
     logger.info("Starting GoCollect market data import")
 
@@ -284,6 +294,10 @@ def import_gocollect_market_data(limit: int = 50):
             results = gocollect.search_comics(search_query, limit=10)
 
             for result in results:
+                # Download image if item doesn't have one
+                if not item.image and result.get('image_url'):
+                    download_image_for_item(item, result['image_url'], 'gocollect')
+
                 # Get detailed sales for this comic
                 sales = gocollect.get_comic_sales(result.get('url', ''), limit=10)
 

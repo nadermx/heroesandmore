@@ -9,12 +9,16 @@ class GradePriceInline(admin.TabularInline):
 
 @admin.register(PriceGuideItem)
 class PriceGuideItemAdmin(admin.ModelAdmin):
-    list_display = ['name', 'category', 'year', 'set_name', 'avg_sale_price', 'total_sales', 'price_trend']
-    list_filter = ['category', 'price_trend', 'year']
+    list_display = ['name', 'category', 'year', 'set_name', 'avg_sale_price', 'total_sales', 'price_trend', 'has_image']
+    list_filter = ['category', 'price_trend', 'year', 'image_source']
     search_fields = ['name', 'set_name', 'card_number', 'publisher']
     prepopulated_fields = {'slug': ('name',)}
     inlines = [GradePriceInline]
-    readonly_fields = ['total_sales', 'avg_sale_price', 'last_sale_date', 'price_trend', 'created', 'updated']
+    readonly_fields = ['total_sales', 'avg_sale_price', 'last_sale_date', 'price_trend', 'image_source_url', 'image_source', 'created', 'updated']
+
+    @admin.display(boolean=True, description='Image')
+    def has_image(self, obj):
+        return bool(obj.image)
 
 
 @admin.register(GradePrice)

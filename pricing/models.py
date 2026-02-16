@@ -27,6 +27,8 @@ class PriceGuideItem(models.Model):
     # Metadata
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to='price_guide/', blank=True)
+    image_source_url = models.URLField(max_length=500, blank=True)
+    image_source = models.CharField(max_length=20, blank=True)  # ebay, heritage, gocollect
 
     # Cached stats (updated by Celery)
     total_sales = models.IntegerField(default=0)
@@ -120,6 +122,7 @@ class SaleRecord(models.Model):
         ('heroesandmore', 'HeroesAndMore'),
         ('ebay', 'eBay'),
         ('heritage', 'Heritage Auctions'),
+        ('gocollect', 'GoCollect'),
         ('goldin', 'Goldin'),
         ('pwcc', 'PWCC'),
         ('manual', 'Manual Entry'),

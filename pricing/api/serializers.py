@@ -65,7 +65,7 @@ class PriceGuideItemDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'slug', 'year', 'set_name', 'card_number',
             'variant', 'publisher', 'volume', 'issue_number',
-            'description', 'image_url', 'category_name', 'category_slug',
+            'description', 'image_url', 'image_source_url', 'category_name', 'category_slug',
             'total_sales', 'avg_sale_price', 'last_sale_date', 'price_trend',
             'grade_prices', 'created', 'updated'
         ]

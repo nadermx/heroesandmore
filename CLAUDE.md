@@ -97,11 +97,29 @@ python manage.py test --verbosity=2                             # Verbose output
 - `items.Category` - Hierarchical categories
 - `items.Item` - Base item database
 - `marketplace.Listing` - For sale items (fixed price and auctions)
+- `marketplace.Bid` - Auction bids (FK to listing via `related_name='bids'`, has `created` timestamp)
+- `marketplace.SavedListing` - User saves/watchlist (FK to listing via `related_name='saves'`)
 - `marketplace.AuctionEvent` - Scheduled auction events
 - `marketplace.Order` - Purchases
 - `marketplace.Offer` - Make offer/counteroffer system
 - `user_collections.Collection` - User collections with value tracking
 - `user_collections.CollectionValueSnapshot` - Daily value snapshots for charts
+
+### Important Listing Model Methods
+Templates and views depend heavily on these — know them before modifying listing display code:
+- `get_current_price()` — For auctions: highest bid amount or starting price. For fixed: `self.price`
+- `get_images()` — Returns list of non-empty image fields (image1–image5)
+- `is_auction_ended()` — Checks `auction_end` against `timezone.now()`
+- `time_remaining` — Returns `timedelta` or `None`
+- `time_remaining_parts` — Returns dict `{days, hours, minutes, seconds}` for template display
+- `quantity_available` — Property: `quantity - quantity_sold`
+- `bid_count` is NOT a model property — use `listing.bids.count` or annotate with `Count('bids')`
+
+### Extended Bidding (Anti-Sniping)
+- `Listing.use_extended_bidding` (default `True`) + `extended_bidding_minutes` (default `15`)
+- Bids placed within the last N minutes of auction end extend the deadline
+- `times_extended` tracks how many extensions have occurred
+- Logic lives in the API bid view (`marketplace/api/views.py`)
 
 ### Price Guide (pricing app)
 - `pricing.PriceGuideItem` - Master catalog of items with pricing data
@@ -126,6 +144,32 @@ python manage.py test --verbosity=2                             # Verbose output
 ### Social
 - `social.Follow` - User follows
 - `social.ForumThread` - Forum discussions
+
+## Homepage Architecture (`items/views.py` → `home()`, `templates/home.html`)
+
+The homepage is designed as a "high-stakes auction floor" with urgency-driven sections:
+
+**Section order:** Hero → Stats Bar → Ending Soon (FOMO grid, 8 items) → Featured Lots (recent) → Bid Wars (conditional) → Browse Categories → Curated for Serious Collectors (conditional) → Official Auctions (conditional) → Why Heroes & More → WHERE LEGENDS LIVE CTA
+
+**Key queries in the view:**
+- `ending_soon` — annotated with `save_count`, `bid_count_total`, `recent_bids` (last hour) for HOT LOT badge
+- `bid_wars` — auctions with bids in last hour, ordered by `recent_bids` count (shows "+X bids" overlay)
+- `curated_listings` — graded items (`is_graded=True`), sorted by price descending
+
+**Listing card badge logic** (`components/listing_card.html`): HOT LOT badge shows when `listing.recent_bids >= 5` or `listing.save_count >= 10` (requires annotated querysets).
+
+**Listing detail auction features** (`marketplace/listing_detail.html`):
+- Social proof stack: watcher count, recent bid count (last minute), bid war active badge
+- Comps range from `recent_sales` prices
+- Quick bid buttons (+$10/+$25/+$50) synced with sticky bid bar
+- Sticky bid bar: appears via `IntersectionObserver` when main bid form scrolls off-screen
+- Live countdown: JS ticker with urgency classes (`urgency-warning` < 60s, `urgency-critical` < 10s)
+
+## CSS Architecture
+
+All styles live inline in `templates/base.html` `<style>` block — there are no separate CSS files. Page-specific styles go in `{% block extra_css %}`. This is intentional for faster initial load (no extra HTTP request for critical CSS).
+
+Key CSS custom properties are defined in `:root` — use `var(--brand-primary)`, `var(--brand-navy)`, `var(--brand-cyan)`, `var(--brand-gold)` etc. for consistency.
 
 ## Deployment
 
@@ -260,6 +304,55 @@ For Ansible deploys, these go in `ansible/group_vars/vault.yml`.
 - Featured ($29.99/mo): 1000 listings, 7.95% commission
 - Premium ($99.99/mo): unlimited listings, 5.95% commission
 
+Trusted Sellers get an additional 2% discount (floor 3.95%). See Trusted Seller Program below.
+
+## Trusted Seller Program
+
+Automated program that rewards high-performing sellers with badges, lower commissions, and platform auction access.
+
+### Qualification (automatic, checked daily at 4 AM)
+- 20+ completed sales
+- 4.5+ average rating with 10+ reviews
+- Featured or Premium subscription tier
+- Managed by `seller_tools.tasks.update_trusted_seller_status` Celery task
+
+### Key Fields
+- `Profile.is_trusted_seller` — Boolean, updated daily by Celery task
+- `Profile.qualifies_as_trusted_seller` — computed property checking current metrics
+
+### Benefits
+1. **Gold badge** on listing cards, listing detail, seller profiles (web + mobile apps)
+2. **2% commission discount** — applied in `StripeService.get_seller_commission_rate()` with 3.95% floor
+3. **Platform auction lot submission** — trusted sellers can submit listings for curated events
+
+### Marketing Page
+- URL: `/trusted-seller/` → `app.views.trusted_seller_landing`
+- Template: `templates/pages/trusted_seller.html`
+
+## Platform Auction Events
+
+Curated auction events run by the platform. Trusted sellers submit lots for staff review.
+
+### Models
+- `AuctionEvent` — with `is_platform_event`, `cadence` (monthly/quarterly/special), `accepting_submissions`, `submission_deadline`, `status` (draft/preview/live/ended)
+- `AuctionLotSubmission` — links seller + listing to an event with status (pending/approved/rejected/withdrawn), staff review fields
+
+### Workflow
+1. Staff creates `AuctionEvent` with `is_platform_event=True`, `accepting_submissions=True`
+2. Trusted sellers submit listings via `/marketplace/auctions/<slug>/submit/`
+3. Staff reviews in admin — approve auto-assigns `lot_number` and links listing to event
+4. Event goes live, lots displayed in grid on `/marketplace/auctions/<slug>/`
+
+### URLs
+- `/marketplace/auctions/` — browse platform events
+- `/marketplace/auctions/<slug>/` — event detail with lots
+- `/marketplace/auctions/<slug>/submit/` — submission form (trusted sellers only)
+
+### API Endpoints
+- `GET /api/v1/marketplace/auctions/platform/` — list platform events
+- `POST /api/v1/marketplace/auctions/platform/<slug>/submit/` — submit lot (`{"listing_id": <id>}`)
+- `GET /api/v1/marketplace/auctions/submissions/` — user's own submissions
+
 ## Celery Tasks
 
 ### Pricing Tasks
@@ -278,8 +371,12 @@ For Ansible deploys, these go in `ansible/group_vars/vault.yml`.
 - `expire_grace_periods` - Downgrade expired subscriptions (daily 3:30 AM)
 - `send_renewal_reminders` - Email 3 days before renewal (daily 10 AM)
 
+### Seller Status Tasks
+- `seller_tools.tasks.update_trusted_seller_status` - Auto-promote/demote trusted sellers (daily 4 AM)
+
 ### Listing & Alert Tasks
 - `marketplace.tasks.end_auctions` - End expired auctions, notify winners/sellers, expire no-bid listings (every 5 min)
+- `marketplace.tasks.expire_unpaid_orders` - Cancel orders pending > 24h, restore listing stock (hourly :15)
 - `alerts.tasks.send_listing_expired_notification` - Email + in-app alert when auction ends with no bids
 - `alerts.tasks.send_relist_reminders` - Remind sellers about expired listings after 3 days (daily 11 AM)
 
@@ -409,39 +506,11 @@ SUBSCRIPTION_RETRY_INTERVALS = [1, 3, 5, 7]  # Days between retries
 
 Email is self-hosted on the server using Postfix with OpenDKIM and PostSRSd.
 
-### Domain Setup
-- **mail.heroesandmore.com** - SENDING domain (outbound emails, e.g., noreply@mail.heroesandmore.com)
-- **heroesandmore.com** - RECEIVING domain (inbound, forwards to team members)
-
-### Firewall
-Port 25 (SMTP) **must** be open for inbound mail delivery. This is configured in `ansible/security.yml`. If the firewall is ever reset, verify port 25 is allowed: `ufw allow 25/tcp`
-
-### DNS Records (managed via DigitalOcean API)
-- SPF: `v=spf1 ip4:174.138.33.140 a ~all`
-- DKIM: `mail._domainkey.mail.heroesandmore.com`
-- DMARC: `v=DMARC1; p=none; fo=1`
-- PTR: `174.138.33.140` → `mail.heroesandmore.com` (set via DigitalOcean droplet name)
-
-### Email Forwarding with SRS
-PostSRSd (Sender Rewriting Scheme) is configured to prevent SPF failures when forwarding external emails. Config: `/etc/default/postsrsd`
-
-**Important**: `SRS_EXCLUDE_DOMAINS=mail.heroesandmore.com,heroesandmore.com` must be set in `/etc/default/postsrsd` so that locally-originated transactional emails (from `noreply@mail.heroesandmore.com`) are NOT SRS-rewritten. Without this, SPF/DKIM alignment breaks and emails get rejected by Gmail/Outlook.
-
-### Credentials
-API keys are stored in `~/.credentials/`:
-- `digitalocean_api_key` - DNS management
-- Other keys: aws, github, linode, vultr, etc.
-
-### Email Aliases
-Config file: `/etc/postfix/virtual` - forwards addresses to team members.
-
-```bash
-# Add new alias
-ssh heroesandmore@174.138.33.140
-sudo nano /etc/postfix/virtual
-# Add: newemail@heroesandmore.com    recipient@example.com
-sudo postmap /etc/postfix/virtual && sudo systemctl reload postfix
-```
+- **mail.heroesandmore.com** — SENDING domain (outbound, DKIM-signed, e.g., noreply@mail.heroesandmore.com)
+- **heroesandmore.com** — RECEIVING domain (forwards to team via `/etc/postfix/virtual`)
+- Port 25 must be open for inbound mail (configured in `ansible/security.yml`)
+- DNS (SPF, DKIM, DMARC, PTR) managed via DigitalOcean API
+- **Critical**: `SRS_EXCLUDE_DOMAINS=mail.heroesandmore.com,heroesandmore.com` must be in `/etc/default/postsrsd` — without this, SPF/DKIM alignment breaks and transactional emails get rejected by Gmail/Outlook
 
 ## GitHub Repositories
 
@@ -532,3 +601,6 @@ Fixed-price listings support multi-quantity (e.g., 20 of the same item). Auction
 - Error pages (`404.html`, `403.html`, `500.html`) are standalone HTML — they don't extend `base.html` for reliability
 - Django template syntax: `{% with %}` blocks cannot contain `{% else %}` — only `{% if %}` blocks can
 - Avoid `-webkit-appearance: none` on `.form-control` — it breaks native iOS keyboard behavior
+- `Bid.created` is an auto-set timestamp — used in time-based queries (bid wars, recent bids). Filter with `bids__created__gte=...`
+- Unpaid orders auto-cancel after 24 hours (`ORDER_PAYMENT_TIMEOUT_HOURS` setting, `expire_unpaid_orders` task)
+- On server, `config.py` is owned by `www:www` — use `sudo -u www` when running scripts that need it

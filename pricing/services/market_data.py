@@ -9,6 +9,7 @@ Pulls pricing data from external sources:
 Run twice daily via Celery beat.
 """
 
+import os
 import requests
 import re
 import logging
@@ -17,9 +18,71 @@ from decimal import Decimal
 from typing import List, Dict, Optional
 from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
+from django.core.files.base import ContentFile
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+
+def download_image_for_item(price_guide_item, image_url: str, source: str) -> bool:
+    """
+    Download an image from a URL and attach it to a PriceGuideItem.
+
+    Skips if item already has an image or if the URL was already tried.
+    Returns True if image was saved, False otherwise.
+    """
+    if not image_url:
+        return False
+
+    # Skip if item already has an image
+    if price_guide_item.image:
+        return False
+
+    # Skip if we already tried this URL
+    if image_url == price_guide_item.image_source_url:
+        return False
+
+    try:
+        # For eBay: upgrade thumbnail to larger image
+        if 'ebay' in image_url and 's-l225' in image_url:
+            image_url = image_url.replace('s-l225', 's-l500')
+
+        resp = requests.get(
+            image_url,
+            timeout=15,
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'},
+            stream=True,
+        )
+        resp.raise_for_status()
+
+        # Validate content type
+        content_type = resp.headers.get('content-type', '')
+        if not content_type.startswith('image/'):
+            logger.debug(f"Not an image content-type for {image_url}: {content_type}")
+            return False
+
+        content = resp.content
+
+        # Validate size (1KB - 5MB)
+        if len(content) < 1024 or len(content) > 5 * 1024 * 1024:
+            logger.debug(f"Image size out of range for {image_url}: {len(content)} bytes")
+            return False
+
+        # Build filename
+        filename = image_url.split('/')[-1].split('?')[0] or 'image.jpg'
+        filename = os.path.basename(filename)[:100]
+
+        price_guide_item.image.save(filename, ContentFile(content), save=False)
+        price_guide_item.image_source_url = image_url
+        price_guide_item.image_source = source
+        price_guide_item.save(update_fields=['image', 'image_source_url', 'image_source'])
+
+        logger.info(f"Downloaded image for '{price_guide_item.name}' from {source}")
+        return True
+
+    except Exception as e:
+        logger.debug(f"Failed to download image for '{price_guide_item.name}' from {image_url}: {e}")
+        return False
 
 
 class EbayMarketData:
@@ -108,6 +171,15 @@ class EbayMarketData:
                 link = item.select_one('a.s-item__link, a[href*="/itm/"]')
                 item_url = link['href'] if link else ''
 
+                # Extract image URL
+                image_url = ''
+                img_elem = item.select_one('.s-item__image img')
+                if img_elem:
+                    img_src = img_elem.get('src', '')
+                    # Skip eBay placeholder images
+                    if img_src and 'ebaystatic.com/images/a/' not in img_src:
+                        image_url = img_src
+
                 # Extract sale date (eBay shows "Sold <date>")
                 date_elem = item.select_one('.s-item__title--tagblock, .s-item__ended-date, .POSITIVE')
                 sale_date = None
@@ -124,6 +196,7 @@ class EbayMarketData:
                     'currency': 'USD',
                     'sale_date': sale_date,
                     'url': item_url,
+                    'image_url': image_url,
                     'source': 'ebay'
                 })
 
@@ -254,6 +327,14 @@ class HeritageAuctionsData:
                 link = item.select_one('a[href*="/lot/"]')
                 url = f"{self.BASE_URL}{link['href']}" if link else ''
 
+                # Extract image URL
+                image_url = ''
+                img_elem = item.select_one('img')
+                if img_elem:
+                    img_src = img_elem.get('data-src') or img_elem.get('src', '')
+                    if img_src:
+                        image_url = img_src if img_src.startswith('http') else f"{self.BASE_URL}{img_src}"
+
                 # Extract date
                 date_elem = item.select_one('.lot-date, .auction-date')
                 sale_date = self._parse_heritage_date(date_elem.get_text(strip=True) if date_elem else '')
@@ -264,6 +345,7 @@ class HeritageAuctionsData:
                         'price': price,
                         'sale_date': sale_date or timezone.now(),
                         'url': url,
+                        'image_url': image_url,
                         'source': 'heritage'
                     })
 
@@ -381,6 +463,14 @@ class GoCollectData:
                 link = item.select_one('a[href*="/guide/"]')
                 url = link['href'] if link else ''
 
+                # Extract image URL
+                image_url = ''
+                img_elem = item.select_one('img')
+                if img_elem:
+                    img_src = img_elem.get('data-src') or img_elem.get('src', '')
+                    if img_src:
+                        image_url = img_src if img_src.startswith('http') else f"{self.BASE_URL}{img_src}"
+
                 # Get fair market value if shown
                 fmv_elem = item.select_one('.fmv, .price, .value')
                 fmv = self._parse_price(fmv_elem.get_text(strip=True) if fmv_elem else '0')
@@ -390,6 +480,7 @@ class GoCollectData:
                         'title': title,
                         'price': fmv,
                         'url': url if url.startswith('http') else f"{self.BASE_URL}{url}",
+                        'image_url': image_url,
                         'source': 'gocollect'
                     })
 
@@ -495,6 +586,8 @@ class MarketDataImporter:
         from pricing.models import SaleRecord
 
         count = 0
+        best_image_url = ''
+        best_image_source = ''
         search_query = self._build_search_query(price_guide_item)
 
         # Search eBay
@@ -502,6 +595,9 @@ class MarketDataImporter:
         for result in ebay_results:
             if self._record_sale(price_guide_item, result):
                 count += 1
+            if not best_image_url and result.get('image_url'):
+                best_image_url = result['image_url']
+                best_image_source = 'ebay'
 
         # Search Heritage if it's a sports card or comic
         category = price_guide_item.category.slug if price_guide_item.category else ''
@@ -512,17 +608,27 @@ class MarketDataImporter:
                 if self._is_match(price_guide_item, result['title']):
                     if self._record_sale(price_guide_item, result):
                         count += 1
+                    if not best_image_url and result.get('image_url'):
+                        best_image_url = result['image_url']
+                        best_image_source = 'heritage'
 
         # Search GoCollect if it's a comic
         if 'comic' in category:
             gocollect_results = self.gocollect.search_comics(search_query, limit=20)
             for result in gocollect_results:
+                if not best_image_url and result.get('image_url'):
+                    best_image_url = result['image_url']
+                    best_image_source = 'gocollect'
                 # Get detailed sales for each comic
                 sales = self.gocollect.get_comic_sales(result.get('url', ''), limit=10)
                 for sale in sales:
                     sale['title'] = result.get('title', '')
                     if self._record_sale(price_guide_item, sale):
                         count += 1
+
+        # Download image if item doesn't have one yet
+        if not price_guide_item.image and best_image_url:
+            download_image_for_item(price_guide_item, best_image_url, best_image_source)
 
         return count
 
