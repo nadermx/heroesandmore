@@ -227,9 +227,15 @@
                             <span class="text-muted small bg-white px-3">or sign up with email</span>
                         </div>
 
-                        <form method="post" action="{% url 'account_signup' %}">
+                        <form method="post" action="{% url 'account_signup' %}" id="sell-signup-form">
                             {% csrf_token %}
                             <input type="hidden" name="next" value="/marketplace/create/">
+                            <!-- Honeypot — hidden from humans, bots fill it -->
+                            <div style="position: absolute; left: -9999px;" aria-hidden="true">
+                                <label for="sell-website">Website</label>
+                                <input type="text" name="website" id="sell-website" tabindex="-1" autocomplete="off">
+                            </div>
+                            <input type="hidden" name="_ts" id="sell-signup-ts">
 
                             <div class="mb-3">
                                 <label for="id_username" class="form-label">Username</label>
@@ -266,6 +272,7 @@
                                 <a href="{% url 'privacy' %}" class="text-muted">Privacy Policy</a>
                             </p>
                         </form>
+                        <script>document.getElementById('sell-signup-ts').value = (Date.now() / 1000).toFixed(0);</script>
                     </div>
                 </div>
 
