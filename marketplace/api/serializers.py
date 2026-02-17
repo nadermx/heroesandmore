@@ -22,6 +22,7 @@ class ListingImageSerializer(serializers.Serializer):
 class ListingListSerializer(serializers.ModelSerializer):
     """Compact serializer for listing lists/browse"""
     seller_username = serializers.CharField(source='seller.username', read_only=True)
+    seller_is_trusted = serializers.BooleanField(source='seller.profile.is_trusted_seller', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     category_slug = serializers.CharField(source='category.slug', read_only=True)
     primary_image = serializers.SerializerMethodField()
@@ -36,6 +37,7 @@ class ListingListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'price', 'current_price', 'listing_type',
             'condition', 'grading_service', 'grade', 'seller_username',
+            'seller_is_trusted',
             'category_name', 'category_slug', 'primary_image',
             'auction_end', 'time_remaining', 'bid_count',
             'shipping_price', 'views', 'created', 'quantity_available',
