@@ -8,7 +8,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 
 from items.views import home, about
 from accounts.api.views import (
-    GoogleAuthView, PasswordResetView, PasswordResetConfirmView, ChangePasswordView
+    GoogleAuthView, AppleAuthView, PasswordResetView, PasswordResetConfirmView,
+    ChangePasswordView
 )
 from app.views import contact, log_frontend_error, sell_landing, trusted_seller_landing
 from alerts.views import newsletter_subscribe, newsletter_verify, newsletter_preferences, newsletter_unsubscribe
@@ -27,6 +28,7 @@ urlpatterns = [
     path('api/v1/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/v1/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/v1/auth/google/', GoogleAuthView.as_view(), name='google_auth'),
+    path('api/v1/auth/apple/', AppleAuthView.as_view(), name='apple_auth'),
     path('api/v1/auth/password/reset/', PasswordResetView.as_view(), name='password_reset'),
     path('api/v1/auth/password/reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('api/v1/auth/password/change/', ChangePasswordView.as_view(), name='password_change'),

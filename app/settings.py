@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.apple',
     'django_htmx',
     # REST API
     'rest_framework',
@@ -163,6 +164,12 @@ LOGOUT_REDIRECT_URL = '/'
 # Google OAuth
 GOOGLE_CLIENT_ID = getattr(config, 'GOOGLE_CLIENT_ID', '')
 
+# Apple OAuth (Sign in with Apple)
+APPLE_CLIENT_ID = getattr(config, 'APPLE_CLIENT_ID', '')  # Service ID (e.g. com.heroesandmore.signin)
+APPLE_TEAM_ID = getattr(config, 'APPLE_TEAM_ID', '')
+APPLE_KEY_ID = getattr(config, 'APPLE_KEY_ID', '')
+APPLE_CERTIFICATE = getattr(config, 'APPLE_CERTIFICATE', '')  # Private key PEM content
+
 # Socialaccount providers
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
@@ -172,6 +179,16 @@ SOCIALACCOUNT_PROVIDERS = {
             'client_id': GOOGLE_CLIENT_ID,
             'secret': getattr(config, 'GOOGLE_CLIENT_SECRET', ''),
         },
+    },
+    'apple': {
+        'APP': {
+            'client_id': APPLE_CLIENT_ID,
+            'secret': APPLE_KEY_ID,
+            'settings': {
+                'certificate_key': APPLE_CERTIFICATE,
+            },
+        },
+        'SCOPE': ['name', 'email'],
     }
 }
 SOCIALACCOUNT_AUTO_SIGNUP = True

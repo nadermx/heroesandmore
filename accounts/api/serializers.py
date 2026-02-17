@@ -159,6 +159,13 @@ class GoogleAuthSerializer(serializers.Serializer):
     id_token = serializers.CharField()
 
 
+class AppleAuthSerializer(serializers.Serializer):
+    """Serializer for Apple Sign In authentication"""
+    id_token = serializers.CharField()
+    first_name = serializers.CharField(required=False, allow_blank=True, default='')
+    last_name = serializers.CharField(required=False, allow_blank=True, default='')
+
+
 class PasswordResetSerializer(serializers.Serializer):
     """Serializer for requesting password reset"""
     email = serializers.EmailField()

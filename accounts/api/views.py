@@ -15,8 +15,9 @@ from accounts.models import Profile, RecentlyViewed
 from .serializers import (
     ProfileSerializer, PublicProfileSerializer, ProfileUpdateSerializer,
     RegisterSerializer, ChangePasswordSerializer, RecentlyViewedSerializer,
-    DeviceTokenSerializer, GoogleAuthSerializer, PasswordResetSerializer,
-    PasswordResetConfirmSerializer, NotificationSettingsSerializer
+    DeviceTokenSerializer, GoogleAuthSerializer, AppleAuthSerializer,
+    PasswordResetSerializer, PasswordResetConfirmSerializer,
+    NotificationSettingsSerializer
 )
 
 
@@ -296,6 +297,110 @@ class GoogleAuthView(views.APIView):
         except ImportError:
             return Response(
                 {'error': 'Google authentication not configured'},
+                status=status.HTTP_501_NOT_IMPLEMENTED
+            )
+
+
+class AppleAuthView(views.APIView):
+    """
+    Authenticate with Apple Sign In.
+    Expects an id_token from Apple's ASAuthorizationAppleIDCredential.
+    Optionally accepts first_name and last_name (Apple only provides these on first sign-in).
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = AppleAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        id_token = serializer.validated_data['id_token']
+        first_name = serializer.validated_data.get('first_name', '')
+        last_name = serializer.validated_data.get('last_name', '')
+
+        try:
+            import jwt as pyjwt
+            from jwt import PyJWKClient
+
+            # Verify the token with Apple's public keys
+            jwks_client = PyJWKClient("https://appleid.apple.com/auth/keys")
+            signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+
+            payload = pyjwt.decode(
+                id_token,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=getattr(settings, 'APPLE_CLIENT_ID', None),
+                issuer="https://appleid.apple.com",
+            )
+
+            email = payload.get('email')
+            apple_user_id = payload.get('sub')
+
+            if not email and not apple_user_id:
+                return Response(
+                    {'error': 'Could not retrieve identity from Apple'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Try to find existing user by email first, then by apple user ID stored in username pattern
+            user = None
+            created = False
+
+            if email:
+                try:
+                    user = User.objects.get(email__iexact=email)
+                except User.DoesNotExist:
+                    pass
+
+            if not user:
+                # Create new user
+                username = email.split('@')[0][:30] if email else f"apple_{apple_user_id[:20]}"
+                user = User(
+                    username=username,
+                    email=email or '',
+                    first_name=first_name,
+                    last_name=last_name,
+                )
+                user.set_unusable_password()
+
+                # Handle username collision
+                base_username = user.username
+                counter = 1
+                while User.objects.filter(username=user.username).exists():
+                    user.username = f"{base_username}{counter}"
+                    counter += 1
+                user.save()
+                created = True
+
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+
+            return Response({
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                },
+                'tokens': {
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                },
+                'created': created,
+            })
+
+        except pyjwt.ExpiredSignatureError:
+            return Response(
+                {'error': 'Apple token has expired'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except pyjwt.InvalidTokenError as e:
+            return Response(
+                {'error': 'Invalid Apple token'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except ImportError:
+            return Response(
+                {'error': 'Apple authentication not configured'},
                 status=status.HTTP_501_NOT_IMPLEMENTED
             )
 

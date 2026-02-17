@@ -50,6 +50,13 @@ SERVER_EMAIL = 'HeroesAndMore <noreply@mail.heroesandmore.com>'
 GOOGLE_CLIENT_ID = ''
 GOOGLE_CLIENT_SECRET = ''
 
+# Apple Sign In (from developer.apple.com > Certificates, Identifiers & Profiles)
+# Service ID: Identifiers > Services IDs > create one linked to your App ID
+APPLE_CLIENT_ID = 'com.heroesandmore.signin'  # Your Service ID identifier
+APPLE_TEAM_ID = ''  # Your 10-char Team ID
+APPLE_KEY_ID = ''  # Key ID from Keys section
+APPLE_CERTIFICATE = ''  # Contents of .p8 private key file
+
 # Debug mode - set to False in production
 DEBUG = True
 
