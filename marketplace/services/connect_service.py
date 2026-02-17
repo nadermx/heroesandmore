@@ -10,15 +10,16 @@ class ConnectService:
     """Stripe Connect operations for sellers"""
 
     @staticmethod
-    def create_express_account(user):
+    def create_express_account(user, country=None):
         """Create Express connected account for seller"""
         profile = user.profile
-        logger.info(f"Creating Stripe Express account for user {user.id} ({user.email})")
+        country = country or profile.stripe_country or 'US'
+        logger.info(f"Creating Stripe Express account for user {user.id} ({user.email}) in {country}")
 
         try:
             account = stripe.Account.create(
                 type='express',
-                country='US',
+                country=country,
                 email=user.email,
                 capabilities={
                     'card_payments': {'requested': True},
@@ -30,7 +31,8 @@ class ConnectService:
 
             profile.stripe_account_id = account.id
             profile.stripe_account_type = 'express'
-            profile.save(update_fields=['stripe_account_id', 'stripe_account_type'])
+            profile.stripe_country = country
+            profile.save(update_fields=['stripe_account_id', 'stripe_account_type', 'stripe_country'])
 
             logger.info(f"Created Stripe account {account.id} for user {user.id}")
             return account

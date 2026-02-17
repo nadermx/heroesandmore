@@ -1154,11 +1154,17 @@ def seller_setup(request):
             # Refresh profile in case account was cleared
             profile.refresh_from_db()
 
-        # Create new account if needed (or if previous one was invalid)
+        # If no Stripe account yet, need country selection first
         if not profile.stripe_account_id:
-            logger.info(f"Creating new Stripe Connect account for user {request.user.id}")
-            ConnectService.create_express_account(request.user)
-            profile.refresh_from_db()
+            # Country submitted — create the account
+            if request.method == 'POST' and request.POST.get('country'):
+                country = request.POST['country'].upper()[:2]
+                logger.info(f"Creating new Stripe Connect account for user {request.user.id} in {country}")
+                ConnectService.create_express_account(request.user, country=country)
+                profile.refresh_from_db()
+            else:
+                # Show country picker
+                return render(request, 'marketplace/seller_setup_country.html')
 
         if profile.stripe_account_complete:
             messages.success(request, 'Your seller account is ready to receive payments!')

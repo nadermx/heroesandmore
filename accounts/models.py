@@ -25,6 +25,7 @@ class Profile(models.Model):
     # Stripe Connect (seller)
     stripe_account_id = models.CharField(max_length=100, blank=True)
     stripe_account_type = models.CharField(max_length=20, default='express')  # express, standard, custom
+    stripe_country = models.CharField(max_length=2, blank=True)  # ISO country code for Stripe Connect
     stripe_account_complete = models.BooleanField(default=False)
     stripe_payouts_enabled = models.BooleanField(default=False)
     stripe_charges_enabled = models.BooleanField(default=False)
