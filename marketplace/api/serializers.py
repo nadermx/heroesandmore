@@ -31,6 +31,8 @@ class ListingListSerializer(serializers.ModelSerializer):
     bid_count = serializers.SerializerMethodField()
     quantity_available = serializers.SerializerMethodField()
     is_platform_listing = serializers.BooleanField(read_only=True)
+    save_count = serializers.SerializerMethodField()
+    recent_bids = serializers.SerializerMethodField()
 
     class Meta:
         model = Listing
@@ -41,7 +43,7 @@ class ListingListSerializer(serializers.ModelSerializer):
             'category_name', 'category_slug', 'primary_image',
             'auction_end', 'time_remaining', 'bid_count',
             'shipping_price', 'views', 'created', 'quantity_available',
-            'is_platform_listing'
+            'is_platform_listing', 'save_count', 'recent_bids'
         ]
 
     def get_quantity_available(self, obj):
@@ -69,6 +71,16 @@ class ListingListSerializer(serializers.ModelSerializer):
             return obj.bids.count()
         return 0
 
+    def get_save_count(self, obj):
+        return obj.saves.count()
+
+    def get_recent_bids(self, obj):
+        if obj.listing_type == 'auction':
+            from datetime import timedelta
+            one_hour_ago = timezone.now() - timedelta(hours=1)
+            return obj.bids.filter(created__gte=one_hour_ago).count()
+        return 0
+
 
 class ListingDetailSerializer(serializers.ModelSerializer):
     """Full serializer for listing detail view"""
@@ -84,6 +96,12 @@ class ListingDetailSerializer(serializers.ModelSerializer):
     time_remaining = serializers.SerializerMethodField()
     quantity_available = serializers.SerializerMethodField()
     is_platform_listing = serializers.BooleanField(read_only=True)
+    watcher_count = serializers.SerializerMethodField()
+    recent_bid_count = serializers.SerializerMethodField()
+    bid_war_active = serializers.SerializerMethodField()
+    comps_range = serializers.SerializerMethodField()
+    bid_history = serializers.SerializerMethodField()
+    seller_is_trusted = serializers.BooleanField(source='seller.profile.is_trusted_seller', read_only=True)
 
     class Meta:
         model = Listing
@@ -96,7 +114,9 @@ class ListingDetailSerializer(serializers.ModelSerializer):
             'shipping_price', 'ships_from', 'auction_end', 'time_remaining',
             'reserve_price', 'no_reserve', 'starting_bid',
             'bid_count', 'high_bidder', 'is_saved', 'recent_sales',
-            'views', 'status', 'created', 'is_platform_listing'
+            'views', 'status', 'created', 'is_platform_listing',
+            'watcher_count', 'recent_bid_count', 'bid_war_active',
+            'comps_range', 'bid_history', 'seller_is_trusted'
         ]
 
     def get_quantity_available(self, obj):
@@ -152,6 +172,43 @@ class ListingDetailSerializer(serializers.ModelSerializer):
         if remaining:
             return int(remaining.total_seconds())
         return None
+
+    def get_watcher_count(self, obj):
+        return obj.saves.count()
+
+    def get_recent_bid_count(self, obj):
+        if obj.listing_type == 'auction':
+            from django.utils import timezone
+            from datetime import timedelta
+            one_minute_ago = timezone.now() - timedelta(minutes=1)
+            return obj.bids.filter(created__gte=one_minute_ago).count()
+        return 0
+
+    def get_bid_war_active(self, obj):
+        if obj.listing_type == 'auction':
+            from django.utils import timezone
+            from datetime import timedelta
+            five_minutes_ago = timezone.now() - timedelta(minutes=5)
+            return obj.bids.filter(created__gte=five_minutes_ago).count() >= 3
+        return False
+
+    def get_comps_range(self, obj):
+        if obj.price_guide_item:
+            sales = obj.price_guide_item.sales.order_by('-sale_date')[:6]
+            prices = [float(s.sale_price) for s in sales]
+            if prices:
+                return {'low': str(min(prices)), 'high': str(max(prices))}
+        return None
+
+    def get_bid_history(self, obj):
+        if obj.listing_type == 'auction':
+            bids = obj.bids.select_related('bidder').order_by('-amount')[:10]
+            return [{
+                'bidder': bid.bidder.username,
+                'amount': str(bid.amount),
+                'created': bid.created.isoformat()
+            } for bid in bids]
+        return []
 
 
 class ListingCreateSerializer(serializers.ModelSerializer):
