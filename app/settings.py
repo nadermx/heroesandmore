@@ -168,24 +168,14 @@ APPLE_TEAM_ID = getattr(config, 'APPLE_TEAM_ID', '')
 APPLE_KEY_ID = getattr(config, 'APPLE_KEY_ID', '')
 APPLE_CERTIFICATE = getattr(config, 'APPLE_CERTIFICATE', '')  # Private key PEM content
 
-# Socialaccount providers
+# Socialaccount providers — credentials are stored in DB (SocialApp model),
+# not in settings, to avoid MultipleObjectsReturned errors in allauth v65.
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': ['profile', 'email'],
         'AUTH_PARAMS': {'access_type': 'online'},
-        'APP': {
-            'client_id': GOOGLE_CLIENT_ID,
-            'secret': getattr(config, 'GOOGLE_CLIENT_SECRET', ''),
-        },
     },
     'apple': {
-        'APP': {
-            'client_id': APPLE_CLIENT_ID,
-            'secret': APPLE_KEY_ID,
-            'settings': {
-                'certificate_key': APPLE_CERTIFICATE,
-            },
-        },
         'SCOPE': ['name', 'email'],
     }
 }
