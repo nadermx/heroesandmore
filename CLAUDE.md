@@ -79,12 +79,15 @@ python manage.py test --verbosity=2                             # Verbose output
 - `/` - Homepage
 - `/items/` - Browse categories
 - `/marketplace/` - All listings
+- `/bid/` - Ad landing page (conversion-focused, shows live auctions, no login required)
 - `/collections/` - Browse collections
 - `/social/forums/` - Forums
 - `/price-guide/` - Price guide and market data
 - `/scanner/` - Item scanner (image recognition)
 - `/seller/` - Seller dashboard and tools
 - `/sell/` - Sell landing page (redirects to listing create if authenticated)
+- `/marketplace/order/track/` - Guest order lookup (email + order number)
+- `/marketplace/order/track/<token>/` - Guest order detail by token
 - `/admin/` - Django admin
 - `/api/v1/` - REST API root
 - `/api/docs/` - Swagger UI
@@ -92,15 +95,15 @@ python manage.py test --verbosity=2                             # Verbose output
 ## Key Models
 
 ### Core Models
-- `accounts.Profile` - User profiles, seller verification, subscription tiers
+- `accounts.Profile` - User profiles, seller verification, subscription tiers, founding member status
 - `accounts.RecentlyViewed` - Track recently viewed listings
 - `items.Category` - Hierarchical categories
 - `items.Item` - Base item database
-- `marketplace.Listing` - For sale items (fixed price and auctions)
+- `marketplace.Listing` - For sale items (fixed price and auctions), has `collector_notes` field
 - `marketplace.Bid` - Auction bids (FK to listing via `related_name='bids'`, has `created` timestamp)
 - `marketplace.SavedListing` - User saves/watchlist (FK to listing via `related_name='saves'`)
 - `marketplace.AuctionEvent` - Scheduled auction events
-- `marketplace.Order` - Purchases
+- `marketplace.Order` - Purchases (supports both authenticated buyers and guest checkout)
 - `marketplace.Offer` - Make offer/counteroffer system
 - `user_collections.Collection` - User collections with value tracking
 - `user_collections.CollectionValueSnapshot` - Daily value snapshots for charts
@@ -380,6 +383,12 @@ Curated auction events run by the platform. Trusted sellers submit lots for staf
 - `alerts.tasks.send_listing_expired_notification` - Email + in-app alert when auction ends with no bids
 - `alerts.tasks.send_relist_reminders` - Remind sellers about expired listings after 3 days (daily 11 AM)
 
+### Email Marketing Tasks
+- `alerts.tasks.send_welcome_email` - Welcome email with live auctions (triggered by allauth signal, not beat)
+- `alerts.tasks.send_weekly_auction_digest` - Weekend auctions + most watched (Friday 10 AM)
+- `alerts.tasks.send_watched_auction_final_24h` - Saved auctions ending in 24h (every 30 min)
+- `alerts.tasks.send_weekly_results_recap` - Top auction results recap (Monday 10 AM)
+
 ## Market Data Architecture
 
 Price guide data is imported via `pricing/services/market_data.py`:
@@ -617,6 +626,64 @@ When adding honeypot to new forms, add both hidden fields to the template and ch
 - Relist view (`/marketplace/<pk>/relist/`): auctions reset to draft (bids cleared), fixed-price reactivated immediately
 - Expired listings can also be edited directly (same as draft/active)
 
+## Guest Checkout
+
+Anonymous users can buy fixed-price items without creating an account. Auctions still require login.
+
+### Order Model (Guest Support)
+- `Order.buyer` is nullable (`null=True, blank=True`) — `None` for guest orders
+- `Order.guest_email` / `Order.guest_name` — collected at checkout for guests
+- `Order.guest_order_token` — auto-generated via `secrets.token_urlsafe(48)` on save when `buyer` is None
+- `Order.buyer_email` property — returns `buyer.email` or `guest_email`
+- `Order.buyer_display_name` property — returns buyer's name/username or guest_name/guest_email
+
+### Checkout Flow
+- `checkout` view creates Order with `buyer=None` for anonymous users, stores `guest_order_token` in session
+- `_get_order_for_checkout()` helper does dual lookup: by `buyer=request.user` OR by session `guest_order_token`
+- `StripeService.create_payment_intent()` creates ephemeral Stripe customer for guests (no saved cards)
+- Guest order tracking: `/marketplace/order/track/` (lookup) and `/marketplace/order/track/<token>/` (detail)
+- Guest confirmation page prompts "Create an account to track your order"
+
+### Important Rules
+- Only fixed-price listings allow guest checkout — auctions redirect to signup
+- Offers require login
+- In-app Alert creation is skipped for guest orders (no user to attach to)
+- `alerts.tasks.send_order_notifications` uses `order.buyer_email` instead of `order.buyer.email`
+
+## Founding Collector Program
+
+Early adopter recognition for users who sign up before `FOUNDING_MEMBER_CUTOFF` (settings.py, default `2026-06-01`).
+
+### Key Fields
+- `Profile.is_founding_member` — Boolean, auto-set in `create_user_profile` signal
+- `Profile.founding_member_since` — DateTimeField, set at signup if before cutoff
+
+### Badge Display (Must Be Consistent)
+When adding a new badge type, update ALL these locations:
+- `templates/components/listing_card.html` — card overlay badges
+- `templates/marketplace/listing_detail.html` — seller info section
+- `templates/accounts/profile.html` — profile header
+- `templates/accounts/dashboard.html` — dashboard header
+- `seller_tools/templates/seller_tools/dashboard.html` — seller dashboard header
+- `accounts/admin.py` — list_display and list_filter
+- `marketplace/api/serializers.py` — `seller_is_*` fields on ListingListSerializer and ListingDetailSerializer
+- `accounts/api/serializers.py` — ProfileSerializer and PublicProfileSerializer
+- Android app: DTOs, domain models, repository mappings, UI composables
+- iOS app: Model structs, SwiftUI views
+
+## Email Marketing Flows
+
+### Celery Tasks (alerts/tasks.py)
+- `send_welcome_email(user_id)` — triggered by allauth `user_signed_up` signal (wired in `accounts/signals.py`)
+- `send_weekly_auction_digest()` — Friday 10 AM, auctions ending this weekend
+- `send_watched_auction_final_24h()` — every 30 min, alerts for saved auctions ending in 24h
+- `send_weekly_results_recap()` — Monday 10 AM, top auction results from last week
+
+### Signal Wiring
+- `accounts/apps.py` has `AccountsConfig` with `ready()` that imports `accounts.signals`
+- `accounts/signals.py` has `user_signed_up` signal handler from allauth
+- `INSTALLED_APPS` uses `'accounts.apps.AccountsConfig'` (not bare `'accounts'`)
+
 ## Gotchas & Pitfalls
 - **allauth v65 SocialApp**: OAuth credentials MUST be in DB only (via `SocialApp` admin model), NOT in settings `APP` keys — having both causes `MultipleObjectsReturned`
 - `bid_count` is NOT a model property — use `listing.bids.count` or annotate with `Count('bids')`
@@ -626,3 +693,7 @@ When adding honeypot to new forms, add both hidden fields to the template and ch
 - Avoid `-webkit-appearance: none` on `.form-control` — it breaks native iOS keyboard behavior
 - Error pages (`404.html`, `403.html`, `500.html`) are standalone HTML — they don't extend `base.html` for reliability
 - On server, `config.py` is owned by `www:www` — use `sudo -u www` when running scripts that need it
+- **Celery Beat scheduler**: Uses default file-based scheduler — do NOT use `django_celery_beat.schedulers:DatabaseScheduler` (it's installed but not in INSTALLED_APPS, will crash)
+- **Auth templates**: Custom templates exist for `login.html`, `signup.html`, `logout.html`, `password_reset.html`, `password_reset_done.html`, `password_reset_from_key.html`, `password_reset_from_key_done.html` — any missing allauth template will render unstyled
+- **Pre-existing test failures**: Tests for login/registration pages fail with `SocialApp.DoesNotExist` because allauth template tags need a SocialApp in the test DB; error page tests and seller setup tests also fail — these are known issues
+- **Three-repo consistency**: When adding new API fields or badges, update all three repos (web, Android, iOS) — see "Badge Display" checklist under Founding Collector Program
