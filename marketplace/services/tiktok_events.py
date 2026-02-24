@@ -25,7 +25,7 @@ def _hash_value(value):
 
 def send_event(event_name, email=None, ip=None, user_agent=None,
                content_id=None, content_name=None, value=None, currency='USD',
-               content_type='product'):
+               content_type='product', page_url=None):
     """
     Send a server-side event to TikTok Events API.
 
@@ -60,27 +60,25 @@ def send_event(event_name, email=None, ip=None, user_agent=None,
         user_data['email'] = _hash_value(email)
 
     context = {'user': user_data}
+    if page_url:
+        context['page'] = {'url': page_url}
     if ip:
         context['ip'] = ip
     if user_agent:
         context['user_agent'] = user_agent
 
-    event = {
+    # v1.2 uses flat event payload (not wrapped in data array)
+    payload = {
         'pixel_code': TIKTOK_PIXEL_ID,
         'event': event_name,
         'event_id': str(uuid.uuid4()),
-        'timestamp': int(time.time()),
+        'timestamp': str(int(time.time())),
         'context': context,
         'properties': properties,
     }
 
     if TIKTOK_TEST_EVENT_CODE:
-        event['test_event_code'] = TIKTOK_TEST_EVENT_CODE
-
-    payload = {
-        'pixel_code': TIKTOK_PIXEL_ID,
-        'data': [event],
-    }
+        payload['test_event_code'] = TIKTOK_TEST_EVENT_CODE
 
     try:
         resp = requests.post(

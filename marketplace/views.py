@@ -256,6 +256,7 @@ def listing_create(request):
                     user_agent=request.META.get('HTTP_USER_AGENT'),
                     content_id=listing.pk,
                     content_name=listing.title,
+                    page_url=request.build_absolute_uri(),
                 )
             except Exception:
                 pass
@@ -751,6 +752,7 @@ def checkout_complete(request, pk):
                 content_id=order.listing.pk if order.listing else None,
                 content_name=order.listing.title if order.listing else None,
                 value=float(order.amount),
+                page_url=request.build_absolute_uri(),
             )
         except Exception:
             pass
