@@ -166,4 +166,19 @@
         </div>
     </div>
 </div>
+
+{% if order.status == 'paid' or order.status == 'shipped' or order.status == 'delivered' or order.status == 'completed' %}
+<script>
+// TikTok Pixel: CompletePayment
+if (typeof ttq !== 'undefined') {
+    ttq.track('CompletePayment', {
+        content_id: '{{ order.listing.pk }}',
+        content_type: 'product',
+        content_name: '{{ order.listing.title|escapejs }}',
+        value: {{ order.amount|floatformat:2 }},
+        currency: 'USD'
+    });
+}
+</script>
+{% endif %}
 {% endblock %}

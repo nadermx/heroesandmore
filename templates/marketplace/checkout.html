@@ -243,6 +243,18 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+// TikTok Pixel: InitiateCheckout
+if (typeof ttq !== 'undefined') {
+    ttq.track('InitiateCheckout', {
+        content_id: '{{ listing.pk }}',
+        content_type: 'product',
+        content_name: '{{ listing.title|escapejs }}',
+        value: {{ total|floatformat:2 }},
+        currency: 'USD'
+    });
+}
+</script>
 <script src="https://js.stripe.com/v3/"></script>
 <script>
 const stripe = Stripe('{{ stripe_public_key }}');

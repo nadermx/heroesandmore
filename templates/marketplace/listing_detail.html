@@ -986,6 +986,48 @@
 
 {% block extra_js %}
 <script>
+// TikTok Pixel: ViewContent
+if (typeof ttq !== 'undefined') {
+    ttq.track('ViewContent', {
+        content_id: '{{ listing.pk }}',
+        content_type: 'product',
+        content_name: '{{ listing.title|escapejs }}',
+        price: {{ listing.get_current_price|floatformat:2 }},
+        currency: 'USD'
+    });
+}
+// TikTok Pixel: AddToCart on bid
+var bidForm = document.getElementById('bidForm');
+if (bidForm) {
+    bidForm.addEventListener('submit', function() {
+        if (typeof ttq !== 'undefined') {
+            var amt = document.getElementById('bidAmount').value;
+            ttq.track('AddToCart', {
+                content_id: '{{ listing.pk }}',
+                content_type: 'product',
+                content_name: '{{ listing.title|escapejs }}',
+                price: parseFloat(amt) || 0,
+                currency: 'USD'
+            });
+        }
+    });
+}
+// TikTok Pixel: AddToWishlist on save
+document.addEventListener('htmx:afterRequest', function(e) {
+    if (e.detail.pathInfo && e.detail.pathInfo.requestPath.includes('/save/')) {
+        if (typeof ttq !== 'undefined') {
+            ttq.track('AddToWishlist', {
+                content_id: '{{ listing.pk }}',
+                content_type: 'product',
+                content_name: '{{ listing.title|escapejs }}',
+                price: {{ listing.get_current_price|floatformat:2 }},
+                currency: 'USD'
+            });
+        }
+    }
+});
+</script>
+<script>
 function switchImage(thumb, imageUrl) {
     document.getElementById('mainImage').src = imageUrl;
     document.querySelectorAll('.thumbnail-item').forEach(t => t.classList.remove('active'));

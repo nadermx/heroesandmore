@@ -111,7 +111,15 @@
     </div>
 </div>
 
-<script>document.getElementById('signup-ts').value = (Date.now() / 1000).toFixed(0);</script>
+<script>
+document.getElementById('signup-ts').value = (Date.now() / 1000).toFixed(0);
+// TikTok Pixel: CompleteRegistration on form submit
+document.querySelector('form[method="post"]').addEventListener('submit', function() {
+    if (typeof ttq !== 'undefined') {
+        ttq.track('CompleteRegistration');
+    }
+});
+</script>
 <style>
     .divider {
         display: flex;

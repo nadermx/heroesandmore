@@ -280,6 +280,16 @@
 
 {% block extra_js %}
 <script>
+// TikTok Pixel: Search (when search query present)
+{% if request.GET.q %}
+if (typeof ttq !== 'undefined') {
+    ttq.track('Search', {
+        query: '{{ request.GET.q|escapejs }}'
+    });
+}
+{% endif %}
+</script>
+<script>
 function updateSort(value) {
     const url = new URL(window.location.href);
     url.searchParams.set('sort', value);
