@@ -194,6 +194,10 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
+# TikTok Events API
+TIKTOK_ACCESS_TOKEN = getattr(config, 'TIKTOK_ACCESS_TOKEN', None)
+TIKTOK_TEST_EVENT_CODE = getattr(config, 'TIKTOK_TEST_EVENT_CODE', None)
+
 # Cache
 CACHES = {
     'default': {

@@ -245,6 +245,21 @@ def listing_create(request):
             listing.save()
             request.session.pop('listing_prefill', None)
             request.session.pop('scan_image', None)
+
+            # TikTok server-side SubmitForm event
+            try:
+                from marketplace.services.tiktok_events import send_event
+                send_event(
+                    'SubmitForm',
+                    email=request.user.email,
+                    ip=request.META.get('REMOTE_ADDR'),
+                    user_agent=request.META.get('HTTP_USER_AGENT'),
+                    content_id=listing.pk,
+                    content_name=listing.title,
+                )
+            except Exception:
+                pass
+
             messages.success(request, 'Listing created! Review and publish when ready.')
             return redirect('marketplace:listing_edit', pk=listing.pk)
     else:
@@ -723,6 +738,22 @@ def checkout_complete(request, pk):
             # Record sale on listing
             if order.listing:
                 order.listing.record_sale(order.quantity)
+
+    # TikTok server-side CompletePayment event
+    if order.status in ('paid', 'shipped', 'delivered', 'completed'):
+        try:
+            from marketplace.services.tiktok_events import send_event
+            send_event(
+                'CompletePayment',
+                email=order.buyer_email,
+                ip=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT'),
+                content_id=order.listing.pk if order.listing else None,
+                content_name=order.listing.title if order.listing else None,
+                value=float(order.amount),
+            )
+        except Exception:
+            pass
 
     context = {
         'order': order,
