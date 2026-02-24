@@ -14,6 +14,9 @@
                     {% if request.user.profile.is_trusted_seller %}
                     <span class="badge ms-1" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff;"><i class="bi bi-award"></i> Trusted Seller</span>
                     {% endif %}
+                    {% if request.user.profile.is_founding_member %}
+                    <span class="badge ms-1" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: #e0e0e0;"><i class="bi bi-gem"></i> Founding Collector</span>
+                    {% endif %}
                     {% if subscription.tier != 'starter' %}
                     <span class="ms-2 small">{{ subscription.commission_rate }}% commission{% if request.user.profile.is_trusted_seller %} (2% trusted discount applied){% endif %}</span>
                     {% endif %}

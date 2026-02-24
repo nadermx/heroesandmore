@@ -6,7 +6,15 @@
 <!-- Header -->
 <div class="section-alt border-bottom" style="padding: 1.5rem 0;">
     <div class="container">
-        <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Dashboard</h1>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+            <h1 style="font-size: 1.75rem; margin-bottom: 0;">Dashboard</h1>
+            {% if request.user.profile.is_trusted_seller %}
+            <span class="badge" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff;"><i class="bi bi-award"></i> Trusted Seller</span>
+            {% endif %}
+            {% if request.user.profile.is_founding_member %}
+            <span class="badge" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: #e0e0e0;"><i class="bi bi-gem"></i> Founding Collector</span>
+            {% endif %}
+        </div>
         <p class="text-muted mb-0">Manage your activity and track your progress</p>
     </div>
 </div>

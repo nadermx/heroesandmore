@@ -23,6 +23,7 @@ class ListingListSerializer(serializers.ModelSerializer):
     """Compact serializer for listing lists/browse"""
     seller_username = serializers.CharField(source='seller.username', read_only=True)
     seller_is_trusted = serializers.BooleanField(source='seller.profile.is_trusted_seller', read_only=True)
+    seller_is_founding = serializers.BooleanField(source='seller.profile.is_founding_member', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     category_slug = serializers.CharField(source='category.slug', read_only=True)
     primary_image = serializers.SerializerMethodField()
@@ -39,7 +40,7 @@ class ListingListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'collector_notes', 'price', 'current_price', 'listing_type',
             'condition', 'grading_service', 'grade', 'seller_username',
-            'seller_is_trusted',
+            'seller_is_trusted', 'seller_is_founding',
             'category_name', 'category_slug', 'primary_image',
             'auction_end', 'time_remaining', 'bid_count',
             'shipping_price', 'views', 'created', 'quantity_available',
@@ -102,6 +103,7 @@ class ListingDetailSerializer(serializers.ModelSerializer):
     comps_range = serializers.SerializerMethodField()
     bid_history = serializers.SerializerMethodField()
     seller_is_trusted = serializers.BooleanField(source='seller.profile.is_trusted_seller', read_only=True)
+    seller_is_founding = serializers.BooleanField(source='seller.profile.is_founding_member', read_only=True)
 
     class Meta:
         model = Listing
@@ -116,7 +118,7 @@ class ListingDetailSerializer(serializers.ModelSerializer):
             'bid_count', 'high_bidder', 'is_saved', 'recent_sales',
             'views', 'status', 'created', 'is_platform_listing',
             'watcher_count', 'recent_bid_count', 'bid_war_active',
-            'comps_range', 'bid_history', 'seller_is_trusted'
+            'comps_range', 'bid_history', 'seller_is_trusted', 'seller_is_founding'
         ]
 
     def get_quantity_available(self, obj):
