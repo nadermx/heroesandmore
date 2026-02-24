@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #0a1628;">Last Week's Top Auction Results</h2>
+
+    <p>Hi {{ user.first_name|default:user.username }},</p>
+
+    <p>Here's what sold last week on HeroesAndMore:</p>
+
+    <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #171717;">Top Results</h3>
+
+        {% for order in top_results %}
+        <div style="border-bottom: 1px solid #e5e5e5; padding: 10px 0;{% if forloop.last %} border-bottom: none;{% endif %}">
+            {% if order.listing %}
+            <span style="color: #171717; font-weight: 600;">{{ order.listing.title }}</span>
+            <br>
+            <span style="color: #16a34a; font-weight: 700; font-size: 1.1rem;">${{ order.item_price|floatformat:2 }}</span>
+            {% if order.listing.category %}
+            <span style="color: #737373; font-size: 13px;"> &middot; {{ order.listing.category.name }}</span>
+            {% endif %}
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <p>Thinking of selling? List your items and take advantage of our lower fees.</p>
+
+    <p style="text-align: center; margin: 30px 0;">
+        <a href="{{ site_url }}/marketplace/?type=auction&sort=ending"
+           style="background-color: #0a1628; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold; margin-right: 10px;">
+            Browse Live Auctions
+        </a>
+    </p>
+
+    <p style="color: #737373; font-size: 14px; margin-top: 40px; border-top: 1px solid #e5e5e5; padding-top: 20px;">
+        The HeroesAndMore Team<br>
+        <a href="{{ site_url }}" style="color: #737373;">heroesandmore.com</a><br>
+        <a href="{{ site_url }}/accounts/settings/" style="color: #737373; font-size: 12px;">Manage email preferences</a>
+    </p>
+</body>
+</html>

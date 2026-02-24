@@ -37,7 +37,7 @@ class ListingListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Listing
         fields = [
-            'id', 'title', 'price', 'current_price', 'listing_type',
+            'id', 'title', 'collector_notes', 'price', 'current_price', 'listing_type',
             'condition', 'grading_service', 'grade', 'seller_username',
             'seller_is_trusted',
             'category_name', 'category_slug', 'primary_image',
@@ -106,7 +106,7 @@ class ListingDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Listing
         fields = [
-            'id', 'title', 'description', 'price', 'current_price',
+            'id', 'title', 'description', 'collector_notes', 'price', 'current_price',
             'listing_type', 'condition', 'grading_service', 'grade',
             'cert_number', 'is_graded', 'seller', 'category_name',
             'category_slug', 'images', 'allow_offers', 'minimum_offer_percent',
@@ -216,7 +216,7 @@ class ListingCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Listing
         fields = [
-            'title', 'description', 'category', 'condition', 'price',
+            'title', 'description', 'collector_notes', 'category', 'condition', 'price',
             'listing_type', 'quantity', 'auction_end', 'reserve_price', 'no_reserve',
             'starting_bid', 'allow_offers', 'minimum_offer_percent',
             'grading_service', 'grade', 'cert_number',

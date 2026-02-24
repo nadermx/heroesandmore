@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Live Auctions - Collectibles at HeroesAndMore{% endblock %}
+{% block meta_description %}Browse live auctions for comics, trading cards, and collectibles. Lower fees, no corporate games. Built by collectors, for collectors.{% endblock %}
+{% block og_title %}Live Auctions - HeroesAndMore{% endblock %}
+{% block og_description %}Where serious collectors buy and sell. Browse live auctions ending soon, most watched lots, and more.{% endblock %}
+
+{% block extra_css %}
+<style>
+.bid-hero {
+    background: linear-gradient(135deg, var(--brand-navy) 0%, #0d1321 50%, #1a1a2e 100%);
+    padding: 4rem 0 3rem;
+    position: relative;
+    overflow: hidden;
+}
+.bid-hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 30% 50%, rgba(0,180,216,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 80%, rgba(212,160,23,0.06) 0%, transparent 50%);
+}
+.bid-hero h1 { font-size: 2.5rem; font-weight: 800; color: #fff; position: relative; }
+.bid-hero .lead { color: rgba(255,255,255,0.7); position: relative; font-size: 1.15rem; }
+.stats-bar { background: var(--gray-50); border-bottom: 1px solid var(--border-color); padding: 1rem 0; }
+.stats-bar .stat-item { text-align: center; }
+.stats-bar .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--brand-navy); }
+.stats-bar .stat-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-500); }
+.section-heading { font-size: 1.5rem; font-weight: 700; color: var(--brand-navy); }
+.bid-feed-item { padding: 0.5rem 0; border-bottom: 1px solid var(--gray-100); font-size: 0.9rem; }
+.bid-feed-item:last-child { border-bottom: none; }
+.bid-feed-amount { font-weight: 700; color: var(--accent-success); }
+.bid-feed-time { color: var(--gray-500); font-size: 0.8rem; }
+.comparison-table { border-radius: 0.75rem; overflow: hidden; }
+.comparison-table th { background: var(--brand-navy); color: #fff; text-align: center; padding: 0.75rem; }
+.comparison-table td { padding: 0.75rem; text-align: center; vertical-align: middle; }
+.comparison-table tr:nth-child(even) td { background: var(--gray-50); }
+.comparison-check { color: var(--accent-success); font-size: 1.1rem; }
+.comparison-x { color: var(--gray-400); }
+.founding-bar { height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden; }
+.founding-bar-fill { height: 100%; background: linear-gradient(90deg, var(--brand-gold), #D4A017); border-radius: 4px; transition: width 0.5s; }
+.soft-cta { background: linear-gradient(135deg, rgba(0,180,216,0.06), rgba(0,180,216,0.02)); border: 1px solid rgba(0,180,216,0.15); border-radius: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<section class="bid-hero">
+    <div class="container text-center">
+        <h1>Where Serious Collectors Buy & Sell</h1>
+        <p class="lead mb-4">Lower fees. Better books. Built for collectors &mdash; not corporations.</p>
+        <div class="d-flex justify-content-center gap-3 flex-wrap position-relative">
+            <a href="#featured" class="btn btn-lg btn-primary px-4">Browse Live Auctions</a>
+            <a href="{% url 'marketplace:listing_list' %}?type=auction&sort=ending" class="btn btn-lg btn-outline-light px-4">View This Week's Featured Lots</a>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Bar -->
+<section class="stats-bar">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-3">
+                <div class="stat-value">{{ active_listings|default:"0"|intcomma }}</div>
+                <div class="stat-label">Active Listings</div>
+            </div>
+            <div class="col-3">
+                <div class="stat-value">{{ collectors_count|default:"0"|intcomma }}</div>
+                <div class="stat-label">Collectors</div>
+            </div>
+            <div class="col-3">
+                <div class="stat-value">{{ total_sold|default:"0"|intcomma }}</div>
+                <div class="stat-label">Items Sold</div>
+            </div>
+            <div class="col-3">
+                <div class="stat-value">{{ avg_rating|default:"5.0"|floatformat:1 }}</div>
+                <div class="stat-label">Avg Rating</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Inventory — Live Auctions Ending Soon -->
+<section class="py-5" id="featured">
+    <div class="container">
+        <h2 class="section-heading mb-4">Live Auctions Ending Soon</h2>
+        {% if featured_auctions %}
+        <div class="row g-3">
+            {% for listing in featured_auctions %}
+            <div class="col-6 col-md-4 col-lg-3">
+                {% with show_time=True %}
+                {% include 'components/listing_card.html' %}
+                {% endwith %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <p class="text-muted">No active auctions right now. Check back soon!</p>
+            <a href="{% url 'marketplace:listing_list' %}" class="btn btn-primary">Browse All Listings</a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Most Watched Lots -->
+{% if most_watched %}
+<section class="py-5 section-alt">
+    <div class="container">
+        <h2 class="section-heading mb-4"><i class="bi bi-eye"></i> Most Watched Lots</h2>
+        <div class="row g-3">
+            {% for listing in most_watched %}
+            <div class="col-6 col-md-4 col-lg-2">
+                {% with show_time=True %}
+                {% include 'components/listing_card.html' %}
+                {% endwith %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Recent Bids Feed -->
+{% if recent_bid_feed %}
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-6 mx-auto">
+                <h2 class="section-heading mb-4"><i class="bi bi-lightning-charge"></i> Recent Bids</h2>
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div class="px-3 py-2">
+                            {% for bid in recent_bid_feed %}
+                            <div class="bid-feed-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="bid-feed-amount">${{ bid.amount|floatformat:2 }}</span>
+                                    bid on <a href="{{ bid.listing.get_absolute_url }}">{{ bid.listing.title|truncatewords:8 }}</a>
+                                </div>
+                                <span class="bid-feed-time">{{ bid.created|timesince }} ago</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Why Collectors Are Switching -->
+<section class="py-5 section-alt">
+    <div class="container">
+        <h2 class="section-heading text-center mb-5">Why Collectors Are Switching</h2>
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <table class="table comparison-table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Feature</th>
+                            <th>Traditional Platforms</th>
+                            <th style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-navy));">Heroes & More</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="text-align: left; font-weight: 500;">Seller Commission</td>
+                            <td>10&ndash;15%</td>
+                            <td><strong style="color: var(--accent-success);">5.95&ndash;12.95%</strong></td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left; font-weight: 500;">Built for Collectibles</td>
+                            <td><i class="bi bi-x-lg comparison-x"></i></td>
+                            <td><i class="bi bi-check-lg comparison-check"></i></td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left; font-weight: 500;">Price Guide & Comps</td>
+                            <td><i class="bi bi-x-lg comparison-x"></i></td>
+                            <td><i class="bi bi-check-lg comparison-check"></i></td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left; font-weight: 500;">Anti-Sniping Protection</td>
+                            <td><i class="bi bi-x-lg comparison-x"></i></td>
+                            <td><i class="bi bi-check-lg comparison-check"></i></td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: left; font-weight: 500;">Collector Community</td>
+                            <td>Generic</td>
+                            <td><strong style="color: var(--brand-cyan);">Purpose-Built</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Soft Conversion CTA -->
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="soft-cta p-4 text-center">
+                    {% if user.is_authenticated %}
+                    <h3 class="fw-bold mb-2">You're In</h3>
+                    <p class="text-muted mb-3">Browse the marketplace and find your next grail.</p>
+                    <a href="{% url 'marketplace:listing_list' %}" class="btn btn-primary px-4">Browse All Listings</a>
+                    {% else %}
+                    <h3 class="fw-bold mb-2">Save Lots & Get Bid Alerts</h3>
+                    <p class="text-muted mb-3">Create a free account to save lots to your watchlist and get notified before auctions end.</p>
+                    <a href="{% url 'account_signup' %}" class="btn btn-primary btn-lg px-5">Create Free Account</a>
+                    <p class="text-muted mt-2 mb-0" style="font-size: 0.8rem;">Already have an account? <a href="{% url 'account_login' %}">Sign in</a></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Founding Collector Urgency -->
+{% if not user.is_authenticated or not user.profile.is_founding_member %}
+<section class="py-4">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 text-center">
+                <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+                    <i class="bi bi-gem" style="color: var(--brand-gold);"></i>
+                    <span class="fw-bold" style="font-size: 0.9rem;">First {{ founding_target|intcomma }} members earn <strong>Founding Collector</strong> status</span>
+                </div>
+                <div class="founding-bar mb-2">
+                    <div class="founding-bar-fill" style="width: {{ founding_progress }}%;"></div>
+                </div>
+                <p class="text-muted mb-0" style="font-size: 0.8rem;">{{ total_members|intcomma }} of {{ founding_target|intcomma }} spots claimed</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

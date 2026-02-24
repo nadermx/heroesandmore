@@ -11,7 +11,7 @@ from accounts.api.views import (
     GoogleAuthView, AppleAuthView, PasswordResetView, PasswordResetConfirmView,
     ChangePasswordView
 )
-from app.views import contact, log_frontend_error, sell_landing, trusted_seller_landing
+from app.views import bid_landing, contact, log_frontend_error, sell_landing, trusted_seller_landing
 from alerts.views import newsletter_subscribe, newsletter_verify, newsletter_preferences, newsletter_unsubscribe
 
 urlpatterns = [
@@ -48,8 +48,9 @@ urlpatterns = [
     path('scanner/', include('scanner.urls')),
     path('seller/', include('seller_tools.urls')),
 
-    # Sell landing page (media buy destination)
+    # Ad landing pages (media buy destinations)
     path('sell/', sell_landing, name='sell'),
+    path('bid/', bid_landing, name='bid_landing'),
 
     # Trusted Seller program
     path('trusted-seller/', trusted_seller_landing, name='trusted_seller'),

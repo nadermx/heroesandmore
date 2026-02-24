@@ -72,9 +72,21 @@ class StripeService:
 
     @staticmethod
     def create_payment_intent(order, payment_method_id=None, save_card=False):
-        """Create PaymentIntent for order checkout"""
-        customer = StripeService.get_or_create_customer(order.buyer)
+        """Create PaymentIntent for order checkout.
+        Supports both authenticated buyers and guest checkout.
+        """
         seller_profile = order.seller.profile
+
+        # Get or create Stripe customer
+        if order.buyer:
+            customer = StripeService.get_or_create_customer(order.buyer)
+        else:
+            # Guest checkout — create ephemeral Stripe customer
+            customer = stripe.Customer.create(
+                email=order.guest_email,
+                name=order.guest_name,
+                metadata={'guest_order': True, 'order_id': order.id}
+            )
 
         # Calculate amounts in cents
         total_cents = int(order.amount * 100)
@@ -91,7 +103,7 @@ class StripeService:
             'metadata': {
                 'order_id': order.id,
                 'listing_id': order.listing_id if order.listing else '',
-                'buyer_id': order.buyer.id,
+                'buyer_email': order.buyer_email,
                 'seller_id': order.seller.id,
             },
             'description': f"Order #{order.id} - {order.listing.title[:50] if order.listing else 'Order'}",
@@ -111,7 +123,8 @@ class StripeService:
             params['confirm'] = True
             params['return_url'] = f"{settings.SITE_URL}/marketplace/order/{order.id}/complete/"
 
-            if save_card:
+            # Only save card for authenticated users
+            if save_card and order.buyer:
                 params['setup_future_usage'] = 'off_session'
 
         intent = stripe.PaymentIntent.create(**params)

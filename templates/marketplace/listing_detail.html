@@ -676,6 +676,9 @@
                         {% if listing.seller.profile.is_trusted_seller %}
                         <span class="badge ms-1" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff; font-size: 0.7em;"><i class="bi bi-award"></i> Trusted Seller</span>
                         {% endif %}
+                        {% if listing.seller.profile.is_founding_member %}
+                        <span class="badge ms-1" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: #e0e0e0; font-size: 0.7em;"><i class="bi bi-gem"></i> Founding Collector</span>
+                        {% endif %}
                         <div class="d-flex align-items-center gap-3 mt-1">
                             {% if listing.seller.profile.rating %}
                             <span class="small">
@@ -791,6 +794,16 @@
                 <div class="card-body">
                     <h5 class="fw-bold mb-3">Description</h5>
                     <div style="white-space: pre-wrap; line-height: 1.7; color: var(--gray-700);">{{ listing.description }}</div>
+
+                    {% if listing.collector_notes %}
+                    <div class="mt-3 p-3" style="background: linear-gradient(135deg, rgba(212,160,23,0.08), rgba(184,134,11,0.04)); border-left: 3px solid var(--brand-gold); border-radius: 0.5rem;">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <i class="bi bi-chat-quote" style="color: var(--brand-gold); font-size: 0.9rem;"></i>
+                            <span class="fw-semibold" style="font-size: 0.8rem; color: var(--brand-gold); text-transform: uppercase; letter-spacing: 0.05em;">Collector Notes</span>
+                        </div>
+                        <p class="mb-0" style="font-style: italic; color: var(--gray-700); font-size: 0.95rem;">{{ listing.collector_notes }}</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 

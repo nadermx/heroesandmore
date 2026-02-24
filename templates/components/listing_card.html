@@ -18,6 +18,9 @@
             {% elif listing.seller.profile.is_trusted_seller %}
             <span class="badge" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff;"><i class="bi bi-award"></i> Trusted</span>
             {% endif %}
+            {% if listing.seller.profile.is_founding_member %}
+            <span class="badge" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: #e0e0e0;"><i class="bi bi-gem"></i> Founding</span>
+            {% endif %}
             {% if listing.listing_type == 'auction' %}
             <span class="badge badge-auction">Auction</span>
             {% endif %}
@@ -92,6 +95,12 @@
         {% if listing.listing_type == 'auction' and listing.bid_count %}
         <div class="text-muted" style="font-size: 0.75rem;">
             {{ listing.bid_count }} bid{{ listing.bid_count|pluralize }}
+        </div>
+        {% endif %}
+
+        {% if listing.collector_notes %}
+        <div class="text-muted mt-1" style="font-size: 0.75rem; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ listing.collector_notes }}">
+            {{ listing.collector_notes }}
         </div>
         {% endif %}
     </div>

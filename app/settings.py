@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'django_filters',
     # Local apps
     'api',
-    'accounts',
+    'accounts.apps.AccountsConfig',
     'user_collections',
     'items',
     'marketplace',
@@ -219,6 +219,9 @@ ORDER_PAYMENT_TIMEOUT_HOURS = getattr(config, 'ORDER_PAYMENT_TIMEOUT_HOURS', 24)
 # Platform fee (3% base, adjusted per seller tier)
 from decimal import Decimal
 PLATFORM_FEE_PERCENT = Decimal('0.03')
+
+# Founding Collector badge cutoff date (YYYY-MM-DD)
+FOUNDING_MEMBER_CUTOFF = '2026-06-01'
 
 # Site URL for callbacks
 SITE_URL = getattr(config, 'SITE_URL', 'http://localhost:8000')

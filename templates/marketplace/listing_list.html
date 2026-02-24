@@ -184,6 +184,40 @@
             </div>
             {% endif %}
 
+            <!-- Most Watched (auction view) -->
+            {% if most_watched %}
+            <div class="mb-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-eye"></i> Most Watched Lots</h6>
+                <div class="row g-3">
+                    {% for listing in most_watched %}
+                    <div class="col-4 col-md-2">
+                        {% with show_time=True %}
+                        {% include 'components/listing_card.html' %}
+                        {% endwith %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <hr class="my-4" style="border-color: var(--gray-200);">
+            </div>
+            {% endif %}
+
+            <!-- Recent Bids (auction view) -->
+            {% if recent_bids %}
+            <div class="mb-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-lightning-charge"></i> Recent Bids</h6>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    {% for bid in recent_bids %}
+                    <span class="badge bg-light text-dark border" style="font-size: 0.8rem;">
+                        <strong class="text-success">${{ bid.amount|floatformat:2 }}</strong>
+                        on <a href="{{ bid.listing.get_absolute_url }}" class="text-dark">{{ bid.listing.title|truncatewords:5 }}</a>
+                        <span class="text-muted">&middot; {{ bid.created|timesince }} ago</span>
+                    </span>
+                    {% endfor %}
+                </div>
+                <hr class="my-4" style="border-color: var(--gray-200);">
+            </div>
+            {% endif %}
+
             <!-- Results Grid -->
             <div class="row g-4">
                 {% for listing in listings %}

@@ -3,11 +3,15 @@ import time
 import logging
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.core.mail import send_mail
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from datetime import timedelta
 
 from items.models import Category
 from items.views import _get_site_stats
@@ -39,6 +43,65 @@ def trusted_seller_landing(request):
         **_get_site_stats(),
     }
     return render(request, 'pages/trusted_seller.html', context)
+
+
+def bid_landing(request):
+    """Ad landing page — shows live auction inventory for conversion."""
+    from marketplace.models import Listing, Bid, SavedListing
+    from accounts.models import Profile
+
+    now = timezone.now()
+    one_hour_ago = now - timedelta(hours=1)
+
+    # Featured auctions ending soonest
+    featured_auctions = (
+        Listing.objects.filter(
+            status='active', listing_type='auction',
+            auction_end__gt=now,
+        )
+        .select_related('seller', 'seller__profile', 'category')
+        .annotate(
+            save_count=Count('saves'),
+            bid_count_total=Count('bids'),
+            recent_bids=Count('bids', filter=Q(bids__created__gte=one_hour_ago)),
+        )
+        .order_by('auction_end')[:12]
+    )
+
+    # Most watched auctions
+    most_watched = (
+        Listing.objects.filter(
+            status='active', listing_type='auction',
+            auction_end__gt=now,
+        )
+        .select_related('seller', 'seller__profile', 'category')
+        .annotate(save_count=Count('saves'))
+        .order_by('-save_count')[:6]
+    )
+
+    # Recent bids feed (last 6 hours)
+    six_hours_ago = now - timedelta(hours=6)
+    recent_bid_feed = (
+        Bid.objects.filter(created__gte=six_hours_ago)
+        .select_related('listing', 'bidder')
+        .order_by('-created')[:15]
+    )
+
+    # Founding member progress
+    total_members = User.objects.count()
+    founding_target = 1000
+    founding_progress = min(int((total_members / founding_target) * 100), 100)
+
+    context = {
+        'featured_auctions': featured_auctions,
+        'most_watched': most_watched,
+        'recent_bid_feed': recent_bid_feed,
+        'total_members': total_members,
+        'founding_target': founding_target,
+        'founding_progress': founding_progress,
+        **_get_site_stats(),
+    }
+    return render(request, 'pages/bid_landing.html', context)
 
 
 def contact(request):

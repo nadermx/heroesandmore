@@ -81,4 +81,19 @@ app.conf.beat_schedule = {
         'task': 'seller_tools.tasks.update_trusted_seller_status',
         'schedule': crontab(hour=4, minute=0),  # Daily at 4 AM
     },
+    # Weekly auction digest (Friday 10 AM)
+    'weekly-auction-digest': {
+        'task': 'alerts.tasks.send_weekly_auction_digest',
+        'schedule': crontab(hour=10, minute=0, day_of_week=5),  # Friday
+    },
+    # Watched auction final 24h alerts (every 30 minutes)
+    'watched-auction-final-24h': {
+        'task': 'alerts.tasks.send_watched_auction_final_24h',
+        'schedule': crontab(minute='*/30'),
+    },
+    # Weekly results recap (Monday 10 AM)
+    'weekly-results-recap': {
+        'task': 'alerts.tasks.send_weekly_results_recap',
+        'schedule': crontab(hour=10, minute=0, day_of_week=1),  # Monday
+    },
 }

@@ -1,8 +1,10 @@
 from django.db import models
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.urls import reverse
+from django.utils import timezone
 
 
 class Profile(models.Model):
@@ -52,6 +54,8 @@ class Profile(models.Model):
     # Platform flags
     is_platform_account = models.BooleanField(default=False)
     is_trusted_seller = models.BooleanField(default=False)
+    is_founding_member = models.BooleanField(default=False)
+    founding_member_since = models.DateTimeField(null=True, blank=True)
 
     # Settings
     is_public = models.BooleanField(default=True)
@@ -97,7 +101,14 @@ class Profile(models.Model):
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        Profile.objects.create(user=instance)
+        now = timezone.now()
+        cutoff = getattr(settings, 'FOUNDING_MEMBER_CUTOFF', '2026-06-01')
+        is_founding = now.strftime('%Y-%m-%d') < cutoff
+        Profile.objects.create(
+            user=instance,
+            is_founding_member=is_founding,
+            founding_member_since=now if is_founding else None,
+        )
 
 
 @receiver(post_save, sender=User)

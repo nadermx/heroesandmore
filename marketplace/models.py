@@ -1,3 +1,4 @@
+import secrets
 from django.db import models
 from django.db.models import F, Value, Case, When
 from django.contrib.auth.models import User
@@ -139,6 +140,8 @@ class Listing(models.Model):
 
     title = models.CharField(max_length=200)
     description = models.TextField()
+    collector_notes = models.CharField(max_length=300, blank=True,
+        help_text="Expert notes, e.g. 'Press candidate, strong eye appeal'")
     condition = models.CharField(max_length=20, choices=CONDITION_CHOICES)
 
     # Grading info
@@ -408,8 +411,13 @@ class Order(models.Model):
     ]
 
     listing = models.ForeignKey(Listing, on_delete=models.SET_NULL, null=True, related_name='orders')
-    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchases')
+    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchases', null=True, blank=True)
     seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sales')
+
+    # Guest checkout fields
+    guest_email = models.EmailField(blank=True)
+    guest_name = models.CharField(max_length=200, blank=True)
+    guest_order_token = models.CharField(max_length=64, blank=True, db_index=True, null=True, unique=True)
 
     # Pricing
     quantity = models.PositiveIntegerField(default=1)
@@ -450,8 +458,24 @@ class Order(models.Model):
     def __str__(self):
         return f"Order #{self.pk} - {self.listing.title if self.listing else 'Deleted listing'}"
 
+    def save(self, *args, **kwargs):
+        # Auto-generate guest order token for guest checkouts
+        if not self.buyer and not self.guest_order_token:
+            self.guest_order_token = secrets.token_urlsafe(48)
+        super().save(*args, **kwargs)
+
     def get_absolute_url(self):
         return reverse('marketplace:order_detail', kwargs={'pk': self.pk})
+
+    @property
+    def buyer_email(self):
+        return self.buyer.email if self.buyer else self.guest_email
+
+    @property
+    def buyer_display_name(self):
+        if self.buyer:
+            return self.buyer.get_full_name() or self.buyer.username
+        return self.guest_name or self.guest_email
 
 
 class Review(models.Model):

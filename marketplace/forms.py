@@ -20,7 +20,7 @@ class ListingForm(forms.ModelForm):
     class Meta:
         model = Listing
         fields = [
-            'title', 'description', 'category', 'condition',
+            'title', 'description', 'collector_notes', 'category', 'condition',
             'grading_service', 'grade', 'cert_number',
             'price', 'listing_type', 'quantity', 'reserve_price', 'allow_offers',
             'image1', 'image2', 'image3', 'image4', 'image5',
@@ -29,6 +29,7 @@ class ListingForm(forms.ModelForm):
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
+            'collector_notes': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "e.g. 'Press candidate, strong eye appeal'"}),
             'category': forms.Select(attrs={'class': 'form-select'}),
             'condition': forms.Select(attrs={'class': 'form-select'}),
             'grading_service': forms.Select(attrs={'class': 'form-select'}),

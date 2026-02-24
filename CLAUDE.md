@@ -56,7 +56,7 @@ celery -A app beat -l info
 ### Management Commands
 ```bash
 python manage.py seed_categories          # Populate initial categories
-python manage.py import_market_data       # Import price data (--source ebay|heritage|gocollect --verbose)
+python manage.py import_market_data       # Import price data (--source ebay|heritage|gocollect --verbose --skip-images)
 ```
 
 ### Running Tests
@@ -122,7 +122,7 @@ Templates and views depend heavily on these — know them before modifying listi
 - Logic lives in the API bid view (`marketplace/api/views.py`)
 
 ### Price Guide (pricing app)
-- `pricing.PriceGuideItem` - Master catalog of items with pricing data
+- `pricing.PriceGuideItem` - Master catalog of items with pricing data (has `image`, `image_source_url`, `image_source` for auto-imported images)
 - `pricing.GradePrice` - Price data for each grade (PSA 10, BGS 9.5, etc.)
 - `pricing.SaleRecord` - Individual sale records for price tracking
 
@@ -386,7 +386,9 @@ Price guide data is imported via `pricing/services/market_data.py`:
 - `EbayMarketData`, `HeritageAuctionsData`, `GoCollectData` - scraper classes
 - `MarketDataImporter` - coordinates imports, matches to price guide items
 - Celery task `import_all_market_data` runs at 6 AM and 6 PM daily
-- External sources require proxy service (eBay, Heritage block direct requests)
+- All scrapers use `_make_proxied_request()` with free rotating proxies (eBay/Heritage block datacenter IPs)
+- `download_image_for_item()` downloads images for PriceGuideItems during import
+- eBay parser handles both legacy `.s-item` and new `.s-card` HTML layouts (2025+ redesign)
 
 ## REST API (Added 2026-01)
 
@@ -398,6 +400,9 @@ Full REST API for Android/iOS app support using Django REST Framework.
 ### Authentication
 - JWT tokens via `/api/v1/auth/token/` (POST username, password)
 - Refresh tokens via `/api/v1/auth/token/refresh/`
+- Google OAuth: POST `/api/v1/auth/google/` with `{"id_token": "..."}`
+- Apple Sign-In: POST `/api/v1/auth/apple/` with `{"id_token": "...", "first_name": "...", "last_name": "..."}`
+- Password reset: POST `/api/v1/auth/password/reset/` and `/api/v1/auth/password/reset/confirm/`
 - Bearer token in header: `Authorization: Bearer <token>`
 
 ### API Documentation
@@ -438,6 +443,16 @@ api/                            # Central API app
 └── urls.py                     # App-specific API routes
 ```
 
+### API Rate Limiting
+- Anonymous: 100 requests/hour
+- Authenticated: 1000 requests/hour
+- Automatically disabled during tests (`TESTING` flag)
+
+### CORS
+- Production: `heroesandmore.com` and `www.heroesandmore.com` only
+- Development (`DEBUG=True`): all origins allowed
+- Credentials allowed (`CORS_ALLOW_CREDENTIALS = True`)
+
 ### Push Notifications
 - `accounts.DeviceToken` model stores FCM tokens (Firebase)
 - Register device: POST `/api/v1/accounts/me/device/`
@@ -466,6 +481,7 @@ Uses Stripe Connect embedded components so users stay on-site:
 - Account session API: `/marketplace/seller-setup/session/`
 - Template: `templates/marketplace/seller_setup.html`
 - Uses `StripeConnect.init()` with `account-onboarding` component
+- **International sellers supported** — `connect_service.py` does NOT restrict `country` parameter, allowing Stripe to handle supported countries automatically
 
 ### Local Testing
 ```bash
@@ -573,10 +589,26 @@ Fixed-price listings support multi-quantity (e.g., 20 of the same item). Auction
 - Post-import photo capture: mobile-first camera flow via HTMX at `/seller/import/<pk>/photos/`
 - Photo slots use `<input type="file" accept="image/*" capture="environment">` for rear camera on mobile
 
-## Authentication
-- Django allauth with email + Google OAuth (settings-based provider config, no SocialApp DB records)
+## Authentication & Spam Protection
+
+### Auth
+- Django allauth with email + Google OAuth + Apple Sign-In
+- **OAuth credentials stored in DB** via `SocialApp` model (not in settings) — allauth v65 raises `MultipleObjectsReturned` if both settings `APP` keys and DB records exist for the same provider
+- `SOCIALACCOUNT_PROVIDERS` in settings.py contains only scope/params config, NOT client ID/secret
 - allauth v65 uses HMAC email confirmation by default (`ACCOUNT_EMAIL_CONFIRMATION_HMAC = True`)
-- Google OAuth configured via `SOCIALACCOUNT_PROVIDERS` in settings.py with client ID/secret from config.py
+- `LOGIN_URL = '/auth/signup/'` — intentional: unauthenticated users are sent to signup, not login
+- Mobile API social auth (`accounts/api/views.py`: `GoogleAuthView`, `AppleAuthView`) is independent of allauth — verifies tokens directly with Google/Apple APIs and issues JWT tokens
+
+### Honeypot Spam Protection
+Four-layer protection on signup and contact forms (`app/middleware.py` + `app/views.py`):
+1. **Hidden `website` field** — positioned off-screen (`left: -9999px`), bots auto-fill it
+2. **Timestamp `_ts` field** — set via JS `Date.now()/1000`, submissions under 3 seconds = bot
+3. **Missing timestamp detection** — headless bots that don't execute JS won't have `_ts` at all
+4. **Bot username detection** — flags random gibberish usernames (e.g., `hpPAeAxtNbBktCqnG`) via regex pattern matching on length, mixed case, and lack of common separators
+
+Bots get silently redirected with a fake success message (no error shown). Spam attempts logged via `logger.warning()`.
+
+When adding honeypot to new forms, add both hidden fields to the template and check them in the view or middleware. See `templates/account/signup.html` and `templates/pages/contact.html` for template examples.
 
 ## Listing Expiration & Relist Flow
 - When `end_auctions` finds no-bid auctions past their end time, it sets `status='expired'` + `expired_at=now()`
@@ -585,22 +617,12 @@ Fixed-price listings support multi-quantity (e.g., 20 of the same item). Auction
 - Relist view (`/marketplace/<pk>/relist/`): auctions reset to draft (bids cleared), fixed-price reactivated immediately
 - Expired listings can also be edited directly (same as draft/active)
 
-## Social Media
-- Instagram: [@heroesandmoreofficial](https://www.instagram.com/heroesandmoreofficial)
-- Facebook: [Heroesandmore](https://www.facebook.com/people/Heroesandmore/61587374366802/)
-- TikTok: [@heroesandmoreofficial](https://www.tiktok.com/@heroesandmoreofficial)
-- YouTube: [@heroesandmore](https://youtube.com/@heroesandmore)
-- X/Twitter: [@heroesam](https://x.com/heroesam)
-
-## Notes
-- The `collections` app uses `item_collections` as the related_name to avoid conflicts with Python's built-in collections module
-- All listing images are stored in `media/listings/`
-- User avatars are stored in `media/avatars/`
+## Gotchas & Pitfalls
+- **allauth v65 SocialApp**: OAuth credentials MUST be in DB only (via `SocialApp` admin model), NOT in settings `APP` keys — having both causes `MultipleObjectsReturned`
+- `bid_count` is NOT a model property — use `listing.bids.count` or annotate with `Count('bids')`
+- **Never set `listing.status = 'sold'` directly** — always use `record_sale()` / `reverse_sale()`
 - Commission is tier-based per `SellerSubscription.commission_rate` (not the flat `PLATFORM_FEE_PERCENT` in settings, which is a base fallback)
-- Image scanner requires Google Cloud Vision API (configure credentials)
-- Error pages (`404.html`, `403.html`, `500.html`) are standalone HTML — they don't extend `base.html` for reliability
 - Django template syntax: `{% with %}` blocks cannot contain `{% else %}` — only `{% if %}` blocks can
 - Avoid `-webkit-appearance: none` on `.form-control` — it breaks native iOS keyboard behavior
-- `Bid.created` is an auto-set timestamp — used in time-based queries (bid wars, recent bids). Filter with `bids__created__gte=...`
-- Unpaid orders auto-cancel after 24 hours (`ORDER_PAYMENT_TIMEOUT_HOURS` setting, `expire_unpaid_orders` task)
+- Error pages (`404.html`, `403.html`, `500.html`) are standalone HTML — they don't extend `base.html` for reliability
 - On server, `config.py` is owned by `www:www` — use `sudo -u www` when running scripts that need it

@@ -131,6 +131,28 @@
 
                 <!-- Checkout Form -->
                 <div class="col-md-7 order-md-1">
+                    {% if is_guest %}
+                    <!-- Guest Info -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-transparent">
+                            <h6 class="fw-bold mb-0">Your Information</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Email *</label>
+                                <input type="email" id="guest-email" class="form-control" required placeholder="you@example.com">
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Name</label>
+                                <input type="text" id="guest-name" class="form-control" placeholder="Full name">
+                            </div>
+                            <p class="text-muted small mt-2 mb-0">
+                                Already have an account? <a href="{% url 'account_login' %}?next={{ request.path }}">Sign in</a>
+                            </p>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <!-- Shipping Address -->
                     <div class="card mb-4">
                         <div class="card-header bg-transparent">
@@ -139,7 +161,7 @@
                         <div class="card-body">
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Full Name</label>
-                                <input type="text" id="shipping-name" class="form-control" value="{{ user.get_full_name }}" required>
+                                <input type="text" id="shipping-name" class="form-control" value="{% if not is_guest %}{{ user.get_full_name }}{% endif %}" required>
                             </div>
 
                             <div class="mb-0">
@@ -155,7 +177,7 @@
                             <h6 class="fw-bold mb-0">Payment Method</h6>
                         </div>
                         <div class="card-body">
-                            {% if payment_methods %}
+                            {% if not is_guest and payment_methods %}
                             <!-- Saved Payment Methods -->
                             <div class="mb-4">
                                 <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Saved Cards</label>
@@ -185,15 +207,17 @@
                             {% endif %}
 
                             <!-- New Card Form -->
-                            <div id="new-card-form" {% if payment_methods %}style="display: none;"{% endif %}>
+                            <div id="new-card-form" {% if not is_guest and payment_methods %}style="display: none;"{% endif %}>
                                 <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Card Details</label>
                                 <div id="card-element"></div>
                                 <div id="card-errors" role="alert"></div>
 
+                                {% if not is_guest %}
                                 <div class="form-check mt-3">
                                     <input type="checkbox" class="form-check-input" id="save-card" checked>
                                     <label class="form-check-label text-muted" for="save-card">Save card for future purchases</label>
                                 </div>
+                                {% endif %}
                             </div>
 
                             <hr class="my-4" style="border-color: var(--gray-200);">
@@ -273,6 +297,19 @@ document.getElementById('pay-button').addEventListener('click', async function()
         return;
     }
 
+    // Guest checkout validation
+    const isGuest = {{ is_guest|yesno:"true,false" }};
+    let guestEmail = '';
+    let guestName = '';
+    if (isGuest) {
+        guestEmail = document.getElementById('guest-email')?.value.trim() || '';
+        guestName = document.getElementById('guest-name')?.value.trim() || '';
+        if (!guestEmail) {
+            document.getElementById('card-errors').textContent = 'Please enter your email address.';
+            return;
+        }
+    }
+
     button.disabled = true;
     spinner.classList.remove('d-none');
     buttonText.textContent = 'Processing...';
@@ -301,17 +338,23 @@ document.getElementById('pay-button').addEventListener('click', async function()
             paymentMethodId = paymentMethod.id;
         }
 
+        const bodyParams = {
+            payment_method_id: paymentMethodId,
+            save_card: saveCard,
+            shipping_address: shippingAddress
+        };
+        if (isGuest) {
+            bodyParams.guest_email = guestEmail;
+            bodyParams.guest_name = guestName;
+        }
+
         const response = await fetch('{% url "marketplace:process_payment" pk=order.pk %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'X-CSRFToken': '{{ csrf_token }}'
             },
-            body: new URLSearchParams({
-                payment_method_id: paymentMethodId,
-                save_card: saveCard,
-                shipping_address: shippingAddress
-            })
+            body: new URLSearchParams(bodyParams)
         });
 
         const data = await response.json();

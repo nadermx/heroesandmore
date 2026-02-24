@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, Http404
-from django.db.models import Q, F
+from django.db.models import Q, F, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
 from datetime import timedelta
@@ -73,6 +73,24 @@ def listing_list(request):
     if 'page' in context['query_params']:
         context['query_params'].pop('page')
     context['query_params'] = context['query_params'].urlencode()
+
+    # Social proof sections when viewing auctions
+    if listing_type == 'auction':
+        now = timezone.now()
+        context['most_watched'] = (
+            Listing.objects.filter(
+                status='active', listing_type='auction', auction_end__gt=now,
+            )
+            .select_related('seller', 'seller__profile', 'category')
+            .annotate(save_count=Count('saves'))
+            .order_by('-save_count')[:6]
+        )
+        context['recent_bids'] = (
+            Bid.objects.filter(created__gte=now - timedelta(hours=6))
+            .select_related('listing', 'bidder')
+            .order_by('-created')[:10]
+        )
+
     return render(request, 'marketplace/listing_list.html', context)
 
 
@@ -514,22 +532,39 @@ def respond_counter_offer(request, pk):
     return redirect('marketplace:listing_detail', pk=offer.listing.pk)
 
 
-@login_required
 def checkout(request, pk):
-    """Checkout page for buying - combines shipping and payment"""
+    """Checkout page for buying - combines shipping and payment.
+    Supports both authenticated users and guest checkout (fixed-price only).
+    """
     listing = get_object_or_404(Listing, pk=pk)
+    is_guest = not request.user.is_authenticated
 
-    if request.user == listing.seller:
+    # Guests can only buy fixed-price listings
+    if is_guest and listing.listing_type == 'auction':
+        messages.info(request, 'Please sign in or create an account to bid on auctions.')
+        return redirect('account_signup')
+
+    if request.user.is_authenticated and request.user == listing.seller:
         raise Http404("Cannot buy your own listing")
 
     order = None
     # If listing is no longer active, allow checkout only for an existing pending order.
     if listing.status != 'active':
-        order = Order.objects.filter(
-            listing=listing,
-            buyer=request.user,
-            status__in=['pending', 'payment_failed']
-        ).first()
+        if is_guest:
+            # Guest: look up by session token
+            guest_token = request.session.get('guest_order_token')
+            if guest_token:
+                order = Order.objects.filter(
+                    listing=listing,
+                    guest_order_token=guest_token,
+                    status__in=['pending', 'payment_failed']
+                ).first()
+        else:
+            order = Order.objects.filter(
+                listing=listing,
+                buyer=request.user,
+                status__in=['pending', 'payment_failed']
+            ).first()
         if not order:
             raise Http404("Listing is no longer available")
 
@@ -538,10 +573,15 @@ def checkout(request, pk):
     if not order:
         # For single-quantity listings, block concurrent checkouts
         if listing.quantity <= 1:
+            exclude_q = Q()
+            if not is_guest:
+                exclude_q = Q(buyer=request.user)
+            elif request.session.get('guest_order_token'):
+                exclude_q = Q(guest_order_token=request.session['guest_order_token'])
             if Order.objects.filter(
                 listing=listing,
                 status__in=['pending', 'payment_failed']
-            ).exclude(buyer=request.user).exists():
+            ).exclude(exclude_q).exists():
                 messages.error(request, 'This listing is currently in another checkout. Please try again shortly.')
                 return redirect('marketplace:listing_detail', pk=pk)
 
@@ -557,29 +597,56 @@ def checkout(request, pk):
         platform_fee = StripeService.calculate_platform_fee(item_price, listing.seller)
         total = item_price + listing.shipping_price
 
-        # Get or create pending order for this listing/buyer
-        order, created = Order.objects.get_or_create(
-            listing=listing,
-            buyer=request.user,
-            status='pending',
-            defaults={
-                'seller': listing.seller,
-                'quantity': qty,
-                'item_price': item_price,
-                'shipping_price': listing.shipping_price,
-                'amount': total,
-                'platform_fee': platform_fee,
-                'seller_payout': item_price - platform_fee,
-                'shipping_address': '',
-            }
-        )
+        if is_guest:
+            # Check if guest already has a pending order via session token
+            guest_token = request.session.get('guest_order_token')
+            if guest_token:
+                order = Order.objects.filter(
+                    listing=listing,
+                    guest_order_token=guest_token,
+                    status='pending',
+                ).first()
+
+            if not order:
+                order = Order.objects.create(
+                    listing=listing,
+                    buyer=None,
+                    seller=listing.seller,
+                    quantity=qty,
+                    item_price=item_price,
+                    shipping_price=listing.shipping_price,
+                    amount=total,
+                    platform_fee=platform_fee,
+                    seller_payout=item_price - platform_fee,
+                    shipping_address='',
+                )
+                # Store token in session
+                request.session['guest_order_token'] = order.guest_order_token
+        else:
+            # Get or create pending order for this listing/buyer
+            order, created = Order.objects.get_or_create(
+                listing=listing,
+                buyer=request.user,
+                status='pending',
+                defaults={
+                    'seller': listing.seller,
+                    'quantity': qty,
+                    'item_price': item_price,
+                    'shipping_price': listing.shipping_price,
+                    'amount': total,
+                    'platform_fee': platform_fee,
+                    'seller_payout': item_price - platform_fee,
+                    'shipping_address': '',
+                }
+            )
     else:
-        price = order.item_price
         platform_fee = order.platform_fee
         total = order.amount
 
-    # Get saved payment methods
-    payment_methods = StripeService.list_payment_methods(request.user)
+    # Get saved payment methods (authenticated users only)
+    payment_methods = []
+    if not is_guest:
+        payment_methods = StripeService.list_payment_methods(request.user)
 
     context = {
         'listing': listing,
@@ -588,14 +655,24 @@ def checkout(request, pk):
         'platform_fee': platform_fee,
         'total': total,
         'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
+        'is_guest': is_guest,
     }
     return render(request, 'marketplace/checkout.html', context)
 
 
-@login_required
+def _get_order_for_checkout(request, pk):
+    """Helper to get order for checkout — supports both auth and guest users."""
+    if request.user.is_authenticated:
+        return get_object_or_404(Order, pk=pk, buyer=request.user, status__in=['pending', 'payment_failed'])
+    guest_token = request.session.get('guest_order_token')
+    if guest_token:
+        return get_object_or_404(Order, pk=pk, guest_order_token=guest_token, status__in=['pending', 'payment_failed'])
+    raise Http404()
+
+
 def payment(request, pk):
     """Handle Stripe payment confirmation"""
-    order = get_object_or_404(Order, pk=pk, buyer=request.user, status__in=['pending', 'payment_failed'])
+    order = _get_order_for_checkout(request, pk)
 
     from marketplace.services.stripe_service import StripeService
 
@@ -621,10 +698,16 @@ def payment(request, pk):
     return render(request, 'marketplace/payment.html', context)
 
 
-@login_required
 def checkout_complete(request, pk):
     """Order confirmation page after successful payment"""
-    order = get_object_or_404(Order, pk=pk, buyer=request.user)
+    if request.user.is_authenticated:
+        order = get_object_or_404(Order, pk=pk, buyer=request.user)
+    else:
+        guest_token = request.session.get('guest_order_token')
+        if guest_token:
+            order = get_object_or_404(Order, pk=pk, guest_order_token=guest_token)
+        else:
+            raise Http404()
 
     from marketplace.services.stripe_service import StripeService
 
@@ -647,12 +730,11 @@ def checkout_complete(request, pk):
     return render(request, 'marketplace/checkout_complete.html', context)
 
 
-@login_required
 def process_payment(request, pk):
     """Process payment with selected method (AJAX endpoint)"""
     from django.http import JsonResponse
 
-    order = get_object_or_404(Order, pk=pk, buyer=request.user, status__in=['pending', 'payment_failed'])
+    order = _get_order_for_checkout(request, pk)
 
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
@@ -665,8 +747,19 @@ def process_payment(request, pk):
     elif not order.shipping_address:
         return JsonResponse({'error': 'Shipping address is required'}, status=400)
 
+    # Guest checkout: update guest email/name
+    is_guest = not request.user.is_authenticated
+    if is_guest:
+        guest_email = request.POST.get('guest_email', '').strip()
+        guest_name = request.POST.get('guest_name', '').strip()
+        if not guest_email:
+            return JsonResponse({'error': 'Email is required'}, status=400)
+        order.guest_email = guest_email
+        order.guest_name = guest_name
+        order.save(update_fields=['guest_email', 'guest_name'])
+
     payment_method_id = request.POST.get('payment_method_id')
-    save_card = request.POST.get('save_card') == 'true'
+    save_card = request.POST.get('save_card') == 'true' and not is_guest
 
     from marketplace.services.stripe_service import StripeService
 
@@ -687,9 +780,12 @@ def process_payment(request, pk):
             if order.listing:
                 order.listing.record_sale(order.quantity)
 
+            # Redirect to complete page
+            redirect_url = f'/marketplace/order/{order.id}/complete/'
+
             return JsonResponse({
                 'success': True,
-                'redirect': f'/marketplace/order/{order.id}/'
+                'redirect': redirect_url
             })
 
         elif intent.status == 'requires_action':
@@ -781,7 +877,11 @@ def order_detail(request, pk):
     order = get_object_or_404(Order, pk=pk)
 
     # Only buyer or seller can view
-    if request.user not in [order.buyer, order.seller]:
+    if order.buyer and request.user == order.buyer:
+        pass  # Buyer can view
+    elif request.user == order.seller:
+        pass  # Seller can view
+    else:
         raise Http404()
 
     is_seller = request.user == order.seller
@@ -1029,6 +1129,39 @@ def save_listing(request, pk):
         return JsonResponse({'is_saved': is_saved})
 
     return redirect('marketplace:listing_detail', pk=pk)
+
+
+def guest_order_lookup(request):
+    """Guest order lookup form — email + order number."""
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        order_id = request.POST.get('order_id', '').strip()
+
+        if email and order_id:
+            try:
+                order = Order.objects.get(
+                    pk=int(order_id),
+                    guest_email__iexact=email,
+                    buyer__isnull=True,
+                )
+                return redirect('marketplace:guest_order_detail', token=order.guest_order_token)
+            except (Order.DoesNotExist, ValueError):
+                messages.error(request, 'Order not found. Please check your email and order number.')
+        else:
+            messages.error(request, 'Please enter both your email and order number.')
+
+    return render(request, 'marketplace/guest_order_lookup.html')
+
+
+def guest_order_detail(request, token):
+    """View guest order by token URL."""
+    order = get_object_or_404(Order, guest_order_token=token, buyer__isnull=True)
+
+    context = {
+        'order': order,
+        'is_guest': True,
+    }
+    return render(request, 'marketplace/guest_order_detail.html', context)
 
 
 @login_required

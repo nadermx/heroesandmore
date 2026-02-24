@@ -23,12 +23,14 @@ class ProfileSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'avatar', 'avatar_url', 'bio',
             'location', 'website', 'is_seller_verified', 'is_trusted_seller',
+            'is_founding_member', 'founding_member_since',
             'stripe_account_complete',
             'seller_tier', 'rating', 'rating_count', 'total_sales_count',
             'is_public', 'email_notifications', 'created'
         ]
         read_only_fields = [
             'rating', 'rating_count', 'is_seller_verified', 'is_trusted_seller',
+            'is_founding_member', 'founding_member_since',
             'stripe_account_complete', 'total_sales_count', 'seller_tier'
         ]
 
@@ -52,6 +54,7 @@ class PublicProfileSerializer(serializers.ModelSerializer):
         fields = [
             'username', 'avatar_url', 'bio', 'location', 'website',
             'rating', 'rating_count', 'is_seller_verified', 'is_trusted_seller',
+            'is_founding_member',
             'total_sales_count', 'listings_count', 'created'
         ]
 

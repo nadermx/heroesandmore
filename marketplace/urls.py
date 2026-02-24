@@ -44,6 +44,10 @@ urlpatterns = [
     path('order/<int:pk>/refund/', views.order_refund, name='order_refund'),
     path('order/<int:pk>/cancel/', views.order_cancel, name='order_cancel'),
 
+    # Guest order tracking
+    path('order/track/', views.guest_order_lookup, name='guest_order_lookup'),
+    path('order/track/<str:token>/', views.guest_order_detail, name='guest_order_detail'),
+
     # User pages
     path('saved/', views.saved_listings, name='saved_listings'),
     path('my-listings/', views.my_listings, name='my_listings'),

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: #dc2626;">Last Chance — Ending Soon!</h2>
+
+    <p>Hi {{ user.first_name|default:user.username }},</p>
+
+    <p>An auction you're watching is ending in less than 24 hours:</p>
+
+    <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #dc2626;">
+        <h3 style="margin-top: 0; color: #171717;">{{ listing.title }}</h3>
+
+        <p style="margin-bottom: 5px;"><strong>Current Price:</strong> <span style="color: #16a34a; font-size: 1.25rem; font-weight: 700;">${{ listing.get_current_price|floatformat:2 }}</span></p>
+        <p style="margin-bottom: 5px;"><strong>Category:</strong> {{ listing.category.name }}</p>
+        {% if listing.condition %}
+        <p style="margin-bottom: 5px;"><strong>Condition:</strong> {{ listing.get_condition_display }}</p>
+        {% endif %}
+    </div>
+
+    <p style="text-align: center; margin: 30px 0;">
+        <a href="{{ site_url }}{{ listing.get_absolute_url }}"
+           style="background-color: #dc2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">
+            Place Your Bid Now
+        </a>
+    </p>
+
+    <p style="color: #737373; font-size: 13px;">Don't miss out — once the auction ends, it's gone.</p>
+
+    <p style="color: #737373; font-size: 14px; margin-top: 40px; border-top: 1px solid #e5e5e5; padding-top: 20px;">
+        The HeroesAndMore Team<br>
+        <a href="{{ site_url }}" style="color: #737373;">heroesandmore.com</a><br>
+        <a href="{{ site_url }}/accounts/settings/" style="color: #737373; font-size: 12px;">Manage email preferences</a>
+    </p>
+</body>
+</html>

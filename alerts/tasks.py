@@ -4,6 +4,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models import Count, Q
 
 logger = logging.getLogger('alerts')
 
@@ -228,14 +229,15 @@ def send_order_notifications(order_id, event_type):
 
     if event_type == 'paid':
         # Email to buyer: Order confirmed
-        if order.buyer.email:
+        buyer_email = order.buyer_email
+        if buyer_email:
             html_content = render_to_string('marketplace/emails/order_confirmed.html', context)
             try:
                 send_mail(
                     subject=f'Order Confirmed - #{order.id}',
                     message=f'Your order #{order.id} for {order.listing.title} has been confirmed.',
                     from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[order.buyer.email],
+                    recipient_list=[buyer_email],
                     html_message=html_content,
                     fail_silently=True,
                 )
@@ -257,14 +259,15 @@ def send_order_notifications(order_id, event_type):
             except Exception:
                 pass
 
-        # Create in-app alerts
-        Alert.objects.create(
-            user=order.buyer,
-            alert_type='order_update',
-            title=f'Order #{order.id} Confirmed',
-            message=f'Your order for {order.listing.title} has been confirmed.',
-            link=f'/marketplace/order/{order.id}/',
-        )
+        # Create in-app alerts (skip buyer alert for guest orders)
+        if order.buyer:
+            Alert.objects.create(
+                user=order.buyer,
+                alert_type='order_update',
+                title=f'Order #{order.id} Confirmed',
+                message=f'Your order for {order.listing.title} has been confirmed.',
+                link=f'/marketplace/order/{order.id}/',
+            )
         Alert.objects.create(
             user=order.seller,
             alert_type='order_update',
@@ -275,28 +278,30 @@ def send_order_notifications(order_id, event_type):
 
     elif event_type == 'shipped':
         # Email to buyer: Order shipped
-        if order.buyer.email:
+        buyer_email = order.buyer_email
+        if buyer_email:
             html_content = render_to_string('marketplace/emails/order_shipped.html', context)
             try:
                 send_mail(
                     subject=f'Your order has shipped - #{order.id}',
                     message=f'Your order #{order.id} has been shipped via {order.tracking_carrier}. Tracking: {order.tracking_number}',
                     from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[order.buyer.email],
+                    recipient_list=[buyer_email],
                     html_message=html_content,
                     fail_silently=True,
                 )
             except Exception:
                 pass
 
-        # In-app alert
-        Alert.objects.create(
-            user=order.buyer,
-            alert_type='order_update',
-            title=f'Order #{order.id} Shipped',
-            message=f'Your order has been shipped! Tracking: {order.tracking_number}',
-            link=f'/marketplace/order/{order.id}/',
-        )
+        # In-app alert (skip for guest orders)
+        if order.buyer:
+            Alert.objects.create(
+                user=order.buyer,
+                alert_type='order_update',
+                title=f'Order #{order.id} Shipped',
+                message=f'Your order has been shipped! Tracking: {order.tracking_number}',
+                link=f'/marketplace/order/{order.id}/',
+            )
 
     elif event_type == 'delivered':
         # Email to seller: Delivery confirmed
@@ -868,4 +873,268 @@ def send_relist_reminders():
     if sent:
         logger.info(f"Sent {sent} relist reminders")
 
+    return sent
+
+
+@shared_task
+def send_welcome_email(user_id):
+    """
+    Send welcome email with live auctions to new user.
+    Triggered by allauth user_signed_up signal.
+    """
+    from django.template.loader import render_to_string
+    from django.contrib.auth.models import User
+    from marketplace.models import Listing
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return
+
+    if not user.email:
+        return
+
+    now = timezone.now()
+    featured_auctions = (
+        Listing.objects.filter(
+            status='active', listing_type='auction', auction_end__gt=now,
+        )
+        .select_related('category')
+        .order_by('auction_end')[:6]
+    )
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {
+        'user': user,
+        'featured_auctions': featured_auctions,
+        'site_url': site_url,
+    }
+
+    html_content = render_to_string('marketplace/emails/welcome_auctions.html', context)
+    try:
+        send_mail(
+            subject='Welcome to HeroesAndMore — Live Auctions Happening Now',
+            message=f'Welcome {user.username}! Check out live auctions at {site_url}/marketplace/?type=auction',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            html_message=html_content,
+            fail_silently=True,
+        )
+        logger.info(f"Welcome email sent to {user.email}")
+    except Exception:
+        logger.error(f"Failed to send welcome email to {user.email}", exc_info=True)
+
+
+@shared_task
+def send_weekly_auction_digest():
+    """
+    Weekly auction digest — sent Friday 10 AM.
+    Shows auctions ending this weekend, most watched, total bids this week.
+    """
+    from django.template.loader import render_to_string
+    from django.contrib.auth.models import User
+    from marketplace.models import Listing, Bid
+    from accounts.models import Profile
+
+    now = timezone.now()
+    weekend_end = now + timedelta(days=3)
+
+    # Auctions ending this weekend
+    ending_weekend = (
+        Listing.objects.filter(
+            status='active', listing_type='auction',
+            auction_end__gt=now, auction_end__lte=weekend_end,
+        )
+        .select_related('category')
+        .annotate(save_count=Count('saves'))
+        .order_by('-save_count')[:8]
+    )
+
+    # Most watched active auctions
+    most_watched = (
+        Listing.objects.filter(
+            status='active', listing_type='auction', auction_end__gt=now,
+        )
+        .annotate(save_count=Count('saves'))
+        .order_by('-save_count')[:6]
+    )
+
+    # Stats this week
+    week_ago = now - timedelta(days=7)
+    total_bids_week = Bid.objects.filter(created__gte=week_ago).count()
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+
+    # Send to users with email notifications enabled
+    users = User.objects.filter(
+        profile__email_notifications=True,
+        is_active=True,
+    ).exclude(email='')
+
+    sent = 0
+    for user in users.iterator():
+        context = {
+            'user': user,
+            'ending_weekend': ending_weekend,
+            'most_watched': most_watched,
+            'total_bids_week': total_bids_week,
+            'site_url': site_url,
+        }
+        html_content = render_to_string('marketplace/emails/weekly_auction_digest.html', context)
+        try:
+            send_mail(
+                subject='This Week on HeroesAndMore — Auctions Ending Soon',
+                message=f'Check out auctions ending this weekend at {site_url}/marketplace/?type=auction&sort=ending',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+            sent += 1
+        except Exception:
+            pass
+
+    logger.info(f"Weekly auction digest sent to {sent} users")
+    return sent
+
+
+@shared_task
+def send_watched_auction_final_24h():
+    """
+    Notify users when auctions they saved are ending in 24 hours.
+    Runs every 30 minutes.
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Listing, SavedListing
+    from .models import Alert
+
+    now = timezone.now()
+    twenty_four_hours = now + timedelta(hours=24)
+
+    # Auctions ending in next 24 hours
+    ending_soon = Listing.objects.filter(
+        status='active', listing_type='auction',
+        auction_end__gt=now, auction_end__lte=twenty_four_hours,
+    )
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    sent = 0
+
+    for listing in ending_soon:
+        # Users who saved this listing
+        saved_entries = SavedListing.objects.filter(
+            listing=listing,
+        ).select_related('user', 'user__profile')
+
+        for saved in saved_entries:
+            user = saved.user
+            if not user.is_active or not user.email:
+                continue
+            if not user.profile.email_notifications:
+                continue
+
+            # Dedup: skip if already alerted for this listing in last 24h
+            already_sent = Alert.objects.filter(
+                user=user,
+                listing=listing,
+                alert_type='auction_final_24h',
+                created__gte=now - timedelta(hours=24),
+            ).exists()
+            if already_sent:
+                continue
+
+            context = {
+                'user': user,
+                'listing': listing,
+                'site_url': site_url,
+            }
+            html_content = render_to_string('marketplace/emails/auction_final_24h.html', context)
+            try:
+                send_mail(
+                    subject=f'Last chance: {listing.title} — ending soon!',
+                    message=f'An auction you saved is ending in less than 24 hours: {listing.title}. Bid now at {site_url}{listing.get_absolute_url()}',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    html_message=html_content,
+                    fail_silently=True,
+                )
+                sent += 1
+            except Exception:
+                pass
+
+            # Create in-app alert for dedup tracking
+            Alert.objects.create(
+                user=user,
+                alert_type='auction_final_24h',
+                title=f'Ending soon: {listing.title}',
+                message=f'An auction you saved is ending in less than 24 hours!',
+                link=listing.get_absolute_url(),
+                listing=listing,
+            )
+
+    if sent:
+        logger.info(f"Sent {sent} final 24h auction alerts")
+    return sent
+
+
+@shared_task
+def send_weekly_results_recap():
+    """
+    Weekly results recap — sent Monday 10 AM.
+    Shows auctions that ended last week with bids, top results.
+    """
+    from django.template.loader import render_to_string
+    from django.contrib.auth.models import User
+    from marketplace.models import Listing, Order
+
+    now = timezone.now()
+    week_ago = now - timedelta(days=7)
+
+    # Top results from last week (auctions that sold)
+    top_results = (
+        Order.objects.filter(
+            created__gte=week_ago,
+            status__in=['paid', 'shipped', 'delivered', 'completed'],
+            listing__listing_type='auction',
+        )
+        .select_related('listing', 'listing__category')
+        .order_by('-item_price')[:10]
+    )
+
+    if not top_results:
+        logger.info("No auction results last week, skipping recap")
+        return 0
+
+    total_sold = top_results.count()
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+
+    users = User.objects.filter(
+        profile__email_notifications=True,
+        is_active=True,
+    ).exclude(email='')
+
+    sent = 0
+    for user in users.iterator():
+        context = {
+            'user': user,
+            'top_results': top_results,
+            'total_sold': total_sold,
+            'site_url': site_url,
+        }
+        html_content = render_to_string('marketplace/emails/weekly_recap.html', context)
+        try:
+            send_mail(
+                subject='Last Week on HeroesAndMore — Top Auction Results',
+                message=f'Check out last week\'s top auction results at {site_url}/marketplace/',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+            sent += 1
+        except Exception:
+            pass
+
+    logger.info(f"Weekly recap sent to {sent} users")
     return sent
