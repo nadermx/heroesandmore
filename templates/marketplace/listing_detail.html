@@ -626,7 +626,7 @@
                     <i class="bi bi-hammer me-2"></i> Sign In to Bid
                 </a>
                 {% elif listing.listing_type == 'fixed' and listing.status == 'active' and listing.quantity_available > 0 %}
-                <a href="{% url 'account_signup' %}?next={{ request.path }}" class="btn btn-dark action-button">
+                <a href="{% url 'marketplace:checkout' pk=listing.pk %}" class="btn btn-dark action-button">
                     <i class="bi bi-bag me-2"></i> Buy Now — ${{ listing.price|intcomma }}
                 </a>
                 {% if listing.allow_offers %}
