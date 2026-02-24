@@ -367,7 +367,7 @@ document.getElementById('pay-button').addEventListener('click', async function()
                 throw new Error(actionError.message);
             }
             if (paymentIntent && paymentIntent.status === 'succeeded') {
-                window.location.href = '/marketplace/order/{{ order.id }}/complete/';
+                window.location.href = '{% url "marketplace:checkout_complete" pk=order.pk %}';
             }
         } else {
             throw new Error(data.error || 'Payment failed');
