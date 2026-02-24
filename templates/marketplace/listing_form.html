@@ -243,6 +243,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     listingType.addEventListener('change', toggleOptions);
     toggleOptions();
+
+    {% if not listing %}
+    // TikTok Pixel: SubmitForm on new listing creation
+    document.querySelector('form').addEventListener('submit', function() {
+        if (typeof ttq !== 'undefined') {
+            ttq.track('SubmitForm', {
+                content_name: document.getElementById('id_title').value || 'New Listing'
+            });
+        }
+    });
+    {% endif %}
 });
 </script>
 {% endblock %}
