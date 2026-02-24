@@ -5,6 +5,7 @@ Sends conversion events directly to TikTok for better attribution.
 import hashlib
 import logging
 import time
+import uuid
 import requests
 from django.conf import settings
 
@@ -57,18 +58,19 @@ def send_event(event_name, email=None, ip=None, user_agent=None,
     user_data = {}
     if email:
         user_data['email'] = _hash_value(email)
+
+    context = {'user': user_data}
     if ip:
-        user_data['ip'] = ip
+        context['ip'] = ip
     if user_agent:
-        user_data['user_agent'] = user_agent
+        context['user_agent'] = user_agent
 
     event = {
         'pixel_code': TIKTOK_PIXEL_ID,
         'event': event_name,
+        'event_id': str(uuid.uuid4()),
         'timestamp': int(time.time()),
-        'context': {
-            'user': user_data,
-        },
+        'context': context,
         'properties': properties,
     }
 
