@@ -16,10 +16,10 @@
             {% if listing.is_platform_listing %}
             <span class="badge bg-warning text-dark"><i class="bi bi-shield-check"></i> Official</span>
             {% elif listing.seller.profile.is_trusted_seller %}
-            <span class="badge" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff;"><i class="bi bi-award"></i> Trusted</span>
+            <a href="{% url 'accounts:profile' username=listing.seller.username %}" class="badge text-decoration-none" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff;"><i class="bi bi-award"></i> Trusted</a>
             {% endif %}
             {% if listing.seller.profile.is_founding_member %}
-            <span class="badge" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: #e0e0e0;"><i class="bi bi-gem"></i> Founding</span>
+            <a href="{% url 'accounts:profile' username=listing.seller.username %}" class="badge text-decoration-none" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: #e0e0e0;"><i class="bi bi-gem"></i> Founding</a>
             {% endif %}
             {% if listing.listing_type == 'auction' %}
             <span class="badge badge-auction">Auction</span>
@@ -44,9 +44,9 @@
                 <i class="bi bi-heart"></i>
             </button>
             {% endif %}
-            <button class="action-btn" title="Quick view" data-bs-toggle="modal" data-bs-target="#quickview-{{ listing.id }}">
+            <a href="{{ listing.get_absolute_url }}" class="action-btn" title="View listing">
                 <i class="bi bi-eye"></i>
-            </button>
+            </a>
         </div>
     </div>
 
