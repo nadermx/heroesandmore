@@ -34,6 +34,7 @@ class ListingListSerializer(serializers.ModelSerializer):
     is_platform_listing = serializers.BooleanField(read_only=True)
     save_count = serializers.SerializerMethodField()
     recent_bids = serializers.SerializerMethodField()
+    has_video = serializers.SerializerMethodField()
 
     class Meta:
         model = Listing
@@ -44,7 +45,7 @@ class ListingListSerializer(serializers.ModelSerializer):
             'category_name', 'category_slug', 'primary_image',
             'auction_end', 'time_remaining', 'bid_count',
             'shipping_price', 'views', 'created', 'quantity_available',
-            'is_platform_listing', 'save_count', 'recent_bids'
+            'is_platform_listing', 'save_count', 'recent_bids', 'has_video'
         ]
 
     def get_quantity_available(self, obj):
@@ -82,11 +83,17 @@ class ListingListSerializer(serializers.ModelSerializer):
             return obj.bids.filter(created__gte=one_hour_ago).count()
         return 0
 
+    def get_has_video(self, obj):
+        return bool(obj.video1 or obj.video_url)
+
 
 class ListingDetailSerializer(serializers.ModelSerializer):
     """Full serializer for listing detail view"""
     seller = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
+    videos = serializers.SerializerMethodField()
+    video_url = serializers.CharField(read_only=True)
+    video_embed_url = serializers.SerializerMethodField()
     category_name = serializers.CharField(source='category.name', read_only=True)
     category_slug = serializers.CharField(source='category.slug', read_only=True)
     current_price = serializers.SerializerMethodField()
@@ -111,7 +118,8 @@ class ListingDetailSerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'collector_notes', 'price', 'current_price',
             'listing_type', 'condition', 'grading_service', 'grade',
             'cert_number', 'is_graded', 'seller', 'category_name',
-            'category_slug', 'images', 'allow_offers', 'minimum_offer_percent',
+            'category_slug', 'images', 'videos', 'video_url', 'video_embed_url',
+            'allow_offers', 'minimum_offer_percent',
             'quantity', 'quantity_available', 'quantity_sold',
             'shipping_price', 'ships_from', 'auction_end', 'time_remaining',
             'reserve_price', 'no_reserve', 'starting_bid',
@@ -137,6 +145,22 @@ class ListingDetailSerializer(serializers.ModelSerializer):
             url = request.build_absolute_uri(img.url) if request else img.url
             images.append({'url': url, 'order': i})
         return images
+
+    def get_videos(self, obj):
+        videos = []
+        for i, vid in enumerate(obj.get_videos(), 1):
+            request = self.context.get('request')
+            url = request.build_absolute_uri(vid.url) if request else vid.url
+            ext = vid.name.rsplit('.', 1)[-1].lower() if '.' in vid.name else 'mp4'
+            videos.append({
+                'url': url,
+                'order': i,
+                'type': f'video/{ext}' if ext != 'mov' else 'video/quicktime',
+            })
+        return videos
+
+    def get_video_embed_url(self, obj):
+        return obj.get_video_url_embed()
 
     def get_current_price(self, obj):
         return str(obj.get_current_price())
@@ -224,7 +248,8 @@ class ListingCreateSerializer(serializers.ModelSerializer):
             'starting_bid', 'allow_offers', 'minimum_offer_percent',
             'grading_service', 'grade', 'cert_number',
             'shipping_price', 'ships_from',
-            'image1', 'image2', 'image3', 'image4', 'image5'
+            'image1', 'image2', 'image3', 'image4', 'image5',
+            'video1', 'video2', 'video3', 'video_url',
         ]
 
     def validate(self, data):
@@ -238,7 +263,55 @@ class ListingCreateSerializer(serializers.ModelSerializer):
                     'auction_end': 'Auction end time must be in the future'
                 })
             data['quantity'] = 1
+
+        # Video validation
+        self._validate_videos(data)
+        self._validate_video_url(data)
+
         return data
+
+    def _validate_videos(self, data):
+        import os
+        from django.conf import settings
+
+        user = self.context['request'].user
+        tier = 'starter'
+        sub = getattr(user, 'seller_subscription', None)
+        if sub:
+            tier = sub.tier
+        limits = settings.VIDEO_TIER_LIMITS.get(tier, settings.VIDEO_TIER_LIMITS['starter'])
+        allowed_ext = settings.VIDEO_ALLOWED_EXTENSIONS
+
+        video_count = 0
+        for field_name in ['video1', 'video2', 'video3']:
+            file = data.get(field_name)
+            if file:
+                video_count += 1
+                ext = os.path.splitext(file.name)[1].lower().lstrip('.')
+                if ext not in allowed_ext:
+                    raise serializers.ValidationError({
+                        field_name: f"Format '.{ext}' not supported. Allowed: {', '.join(allowed_ext)}"
+                    })
+                if file.size > limits['max_size_mb'] * 1024 * 1024:
+                    raise serializers.ValidationError({
+                        field_name: f"Video exceeds {limits['max_size_mb']}MB limit for your plan."
+                    })
+        if video_count > limits['max_count']:
+            raise serializers.ValidationError(
+                f"Your plan allows {limits['max_count']} video(s)."
+            )
+
+    def _validate_video_url(self, data):
+        import re
+        video_url = (data.get('video_url') or '').strip()
+        if not video_url:
+            return
+        yt = r'^(?:https?://)?(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)[\w-]+'
+        vm = r'^(?:https?://)?(?:www\.)?vimeo\.com/\d+'
+        if not (re.match(yt, video_url) or re.match(vm, video_url)):
+            raise serializers.ValidationError({
+                'video_url': 'Must be a valid YouTube or Vimeo URL.'
+            })
 
     def create(self, validated_data):
         validated_data['seller'] = self.context['request'].user
@@ -503,3 +576,9 @@ class ListingImageUploadSerializer(serializers.Serializer):
     """Serializer for uploading listing images"""
     image = serializers.ImageField()
     position = serializers.IntegerField(min_value=1, max_value=5, required=False, default=1)
+
+
+class ListingVideoUploadSerializer(serializers.Serializer):
+    """Serializer for uploading listing videos"""
+    video = serializers.FileField()
+    position = serializers.IntegerField(min_value=1, max_value=3, required=False, default=1)

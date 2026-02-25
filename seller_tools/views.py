@@ -469,8 +469,9 @@ def download_import_template(request):
         'grading_service', 'grade', 'cert_number', 'shipping_price',
         'listing_type', 'auction_duration_days', 'allow_offers',
         'image1_url', 'image2_url', 'image3_url', 'image4_url', 'image5_url',
+        'video_url',
     ]
-    col_widths = [35, 50, 20, 14, 12, 10, 16, 8, 14, 14, 14, 20, 14, 35, 35, 35, 35, 35]
+    col_widths = [35, 50, 20, 14, 12, 10, 16, 8, 14, 14, 14, 20, 14, 35, 35, 35, 35, 35, 35]
 
     header_font = Font(bold=True, color='FFFFFF', size=11)
     header_fill = PatternFill(start_color='2B3035', end_color='2B3035', fill_type='solid')

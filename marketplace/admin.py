@@ -178,6 +178,10 @@ class ListingAdmin(admin.ModelAdmin):
         ('Images', {
             'fields': ('image1', 'image2', 'image3', 'image4', 'image5')
         }),
+        ('Videos', {
+            'fields': ('video1', 'video2', 'video3', 'video_url'),
+            'classes': ('collapse',)
+        }),
         ('Shipping', {
             'fields': ('shipping_price', 'ships_from')
         }),

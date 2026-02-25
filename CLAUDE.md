@@ -112,11 +112,24 @@ python manage.py test --verbosity=2                             # Verbose output
 Templates and views depend heavily on these — know them before modifying listing display code:
 - `get_current_price()` — For auctions: highest bid amount or starting price. For fixed: `self.price`
 - `get_images()` — Returns list of non-empty image fields (image1–image5)
+- `get_videos()` — Returns list of non-empty video FileFields (video1–video3)
+- `has_video` — Property: True if any video upload or `video_url` exists
+- `get_video_url_embed()` — Returns embeddable URL for YouTube/Vimeo (nocookie/dnt), or None
 - `is_auction_ended()` — Checks `auction_end` against `timezone.now()`
 - `time_remaining` — Returns `timedelta` or `None`
 - `time_remaining_parts` — Returns dict `{days, hours, minutes, seconds}` for template display
 - `quantity_available` — Property: `quantity - quantity_sold`
 - `bid_count` is NOT a model property — use `listing.bids.count` or annotate with `Count('bids')`
+
+### Video Upload Support
+Listings support video uploads (`video1`, `video2`, `video3` FileFields) and external video URLs (`video_url` URLField for YouTube/Vimeo). Video capacity is tier-gated via `VIDEO_TIER_LIMITS` in settings.py:
+- Starter: 1 video, 250MB max
+- Basic: 1 video, 500MB max
+- Featured: 2 videos, 1GB max
+- Premium: 3 videos, 2GB max
+
+Accepted formats: MP4, WebM, MOV. YouTube/Vimeo URLs are always allowed (no storage cost).
+Nginx `client_max_body_size` set to `2G` with 600s proxy timeouts for large uploads.
 
 ### Extended Bidding (Anti-Sniping)
 - `Listing.use_extended_bidding` (default `True`) + `extended_bidding_minutes` (default `15`)
@@ -159,7 +172,7 @@ The homepage is designed as a "high-stakes auction floor" with urgency-driven se
 - `bid_wars` — auctions with bids in last hour, ordered by `recent_bids` count (shows "+X bids" overlay)
 - `curated_listings` — graded items (`is_graded=True`), sorted by price descending
 
-**Listing card badge logic** (`components/listing_card.html`): HOT LOT badge shows when `listing.recent_bids >= 5` or `listing.save_count >= 10` (requires annotated querysets).
+**Listing card annotation requirements** (`components/listing_card.html`): When including this component, the queryset must be annotated with `save_count=Count('saves')`, `bid_count_total=Count('bids')`, and `recent_bids=Count('bids', filter=Q(...))`. HOT LOT badge shows when `listing.recent_bids >= 5` or `listing.save_count >= 10`. The card also accesses `listing.bid_count` (not `bid_count_total`) for bid count display — this is a known inconsistency.
 
 **Listing detail auction features** (`marketplace/listing_detail.html`):
 - Social proof stack: watcher count, recent bid count (last minute), bid war active badge
@@ -564,7 +577,13 @@ Project is split across three standalone repositories (each in its own directory
 ## Shared Utilities
 
 ### Site Stats Pattern
-`items.views._get_site_stats()` returns dynamic platform stats (active listings, collectors count, total sold, avg rating). Used by the homepage, about page, and `/sell/` landing page. Import it when any view needs real-time platform numbers.
+`items.views._get_site_stats()` returns dynamic platform stats. Used by homepage, about page, `/sell/`, and `/bid/` landing pages. Import it when any view needs real-time platform numbers.
+
+**Variable names returned** (use these in templates):
+- `stat_active_listings` — active listing count
+- `stat_collectors` — active user count
+- `stat_sold_total` — total sold dollar amount
+- `stat_avg_rating` — average seller rating (rounded, or `None`)
 
 ### Custom Template Tags
 - **`seo_tags`** (`items/templatetags/seo_tags.py`): `absolute_url`, `absolute_static`, `absolute_media`, `json_ld_escape` — used in meta tags and JSON-LD structured data across templates
@@ -697,3 +716,5 @@ When adding a new badge type, update ALL these locations:
 - **Auth templates**: Custom templates exist for `login.html`, `signup.html`, `logout.html`, `password_reset.html`, `password_reset_done.html`, `password_reset_from_key.html`, `password_reset_from_key_done.html` — any missing allauth template will render unstyled
 - **Pre-existing test failures**: Tests for login/registration pages fail with `SocialApp.DoesNotExist` because allauth template tags need a SocialApp in the test DB; error page tests and seller setup tests also fail — these are known issues
 - **Three-repo consistency**: When adding new API fields or badges, update all three repos (web, Android, iOS) — see "Badge Display" checklist under Founding Collector Program
+- **Order "completed" status filter**: When counting sold/completed orders, always use `status__in=['paid', 'shipped', 'delivered', 'completed']` — not just `status='paid'`, which misses orders that have progressed
+- **Landing page views live in `app/views.py`**: `sell_landing`, `bid_landing`, `trusted_seller_landing`, `contact` — not in any app's views.py

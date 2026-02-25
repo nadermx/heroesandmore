@@ -25,7 +25,7 @@ from .serializers import (
     SavedListingSerializer, AuctionEventSerializer,
     AutoBidSerializer, AutoBidCreateSerializer,
     CheckoutSerializer, PaymentIntentSerializer, PaymentIntentResponseSerializer,
-    ListingImageUploadSerializer,
+    ListingImageUploadSerializer, ListingVideoUploadSerializer,
     AuctionLotSubmissionSerializer, AuctionLotSubmissionCreateSerializer
 )
 from .filters import ListingFilter, OrderFilter
@@ -587,6 +587,90 @@ class ListingImageDeleteView(views.APIView):
 
         # Delete the image file
         image_field.delete(save=False)
+        setattr(listing, field_name, None)
+        listing.save()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ListingVideoUploadView(views.APIView):
+    """Upload video to a listing"""
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, pk):
+        import os
+        from django.conf import settings as django_settings
+
+        listing = get_object_or_404(Listing, pk=pk, seller=request.user)
+
+        serializer = ListingVideoUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        video = serializer.validated_data['video']
+        position = serializer.validated_data.get('position', 1)
+
+        # Get tier limits
+        tier = 'starter'
+        sub = getattr(request.user, 'seller_subscription', None)
+        if sub:
+            tier = sub.tier
+        limits = django_settings.VIDEO_TIER_LIMITS.get(tier, django_settings.VIDEO_TIER_LIMITS['starter'])
+        allowed_ext = django_settings.VIDEO_ALLOWED_EXTENSIONS
+
+        ext = os.path.splitext(video.name)[1].lower().lstrip('.')
+        if ext not in allowed_ext:
+            return Response(
+                {'error': f"Format '.{ext}' not supported. Allowed: {', '.join(allowed_ext)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if video.size > limits['max_size_mb'] * 1024 * 1024:
+            return Response(
+                {'error': f"Video exceeds {limits['max_size_mb']}MB limit for your plan."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        field_name = f'video{position}'
+        existing_count = len(listing.get_videos())
+        is_replacing = bool(getattr(listing, field_name) and getattr(listing, field_name).name)
+        if existing_count >= limits['max_count'] and not is_replacing:
+            return Response(
+                {'error': f"Your plan allows {limits['max_count']} video(s)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        setattr(listing, field_name, video)
+        listing.save()
+
+        return Response({
+            'message': 'Video uploaded successfully',
+            'position': position
+        }, status=status.HTTP_201_CREATED)
+
+
+class ListingVideoDeleteView(views.APIView):
+    """Delete video from a listing"""
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk, video_id):
+        listing = get_object_or_404(Listing, pk=pk, seller=request.user)
+
+        if video_id < 1 or video_id > 3:
+            return Response(
+                {'error': 'Invalid video position'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        field_name = f'video{video_id}'
+        video_field = getattr(listing, field_name)
+
+        if not video_field:
+            return Response(
+                {'error': 'No video at this position'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        video_field.delete(save=False)
         setattr(listing, field_name, None)
         listing.save()
 

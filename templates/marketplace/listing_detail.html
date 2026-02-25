@@ -42,6 +42,33 @@
   ]
 }
 </script>
+{% if listing.get_videos %}
+{% with video=listing.get_videos.0 %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  "name": "{{ listing.title|json_ld_escape }}",
+  "description": "{{ listing.description|truncatewords:30|json_ld_escape }}",
+  {% if listing.image1 %}"thumbnailUrl": "{% absolute_media listing.image1 %}",{% endif %}
+  "uploadDate": "{{ listing.created|date:'c' }}",
+  "contentUrl": "{% absolute_media video %}"
+}
+</script>
+{% endwith %}
+{% elif listing.get_video_url_embed %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  "name": "{{ listing.title|json_ld_escape }}",
+  "description": "{{ listing.description|truncatewords:30|json_ld_escape }}",
+  {% if listing.image1 %}"thumbnailUrl": "{% absolute_media listing.image1 %}",{% endif %}
+  "uploadDate": "{{ listing.created|date:'c' }}",
+  "embedUrl": "{{ listing.get_video_url_embed }}"
+}
+</script>
+{% endif %}
 {% endblock %}
 
 {% block extra_css %}
@@ -339,13 +366,45 @@
                 </div>
 
                 <!-- Thumbnails -->
-                {% if listing.get_images|length > 1 %}
+                {% if listing.get_images|length > 1 or listing.has_video %}
                 <div class="thumbnail-list">
                     {% for image in listing.get_images %}
                     <div class="thumbnail-item {% if forloop.first %}active{% endif %}" onclick="switchImage(this, '{{ image.url }}')">
                         <img src="{{ image.url }}" alt="Thumbnail {{ forloop.counter }}">
                     </div>
                     {% endfor %}
+                    {% if listing.has_video %}
+                    <div class="thumbnail-item" onclick="document.getElementById('videoSection').scrollIntoView({behavior:'smooth'})" title="Watch video">
+                        <div class="d-flex align-items-center justify-content-center h-100" style="background: var(--gray-200);">
+                            <i class="bi bi-play-circle-fill" style="font-size: 1.5rem; color: var(--gray-600);"></i>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Videos -->
+                {% if listing.get_videos or listing.get_video_url_embed %}
+                <div class="mt-3" id="videoSection">
+                    {% for video in listing.get_videos %}
+                    <div class="mb-3">
+                        <video controls preload="metadata" playsinline
+                               style="width: 100%; border-radius: 0.75rem; background: var(--gray-100);">
+                            <source src="{{ video.url }}" type="video/{% if '.webm' in video.name %}webm{% elif '.mov' in video.name %}quicktime{% else %}mp4{% endif %}">
+                            Your browser does not support video.
+                        </video>
+                    </div>
+                    {% endfor %}
+                    {% with embed_url=listing.get_video_url_embed %}
+                    {% if embed_url %}
+                    <div class="mb-3" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 0.75rem;">
+                        <iframe src="{{ embed_url }}"
+                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen></iframe>
+                    </div>
+                    {% endif %}
+                    {% endwith %}
                 </div>
                 {% endif %}
 
@@ -377,6 +436,11 @@
                     {% endif %}
                     {% if listing.quantity > 1 and listing.listing_type == 'fixed' %}
                     <span class="badge bg-info text-white">{{ listing.quantity_available }} available</span>
+                    {% endif %}
+                    {% if listing.has_video %}
+                    <span class="badge" style="background: var(--gray-700); color: #fff;">
+                        <i class="bi bi-camera-video"></i> Video
+                    </span>
                     {% endif %}
                 </div>
                 <h1 style="font-size: 1.75rem; line-height: 1.3; margin-bottom: 0;">{{ listing.title }}</h1>

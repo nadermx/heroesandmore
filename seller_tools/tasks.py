@@ -429,6 +429,12 @@ def process_bulk_import(bulk_import_id):
         # Attach images from URLs or uploaded files
         _attach_row_images(listing, data, bulk_import.id)
 
+        # Set video URL from import data
+        video_url = (data.get('video_url') or '').strip()
+        if video_url:
+            listing.video_url = video_url
+            listing.save(update_fields=['video_url'])
+
         if listing.listing_type == 'auction' and auction_duration:
             try:
                 days = int(auction_duration)

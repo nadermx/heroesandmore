@@ -242,7 +242,7 @@ def listing_create(request):
             request.session['listing_prefill'] = prefill
 
     if request.method == 'POST':
-        form = ListingForm(request.POST, request.FILES)
+        form = ListingForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             listing = form.save(commit=False)
             listing.seller = request.user
@@ -273,14 +273,23 @@ def listing_create(request):
             messages.success(request, 'Listing created! Review and publish when ready.')
             return redirect('marketplace:listing_edit', pk=listing.pk)
     else:
-        form = ListingForm(initial=prefill or None)
+        form = ListingForm(initial=prefill or None, user=request.user)
 
     categories = Category.objects.filter(is_active=True).order_by('name')
+
+    # Video tier limits for template
+    from django.conf import settings as django_settings
+    tier = 'starter'
+    sub = getattr(request.user, 'seller_subscription', None)
+    if sub:
+        tier = sub.tier
+    video_limits = django_settings.VIDEO_TIER_LIMITS.get(tier, django_settings.VIDEO_TIER_LIMITS['starter'])
 
     context = {
         'form': form,
         'categories': categories,
         'scan_image': scan_image,
+        'video_limits': video_limits,
     }
     return render(request, 'marketplace/listing_form.html', context)
 
@@ -295,7 +304,7 @@ def listing_edit(request, pk):
         return redirect('marketplace:listing_detail', pk=pk)
 
     if request.method == 'POST':
-        form = ListingForm(request.POST, request.FILES, instance=listing)
+        form = ListingForm(request.POST, request.FILES, instance=listing, user=request.user)
         if form.is_valid():
             listing = form.save(commit=False)
             listing.auction_end = form.cleaned_data.get('auction_end')
@@ -303,14 +312,23 @@ def listing_edit(request, pk):
             messages.success(request, 'Listing updated.')
             return redirect('marketplace:listing_detail', pk=pk)
     else:
-        form = ListingForm(instance=listing)
+        form = ListingForm(instance=listing, user=request.user)
 
     categories = Category.objects.filter(is_active=True).order_by('name')
+
+    # Video tier limits for template
+    from django.conf import settings as django_settings
+    tier = 'starter'
+    sub = getattr(request.user, 'seller_subscription', None)
+    if sub:
+        tier = sub.tier
+    video_limits = django_settings.VIDEO_TIER_LIMITS.get(tier, django_settings.VIDEO_TIER_LIMITS['starter'])
 
     context = {
         'form': form,
         'listing': listing,
         'categories': categories,
+        'video_limits': video_limits,
     }
     return render(request, 'marketplace/listing_form.html', context)
 

@@ -225,6 +225,19 @@ ORDER_PAYMENT_TIMEOUT_HOURS = getattr(config, 'ORDER_PAYMENT_TIMEOUT_HOURS', 24)
 from decimal import Decimal
 PLATFORM_FEE_PERCENT = Decimal('0.03')
 
+# Video upload limits per seller subscription tier
+VIDEO_TIER_LIMITS = {
+    'starter': {'max_count': 1, 'max_size_mb': 250},
+    'basic': {'max_count': 1, 'max_size_mb': 500},
+    'featured': {'max_count': 2, 'max_size_mb': 1024},
+    'premium': {'max_count': 3, 'max_size_mb': 2048},
+}
+VIDEO_ALLOWED_EXTENSIONS = ['mp4', 'webm', 'mov']
+
+# Increase upload size for video support
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440000  # ~2.5 GB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760   # 10 MB (files above this go to temp disk)
+
 # Founding Collector badge cutoff date (YYYY-MM-DD)
 FOUNDING_MEMBER_CUTOFF = '2026-06-01'
 

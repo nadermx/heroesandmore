@@ -19,6 +19,10 @@ urlpatterns = [
     path('listings/<int:pk>/images/', views.ListingImageUploadView.as_view(), name='listing_image_upload'),
     path('listings/<int:pk>/images/<int:image_id>/', views.ListingImageDeleteView.as_view(), name='listing_image_delete'),
 
+    # Listing videos
+    path('listings/<int:pk>/videos/', views.ListingVideoUploadView.as_view(), name='listing_video_upload'),
+    path('listings/<int:pk>/videos/<int:video_id>/', views.ListingVideoDeleteView.as_view(), name='listing_video_delete'),
+
     # Checkout and payment
     path('checkout/<int:pk>/', views.CheckoutView.as_view(), name='checkout'),
     path('payment/intent/', views.PaymentIntentView.as_view(), name='payment_intent'),

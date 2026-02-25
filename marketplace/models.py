@@ -197,6 +197,12 @@ class Listing(models.Model):
     image4 = models.ImageField(upload_to='listings/', blank=True, null=True)
     image5 = models.ImageField(upload_to='listings/', blank=True, null=True)
 
+    # Videos (tier-gated: starter=1/250MB, basic=1/500MB, featured=2/1GB, premium=3/2GB)
+    video1 = models.FileField(upload_to='listings/videos/', blank=True, null=True)
+    video2 = models.FileField(upload_to='listings/videos/', blank=True, null=True)
+    video3 = models.FileField(upload_to='listings/videos/', blank=True, null=True)
+    video_url = models.URLField(max_length=500, blank=True, help_text="YouTube or Vimeo URL")
+
     # Shipping
     shipping_price = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     ships_from = models.CharField(max_length=100, blank=True)
@@ -229,6 +235,39 @@ class Listing(models.Model):
             if img and img.name:  # Check if image has a file
                 images.append(img)
         return images
+
+    def get_videos(self):
+        """Return list of all videos that have files"""
+        videos = []
+        for vid in [self.video1, self.video2, self.video3]:
+            if vid and vid.name:
+                videos.append(vid)
+        return videos
+
+    @property
+    def has_video(self):
+        """True if any video upload or video URL exists"""
+        return bool(self.get_videos() or self.video_url)
+
+    def get_video_url_embed(self):
+        """Return embeddable URL for external video, or None"""
+        import re
+        if not self.video_url:
+            return None
+        url = self.video_url.strip()
+        yt_match = re.match(
+            r'(?:https?://)?(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([\w-]+)',
+            url
+        )
+        if yt_match:
+            return f'https://www.youtube-nocookie.com/embed/{yt_match.group(1)}'
+        vm_match = re.match(
+            r'(?:https?://)?(?:www\.)?vimeo\.com/(\d+)',
+            url
+        )
+        if vm_match:
+            return f'https://player.vimeo.com/video/{vm_match.group(1)}?dnt=1'
+        return None
 
     def get_current_price(self):
         """For auctions, return current highest bid or starting price"""

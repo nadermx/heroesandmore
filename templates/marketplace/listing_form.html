@@ -185,6 +185,63 @@
 
                         <hr class="my-4" style="border-color: var(--gray-200);">
 
+                        <h6 class="fw-bold mb-3" style="color: var(--gray-900);">
+                            Videos
+                            <span class="badge bg-light text-muted fw-normal ms-1" style="font-size: 0.7rem;">Optional</span>
+                        </h6>
+
+                        <div class="small text-muted mb-3">
+                            Upload videos (MP4, WebM, MOV) to showcase your item.
+                            {% if video_limits %}
+                            Your plan allows {{ video_limits.max_count }} video(s), max {{ video_limits.max_size_mb }}MB each.
+                            {% endif %}
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Video 1</label>
+                                {{ form.video1 }}
+                                {% if form.instance.video1 %}
+                                <div class="mt-2">
+                                    <video src="{{ form.instance.video1.url }}" style="max-height: 80px; border-radius: 8px;" muted></video>
+                                    <small class="text-muted d-block">Current video uploaded</small>
+                                </div>
+                                {% endif %}
+                                {% if form.video1.errors %}<div class="small mt-1" style="color: var(--accent-danger);">{{ form.video1.errors.0 }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3" id="video2Slot" {% if not video_limits or video_limits.max_count < 2 %}style="display:none;"{% endif %}>
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Video 2</label>
+                                {{ form.video2 }}
+                                {% if form.instance.video2 %}
+                                <div class="mt-2">
+                                    <video src="{{ form.instance.video2.url }}" style="max-height: 80px; border-radius: 8px;" muted></video>
+                                </div>
+                                {% endif %}
+                                {% if form.video2.errors %}<div class="small mt-1" style="color: var(--accent-danger);">{{ form.video2.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6" id="video3Slot" {% if not video_limits or video_limits.max_count < 3 %}style="display:none;"{% endif %}>
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Video 3</label>
+                                {{ form.video3 }}
+                                {% if form.instance.video3 %}
+                                <div class="mt-2">
+                                    <video src="{{ form.instance.video3.url }}" style="max-height: 80px; border-radius: 8px;" muted></video>
+                                </div>
+                                {% endif %}
+                                {% if form.video3.errors %}<div class="small mt-1" style="color: var(--accent-danger);">{{ form.video3.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">YouTube / Vimeo URL</label>
+                            {{ form.video_url }}
+                            <small class="text-muted d-block mt-1">Paste a YouTube or Vimeo link to embed a video on your listing.</small>
+                            {% if form.video_url.errors %}<div class="small mt-1" style="color: var(--accent-danger);">{{ form.video_url.errors.0 }}</div>{% endif %}
+                        </div>
+
+                        <hr class="my-4" style="border-color: var(--gray-200);">
+
                         <h6 class="fw-bold mb-3" style="color: var(--gray-900);">Shipping</h6>
 
                         <div class="row mb-4">
