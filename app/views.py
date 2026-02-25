@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -23,9 +23,77 @@ app_logger = logging.getLogger('app')
 def sell_landing(request):
     if request.user.is_authenticated:
         return redirect('marketplace:listing_create')
+
+    from marketplace.models import Listing, Order
+    from accounts.models import Profile
+
+    now = timezone.now()
+    thirty_days_ago = now - timedelta(days=30)
+    one_hour_ago = now - timedelta(hours=1)
+
     categories = Category.objects.filter(parent=None, is_active=True).order_by('order')[:8]
+
+    # Recent completed sales (last 30 days) for social proof
+    recent_sales = (
+        Order.objects.filter(
+            status__in=['paid', 'shipped', 'delivered', 'completed'],
+            paid_at__gte=thirty_days_ago,
+        )
+        .select_related('listing')
+        .order_by('-paid_at')[:6]
+    )
+
+    # 30-day sales aggregates
+    sales_agg = Order.objects.filter(
+        status__in=['paid', 'shipped', 'delivered', 'completed'],
+        paid_at__gte=thirty_days_ago,
+    ).aggregate(
+        count=Count('id'),
+        total_value=Sum('item_price'),
+        total_payouts=Sum('seller_payout'),
+    )
+
+    # Lifetime seller payouts
+    lifetime_payouts = Order.objects.filter(
+        status__in=['paid', 'shipped', 'delivered', 'completed'],
+    ).aggregate(total=Sum('seller_payout'))['total'] or 0
+
+    # Active auctions with bids
+    active_auctions = (
+        Listing.objects.filter(
+            status='active',
+            listing_type='auction',
+            auction_end__gt=now,
+        )
+        .select_related('seller', 'seller__profile', 'category')
+        .annotate(
+            save_count=Count('saves'),
+            bid_count_total=Count('bids'),
+            recent_bids=Count('bids', filter=Q(bids__created__gte=one_hour_ago)),
+        )
+        .filter(bid_count_total__gt=0)
+        .order_by('-bid_count_total')[:4]
+    )
+
+    # Top sellers (by sales value)
+    top_sellers = (
+        Profile.objects.filter(
+            total_sales_count__gte=5,
+            rating__gte=4.0,
+        )
+        .select_related('user')
+        .order_by('-total_sales_value')[:3]
+    )
+
     context = {
         'categories': categories,
+        'recent_sales': recent_sales,
+        'sales_count_30d': sales_agg['count'] or 0,
+        'sales_value_30d': sales_agg['total_value'] or 0,
+        'sales_payouts_30d': sales_agg['total_payouts'] or 0,
+        'lifetime_payouts': lifetime_payouts,
+        'active_auctions': active_auctions,
+        'top_sellers': top_sellers,
         **_get_site_stats(),
     }
     return render(request, 'pages/sell.html', context)

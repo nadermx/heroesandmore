@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% load humanize socialaccount %}
 
-{% block title %}Sell Collectibles Online - HeroesAndMore{% endblock %}
-{% block meta_description %}Start selling your collectibles on HeroesAndMore. Free to list, secure Stripe payments, reach thousands of collectors. Comics, trading cards, action figures, and more.{% endblock %}
-{% block og_title %}Sell Collectibles Online - HeroesAndMore{% endblock %}
-{% block og_description %}Turn your collection into cash. Free to list, secure payments, and powerful seller tools. Join thousands of collectors buying and selling on HeroesAndMore.{% endblock %}
+{% block title %}Sell Collectibles for Less | Lower Fees Than eBay - HeroesAndMore{% endblock %}
+{% block meta_description %}Sell comics, trading cards, and collectibles with fees from 5.95%. Keep more profit than eBay or auction houses. Secure Stripe payouts in 2-3 days. Free to list.{% endblock %}
+{% block og_title %}Sell Collectibles for Less | Lower Fees Than eBay - HeroesAndMore{% endblock %}
+{% block og_description %}Stop giving up 20-30% of your sale. Sell collectibles with transparent fees from 5.95%, fast payouts, and curated auctions. Built by real collectors.{% endblock %}
 
 {% block og_image %}{{ site_url }}/static/images/og-default.png{% endblock %}
 
@@ -13,8 +13,8 @@
 {
   "@context": "https://schema.org",
   "@type": "WebPage",
-  "name": "Sell Collectibles Online",
-  "description": "Start selling your collectibles on HeroesAndMore. Free to list, secure Stripe payments, reach thousands of collectors.",
+  "name": "Sell Collectibles for Less — Lower Fees Than eBay",
+  "description": "Sell comics, trading cards, and collectibles with fees from 5.95%. Keep more profit than eBay or auction houses.",
   "url": "{{ site_url }}/sell/",
   "publisher": {
     "@type": "Organization",
@@ -51,10 +51,18 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "How much does it cost to sell?",
+      "name": "How do your fees compare to eBay?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "It's free to create an account and list items on the Starter plan (up to 50 listings). We charge a commission on each sale, starting at 12.95% for Starter. Paid plans lower your commission rate and increase your listing limit: Basic at 9.95%, Featured at 7.95%, and Premium at 5.95%."
+        "text": "Our total fees range from 5.95% to 12.95% depending on your plan — that's it. No insertion fees, no payment processing surcharge, no promoted listing fees. On eBay, sellers typically pay 13%+ after final value fees plus payment processing. On a $500 sale, you keep about $435 here versus about $410 on eBay."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why should I sell here instead of eBay?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Three reasons: lower fees (5.95-12.95% total vs eBay's 13%+), a marketplace built specifically for collectibles with features like grading badges, price guide comps, and anti-sniping auction protection, and a curated community of serious collectors — not bargain hunters. Plus fast payouts in 2-3 business days via Stripe."
       }
     },
     {
@@ -102,7 +110,7 @@
       "name": "Can I run auctions?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. You can list items as fixed price or auction. For auctions, you set a starting price and duration. Buyers place bids, and the highest bidder wins when the auction ends. You can also set a reserve price so the item won't sell below a minimum you're comfortable with."
+        "text": "Yes. You can list items as fixed price or auction. For auctions, you set a starting price and duration. Buyers place bids, and the highest bidder wins when the auction ends. Anti-sniping protection automatically extends auctions when bids come in during the final minutes."
       }
     },
     {
@@ -111,14 +119,6 @@
       "acceptedAnswer": {
         "@type": "Answer",
         "text": "When creating a fixed-price listing, you can enable 'Allow Offers.' Buyers can then submit a price they'd like to pay. You can accept, decline, or counter with a different amount. It's a great way to close sales while still getting a fair price."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "How many photos can I upload per listing?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "You can upload multiple photos per listing. We recommend including clear images of the front, back, and any notable details or flaws. Good photos help buyers feel confident and lead to faster sales."
       }
     },
     {
@@ -142,12 +142,30 @@
       "name": "Can I upgrade or downgrade my seller plan?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. You can change your plan at any time from your seller dashboard. Upgrades take effect immediately with prorated billing. Downgrades take effect at the end of your current billing period. If you downgrade and exceed the new plan's listing limit, your existing listings stay active but you won't be able to create new ones until you're under the limit."
+        "text": "Yes. You can change your plan at any time from your seller dashboard. Upgrades take effect immediately with prorated billing. Downgrades take effect at the end of your current billing period."
       }
     }
   ]
 }
 </script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.sell-comparison-table { border-radius: 0.75rem; overflow: hidden; }
+.sell-comparison-table th { background: var(--gray-900); color: #fff; text-align: center; padding: 0.75rem 1rem; font-size: 0.85rem; }
+.sell-comparison-table td { padding: 0.75rem 1rem; text-align: center; vertical-align: middle; font-size: 0.9rem; }
+.sell-comparison-table tr:nth-child(even) td { background: var(--gray-50); }
+.sell-comparison-check { color: var(--accent-success); font-size: 1.1rem; }
+.sell-comparison-x { color: #dc3545; font-size: 1rem; }
+.sell-comparison-muted { color: var(--gray-500); font-size: 0.85rem; }
+.pain-bullet { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem; }
+.pain-bullet .icon-x { width: 24px; height: 24px; background: rgba(220,53,69,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #dc3545; font-size: 0.7rem; }
+.pain-bullet .icon-check { width: 24px; height: 24px; background: rgba(25,135,84,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent-success); font-size: 0.7rem; }
+.sale-proof-card { background: #fff; border-radius: 0.75rem; border: 1px solid var(--border-color); overflow: hidden; transition: box-shadow 0.2s; }
+.sale-proof-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.top-seller-card { background: #fff; border-radius: 0.75rem; border: 1px solid var(--border-color); padding: 1.5rem; text-align: center; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -158,18 +176,40 @@
         <div class="row align-items-center g-5">
             <!-- Left: Selling Pitch -->
             <div class="col-lg-7">
-                <h1 style="font-size: 3rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; color: #fff; margin-bottom: 1.25rem;">Start Selling Your<br>Collectibles Today</h1>
-                <p style="font-size: 1.2rem; color: var(--gray-300); max-width: 480px; margin-bottom: 2rem;">Join thousands of sellers on the premier marketplace for comics, trading cards, action figures, and more.</p>
+                <h1 style="font-size: 2.75rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; color: #fff; margin-bottom: 1.25rem;">Sell Your Comics & Cards for More&mdash;Without Auction House Fees.</h1>
+                <p style="font-size: 1.15rem; color: var(--gray-300); max-width: 500px; margin-bottom: 2rem;">Keep more profit. Get curated exposure. Built by real collectors.</p>
 
                 <div class="row g-3" style="max-width: 520px;">
                     <div class="col-6">
                         <div class="d-flex align-items-start gap-3">
                             <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i class="bi bi-tag" style="font-size: 1.1rem;"></i>
+                                <i class="bi bi-percent" style="font-size: 1.1rem;"></i>
                             </div>
                             <div>
-                                <div class="fw-semibold" style="font-size: 0.95rem;">Free to List</div>
-                                <div style="font-size: 0.8rem; color: var(--gray-400);">No upfront listing fees</div>
+                                <div class="fw-semibold" style="font-size: 0.95rem;">5.95&ndash;12.95% Total Fee</div>
+                                <div style="font-size: 0.8rem; color: var(--gray-400);">No hidden charges</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="bi bi-cash-stack" style="font-size: 1.1rem;"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold" style="font-size: 0.95rem;">Paid in 2&ndash;3 Days</div>
+                                <div style="font-size: 0.8rem; color: var(--gray-400);">Direct to your bank</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="bi bi-trophy" style="font-size: 1.1rem;"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold" style="font-size: 0.95rem;">Curated Auctions</div>
+                                <div style="font-size: 0.8rem; color: var(--gray-400);">Not a junk flood</div>
                             </div>
                         </div>
                     </div>
@@ -179,30 +219,8 @@
                                 <i class="bi bi-shield-check" style="font-size: 1.1rem;"></i>
                             </div>
                             <div>
-                                <div class="fw-semibold" style="font-size: 0.95rem;">Secure Payments</div>
-                                <div style="font-size: 0.8rem; color: var(--gray-400);">Powered by Stripe</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="d-flex align-items-start gap-3">
-                            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i class="bi bi-people" style="font-size: 1.1rem;"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold" style="font-size: 0.95rem;">Reach Collectors</div>
-                                <div style="font-size: 0.8rem; color: var(--gray-400);">Thousands of active buyers</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="d-flex align-items-start gap-3">
-                            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i class="bi bi-tools" style="font-size: 1.1rem;"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold" style="font-size: 0.95rem;">Seller Tools</div>
-                                <div style="font-size: 0.8rem; color: var(--gray-400);">Bulk import, analytics</div>
+                                <div class="fw-semibold" style="font-size: 0.95rem;">Anti-Sniping Built In</div>
+                                <div style="font-size: 0.8rem; color: var(--gray-400);">Fair auction endings</div>
                             </div>
                         </div>
                     </div>
@@ -284,25 +302,148 @@
     </div>
 </div>
 
-<!-- Bulk Import Callout -->
-<div style="background: #fff; border-bottom: 1px solid var(--border-color);">
-    <div class="container py-3">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3" style="padding: 0.75rem 1.25rem; background: var(--gray-50); border-radius: 0.75rem; border: 1px solid var(--border-color);">
-            <div class="d-flex align-items-center gap-3">
-                <div style="width: 42px; height: 42px; background: var(--gray-900); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <i class="bi bi-upload text-white" style="font-size: 1.1rem;"></i>
+<!-- Pain Point Strip -->
+<div style="background: linear-gradient(180deg, #111 0%, #1a1a1a 100%); color: #fff; padding: 3rem 0;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <h2 class="fw-bold mb-4" style="font-size: 1.75rem; color: #fff;">Stop Giving Up 20&ndash;30% of Your Sale.</h2>
+                <div class="pain-bullet">
+                    <div class="icon-x"><i class="bi bi-x-lg"></i></div>
+                    <div style="color: rgba(255,255,255,0.8); font-size: 0.95rem;"><strong style="color: #fff;">eBay charges 13%+</strong> after final value fees, payment processing, and promoted listings.</div>
                 </div>
-                <div>
-                    <div class="fw-bold" style="font-size: 0.95rem; color: var(--gray-900);">Got a lot to sell? Use Bulk Import</div>
-                    <div class="text-muted" style="font-size: 0.85rem;">Download our Excel template, fill it in, and upload hundreds of listings at once.</div>
+                <div class="pain-bullet">
+                    <div class="icon-x"><i class="bi bi-x-lg"></i></div>
+                    <div style="color: rgba(255,255,255,0.8); font-size: 0.95rem;"><strong style="color: #fff;">Traditional auction houses take 20&ndash;25%</strong> buyer's premium plus seller's commission. You lose on both sides.</div>
+                </div>
+                <div class="pain-bullet">
+                    <div class="icon-x"><i class="bi bi-x-lg"></i></div>
+                    <div style="color: rgba(255,255,255,0.8); font-size: 0.95rem;"><strong style="color: #fff;">Hidden fees and slow payouts</strong>&mdash;insertion fees, gallery fees, and waiting weeks to get paid.</div>
+                </div>
+                <div class="pain-bullet mt-4">
+                    <div class="icon-check"><i class="bi bi-check-lg"></i></div>
+                    <div style="color: rgba(255,255,255,0.9); font-size: 0.95rem;"><strong style="color: var(--accent-success);">On Heroes & More:</strong> one transparent fee, from 5.95% to 12.95%. That's it. No insertion fees. No processing surcharge. Payouts in 2&ndash;3 days.</div>
                 </div>
             </div>
-            <a href="{% url 'seller_tools:import_create' %}" class="btn btn-dark btn-sm fw-semibold">
-                <i class="bi bi-upload me-1"></i> Bulk Import
-            </a>
         </div>
     </div>
 </div>
+
+<!-- Fee Comparison Table -->
+<div style="background: #fff; border-bottom: 1px solid var(--border-color);">
+    <div class="container py-5">
+        <div class="text-center mb-4">
+            <h2 style="font-size: 1.75rem;">See How the Fees Stack Up</h2>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="table-responsive">
+                    <table class="table sell-comparison-table mb-0">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; min-width: 160px;">Fee</th>
+                                <th>eBay</th>
+                                <th>Traditional Auction House</th>
+                                <th style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-navy));">Heroes & More</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="text-align: left; font-weight: 500;">Seller Commission</td>
+                                <td>13.25%</td>
+                                <td>10&ndash;20%</td>
+                                <td><strong style="color: var(--accent-success);">5.95&ndash;12.95%</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left; font-weight: 500;">Insertion / Listing Fees</td>
+                                <td>$0.35/listing after free tier</td>
+                                <td>Varies</td>
+                                <td><strong style="color: var(--accent-success);">$0 &mdash; always</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left; font-weight: 500;">Payment Processing</td>
+                                <td>Included in FVF</td>
+                                <td>2&ndash;3% extra</td>
+                                <td><strong style="color: var(--accent-success);">Included</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left; font-weight: 500;">Monthly Subscription</td>
+                                <td>$0&ndash;$21.95</td>
+                                <td>N/A</td>
+                                <td>$0&ndash;$99.99</td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left; font-weight: 500;">Payout Speed</td>
+                                <td>2&ndash;5 business days</td>
+                                <td>30&ndash;90 days</td>
+                                <td><strong style="color: var(--accent-success);">2&ndash;3 business days</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left; font-weight: 500;">Collectible Specialization</td>
+                                <td><i class="bi bi-x-lg sell-comparison-x"></i></td>
+                                <td><i class="bi bi-check-lg sell-comparison-check"></i></td>
+                                <td><i class="bi bi-check-lg sell-comparison-check"></i></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: left; font-weight: 500;">Anti-Sniping Protection</td>
+                                <td><i class="bi bi-x-lg sell-comparison-x"></i></td>
+                                <td><i class="bi bi-x-lg sell-comparison-x"></i></td>
+                                <td><i class="bi bi-check-lg sell-comparison-check"></i></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center mt-3">
+                    <p class="text-muted mb-0" style="font-size: 0.9rem;"><strong>Example:</strong> On a $500 sale, you keep ~$435 here vs ~$410 on eBay &mdash; that's <strong>$25 more in your pocket</strong>.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Live Proof: Recent Sales -->
+{% if recent_sales %}
+<div style="background: var(--gray-50); border-bottom: 1px solid var(--border-color);">
+    <div class="container py-5">
+        <div class="text-center mb-4">
+            <h2 style="font-size: 1.75rem;">Real Sales. Real Payouts.</h2>
+        </div>
+
+        <div class="row g-3">
+            {% for order in recent_sales %}
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="sale-proof-card h-100">
+                    {% if order.listing and order.listing.image1 %}
+                    <img src="{{ order.listing.image1.url }}" alt="{{ order.listing.title }}" style="width: 100%; aspect-ratio: 1; object-fit: cover;" loading="lazy">
+                    {% else %}
+                    <div style="width: 100%; aspect-ratio: 1; background: var(--gray-100); display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-image" style="font-size: 2rem; color: var(--gray-300);"></i>
+                    </div>
+                    {% endif %}
+                    <div class="p-2">
+                        {% if order.listing %}
+                        <div style="font-size: 0.8rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ order.listing.title }}</div>
+                        {% endif %}
+                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-success);">${{ order.item_price|floatformat:2 }}</div>
+                        <div style="font-size: 0.75rem; color: var(--gray-500);">sold {{ order.paid_at|timesince }} ago</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if sales_count_30d %}
+        <div class="text-center mt-4">
+            <p class="mb-0" style="font-size: 0.95rem; color: var(--gray-600);">
+                <strong>{{ sales_count_30d|intcomma }}</strong> item{{ sales_count_30d|pluralize }} sold in the last 30 days &mdash;
+                <strong>${{ sales_value_30d|intcomma }}</strong> in total sales
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 
 <!-- Stats Bar -->
 {% if stat_active_listings or stat_collectors %}
@@ -315,7 +456,7 @@
             </div>
             <div class="col-6 col-md-3 mb-3 mb-md-0">
                 <div class="fw-bold" style="font-size: 1.5rem;">{{ stat_collectors|intcomma }}</div>
-                <div class="text-muted" style="font-size: 0.85rem;">Collectors</div>
+                <div class="text-muted" style="font-size: 0.85rem;">Active Buyers</div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="fw-bold" style="font-size: 1.5rem;">${{ stat_sold_total|intcomma }}</div>
@@ -330,31 +471,71 @@
 </div>
 {% endif %}
 
-<!-- What Can You Sell? -->
-{% if categories %}
-<div class="container py-5">
-    <div class="text-center mb-4">
-        <h2 style="font-size: 1.75rem;">What Can You Sell?</h2>
-        <p class="text-muted">List items across all major collectible categories.</p>
-    </div>
+<!-- Active Auctions With Bids -->
+{% if active_auctions %}
+<div style="background: var(--gray-50); border-bottom: 1px solid var(--border-color);">
+    <div class="container py-5">
+        <div class="text-center mb-4">
+            <h2 style="font-size: 1.75rem;">Auctions Getting Bids Right Now</h2>
+            <p class="text-muted">Your listings could be here too.</p>
+        </div>
 
-    <div class="row g-3 justify-content-center">
-        {% for category in categories %}
-        <div class="col-6 col-sm-4 col-md-3">
-            <a href="{{ category.get_absolute_url }}" class="category-card h-100">
-                <i class="bi {{ category.icon|default:'bi-box' }} icon"></i>
-                <span class="name">{{ category.name }}</span>
+        <div class="row g-3">
+            {% for listing in active_auctions %}
+            <div class="col-6 col-md-3">
+                {% with show_time=True %}
+                {% include 'components/listing_card.html' %}
+                {% endwith %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{% url 'marketplace:listing_list' %}?type=auction&sort=ending" class="btn btn-outline-dark btn-sm fw-semibold">
+                Browse All Auctions <i class="bi bi-arrow-right ms-1"></i>
             </a>
         </div>
-        {% endfor %}
     </div>
 </div>
 {% endif %}
 
+<!-- How It Works -->
+<div style="background: #fff; border-bottom: 1px solid var(--border-color);">
+    <div class="container py-5">
+        <div class="text-center mb-4">
+            <h2 style="font-size: 1.75rem;">How It Works</h2>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4 text-center">
+                <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
+                    <i class="bi bi-camera"></i>
+                </div>
+                <h5 class="fw-bold" style="font-size: 1.05rem;">1. List Your Item</h5>
+                <p class="text-muted" style="font-size: 0.9rem;">Upload photos, write a description, and set your price. Fixed price or auction&mdash;you choose.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
+                    <i class="bi bi-cart-check"></i>
+                </div>
+                <h5 class="fw-bold" style="font-size: 1.05rem;">2. Buyers Find It</h5>
+                <p class="text-muted" style="font-size: 0.9rem;">Collectors browse, bid, or buy instantly. Accept offers or let auctions run. You're in control.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
+                    <i class="bi bi-cash-stack"></i>
+                </div>
+                <h5 class="fw-bold" style="font-size: 1.05rem;">3. Get Paid Fast</h5>
+                <p class="text-muted" style="font-size: 0.9rem;">Ship the item and get paid directly to your bank account via Stripe. Fast, secure payouts in 2&ndash;3 days.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Fee Tiers -->
 <div class="container py-5">
     <div class="text-center mb-4">
-        <h2 style="font-size: 1.75rem;">Simple, Transparent Pricing</h2>
+        <h2 style="font-size: 1.75rem;">Transparent Fees. No Surprises.</h2>
         <p class="text-muted">Start free. Upgrade as you grow.</p>
     </div>
 
@@ -400,6 +581,44 @@
             </div>
         </div>
     </div>
+
+    <div class="text-center mt-3">
+        <p class="text-muted small mb-0">Trusted Sellers earn an additional 2% discount (minimum 3.95%).</p>
+    </div>
+</div>
+
+<!-- Seller Tools -->
+<div style="background: var(--gray-50); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+    <div class="container py-5">
+        <div class="text-center mb-4">
+            <h2 style="font-size: 1.75rem;">Powerful Seller Tools</h2>
+            <p class="text-muted">Everything you need to run your collectibles business.</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4 text-center">
+                <div style="width: 56px; height: 56px; background: #fff; border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700); border: 1px solid var(--border-color);">
+                    <i class="bi bi-upload"></i>
+                </div>
+                <h5 class="fw-bold" style="font-size: 1.05rem;">Bulk Import</h5>
+                <p class="text-muted" style="font-size: 0.9rem;">Upload your inventory via Excel. List hundreds of items at once, then snap photos for all of them in one flow.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div style="width: 56px; height: 56px; background: #fff; border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700); border: 1px solid var(--border-color);">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <h5 class="fw-bold" style="font-size: 1.05rem;">Analytics Dashboard</h5>
+                <p class="text-muted" style="font-size: 0.9rem;">Track your sales, views, and conversion rates. See what's selling and optimize your listings.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div style="width: 56px; height: 56px; background: #fff; border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700); border: 1px solid var(--border-color);">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <h5 class="fw-bold" style="font-size: 1.05rem;">Inventory Management</h5>
+                <p class="text-muted" style="font-size: 0.9rem;">Organize your stock before listing. Track what you have, what's listed, and what's sold.</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Trusted Seller Callout -->
@@ -422,70 +641,70 @@
     </div>
 </div>
 
-<!-- How It Works -->
-<div style="background: #fff; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+<!-- Top Sellers -->
+{% if top_sellers %}
+<div style="background: #fff; border-bottom: 1px solid var(--border-color);">
     <div class="container py-5">
         <div class="text-center mb-4">
-            <h2 style="font-size: 1.75rem;">How It Works</h2>
+            <h2 style="font-size: 1.75rem;">Sellers Thriving on Heroes & More</h2>
         </div>
 
-        <div class="row g-4">
-            <div class="col-md-4 text-center">
-                <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
-                    <i class="bi bi-camera"></i>
+        <div class="row g-4 justify-content-center">
+            {% for profile in top_sellers %}
+            <div class="col-md-4">
+                <div class="top-seller-card h-100">
+                    {% if profile.avatar %}
+                    <img src="{{ profile.avatar.url }}" class="rounded-circle mb-3" width="64" height="64" style="object-fit: cover;">
+                    {% else %}
+                    <div class="rounded-circle d-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 64px; height: 64px; background: var(--gray-200); font-size: 1.5rem; color: var(--gray-500);">
+                        {{ profile.user.username|slice:":1"|upper }}
+                    </div>
+                    {% endif %}
+                    <h6 class="fw-bold mb-1">
+                        <a href="{% url 'accounts:profile' username=profile.user.username %}" class="text-decoration-none" style="color: var(--gray-900);">{{ profile.user.username }}</a>
+                    </h6>
+                    <div class="mb-2">
+                        {% if profile.is_trusted_seller %}
+                        <span class="badge" style="background: linear-gradient(135deg, #D4A017, #B8860B); color: #fff; font-size: 0.7rem;"><i class="bi bi-award"></i> Trusted</span>
+                        {% endif %}
+                        {% if profile.is_founding_member %}
+                        <span class="badge" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: #e0e0e0; font-size: 0.7rem;"><i class="bi bi-gem"></i> Founding</span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex justify-content-center gap-3" style="font-size: 0.85rem; color: var(--gray-600);">
+                        {% if profile.rating %}
+                        <span><i class="bi bi-star-fill" style="color: var(--brand-gold);"></i> {{ profile.rating|floatformat:1 }}</span>
+                        {% endif %}
+                        <span>{{ profile.total_sales_count|intcomma }} sale{{ profile.total_sales_count|pluralize }}</span>
+                    </div>
                 </div>
-                <h5 class="fw-bold" style="font-size: 1.05rem;">1. List Your Item</h5>
-                <p class="text-muted" style="font-size: 0.9rem;">Upload photos, write a description, and set your price. Fixed price or auction&mdash;you choose.</p>
             </div>
-            <div class="col-md-4 text-center">
-                <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
-                    <i class="bi bi-cart-check"></i>
-                </div>
-                <h5 class="fw-bold" style="font-size: 1.05rem;">2. Make the Sale</h5>
-                <p class="text-muted" style="font-size: 0.9rem;">Buyers browse, bid, or buy instantly. Accept offers or let auctions run. You're in control.</p>
-            </div>
-            <div class="col-md-4 text-center">
-                <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
-                    <i class="bi bi-cash-stack"></i>
-                </div>
-                <h5 class="fw-bold" style="font-size: 1.05rem;">3. Get Paid</h5>
-                <p class="text-muted" style="font-size: 0.9rem;">Ship the item and get paid directly to your bank account via Stripe. Fast, secure payouts.</p>
-            </div>
+            {% endfor %}
         </div>
     </div>
 </div>
+{% endif %}
 
-<!-- Seller Tools -->
+<!-- Categories -->
+{% if categories %}
 <div class="container py-5">
     <div class="text-center mb-4">
-        <h2 style="font-size: 1.75rem;">Powerful Seller Tools</h2>
-        <p class="text-muted">Everything you need to run your collectibles business.</p>
+        <h2 style="font-size: 1.75rem;">What Can You Sell?</h2>
+        <p class="text-muted">List items across all major collectible categories.</p>
     </div>
 
-    <div class="row g-4">
-        <div class="col-md-4 text-center">
-            <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
-                <i class="bi bi-upload"></i>
-            </div>
-            <h5 class="fw-bold" style="font-size: 1.05rem;">Bulk Import</h5>
-            <p class="text-muted" style="font-size: 0.9rem;">Upload your inventory via Excel. List hundreds of items at once, then snap photos for all of them in one flow.</p>
+    <div class="row g-3 justify-content-center">
+        {% for category in categories %}
+        <div class="col-6 col-sm-4 col-md-3">
+            <a href="{{ category.get_absolute_url }}" class="category-card h-100">
+                <i class="bi {{ category.icon|default:'bi-box' }} icon"></i>
+                <span class="name">{{ category.name }}</span>
+            </a>
         </div>
-        <div class="col-md-4 text-center">
-            <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
-                <i class="bi bi-graph-up"></i>
-            </div>
-            <h5 class="fw-bold" style="font-size: 1.05rem;">Analytics Dashboard</h5>
-            <p class="text-muted" style="font-size: 0.9rem;">Track your sales, views, and conversion rates. See what's selling and optimize your listings.</p>
-        </div>
-        <div class="col-md-4 text-center">
-            <div style="width: 56px; height: 56px; background: var(--gray-100); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.25rem; color: var(--gray-700);">
-                <i class="bi bi-box-seam"></i>
-            </div>
-            <h5 class="fw-bold" style="font-size: 1.05rem;">Inventory Management</h5>
-            <p class="text-muted" style="font-size: 0.9rem;">Organize your stock before listing. Track what you have, what's listed, and what's sold.</p>
-        </div>
+        {% endfor %}
     </div>
 </div>
+{% endif %}
 
 <!-- FAQ -->
 <div style="background: #fff; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
@@ -500,22 +719,34 @@
                     <div class="accordion-item">
                         <h3 class="accordion-header">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1" aria-expanded="false" aria-controls="faq1">
-                                How much does it cost to sell?
+                                How do your fees compare to eBay?
                             </button>
                         </h3>
                         <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
                             <div class="accordion-body text-muted">
-                                It's free to create an account and list items on the Starter plan (up to 50 listings). We charge a commission on each sale, starting at 12.95% for Starter. Paid plans lower your commission rate and increase your listing limit&mdash;Basic at 9.95%, Featured at 7.95%, and Premium at 5.95%.
+                                Our total fees range from 5.95% to 12.95% depending on your plan&mdash;that's it. No insertion fees, no payment processing surcharge, no promoted listing fees. On eBay, sellers typically pay 13%+ after final value fees plus payment processing. On a $500 sale, you keep about $435 here versus about $410 on eBay.
                             </div>
                         </div>
                     </div>
                     <div class="accordion-item">
                         <h3 class="accordion-header">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2" aria-expanded="false" aria-controls="faq2">
-                                How do I get paid?
+                                Why should I sell here instead of eBay?
                             </button>
                         </h3>
                         <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
+                            <div class="accordion-body text-muted">
+                                Three reasons: lower fees (5.95&ndash;12.95% total vs eBay's 13%+), a marketplace built specifically for collectibles with grading badges, price guide comps, and anti-sniping auction protection, and a curated community of serious collectors&mdash;not bargain hunters. Plus fast payouts in 2&ndash;3 business days via Stripe.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h3 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3" aria-expanded="false" aria-controls="faq3">
+                                How do I get paid?
+                            </button>
+                        </h3>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
                             <div class="accordion-body text-muted">
                                 Payments are processed through Stripe Connect. During setup, you'll link your bank account. When a buyer completes a purchase, funds are transferred directly to your bank account after the commission is deducted. Payouts typically arrive within 2&ndash;3 business days.
                             </div>
@@ -523,11 +754,11 @@
                     </div>
                     <div class="accordion-item">
                         <h3 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3" aria-expanded="false" aria-controls="faq3">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4" aria-expanded="false" aria-controls="faq4">
                                 What can I sell?
                             </button>
                         </h3>
-                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
+                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
                             <div class="accordion-body text-muted">
                                 HeroesAndMore is built for collectibles&mdash;comic books, trading cards, action figures, sports memorabilia, vinyl records, vintage toys, and more. Items must be authentic and accurately described. Counterfeit, prohibited, or non-collectible items are not allowed.
                             </div>
@@ -535,11 +766,11 @@
                     </div>
                     <div class="accordion-item">
                         <h3 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4" aria-expanded="false" aria-controls="faq4">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5" aria-expanded="false" aria-controls="faq5">
                                 How do I ship items?
                             </button>
                         </h3>
-                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
+                        <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
                             <div class="accordion-body text-muted">
                                 You handle shipping directly. When you create a listing, you set your shipping price. Once an item sells, you'll receive the buyer's address and ship the item. We recommend using tracked shipping and adding insurance for valuable items. Mark the order as shipped and add the tracking number so the buyer can follow the delivery.
                             </div>
@@ -547,11 +778,11 @@
                     </div>
                     <div class="accordion-item">
                         <h3 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5" aria-expanded="false" aria-controls="faq5">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6" aria-expanded="false" aria-controls="faq6">
                                 Is there buyer protection?
                             </button>
                         </h3>
-                        <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
+                        <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
                             <div class="accordion-body text-muted">
                                 Yes. Every purchase on HeroesAndMore is covered by buyer protection. If an item doesn't arrive or doesn't match the listing description, buyers can open a dispute. This protects both buyers and sellers by ensuring fair transactions across the marketplace.
                             </div>
@@ -559,11 +790,11 @@
                     </div>
                     <div class="accordion-item">
                         <h3 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6" aria-expanded="false" aria-controls="faq6">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq7" aria-expanded="false" aria-controls="faq7">
                                 How do I set up my seller account?
                             </button>
                         </h3>
-                        <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
+                        <div id="faq7" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
                             <div class="accordion-body text-muted">
                                 Create a free account, then go to the seller setup page. You'll connect your Stripe account to receive payments&mdash;this involves verifying your identity and linking your bank account. The process takes just a few minutes and you can start listing items right away.
                             </div>
@@ -571,37 +802,25 @@
                     </div>
                     <div class="accordion-item">
                         <h3 class="accordion-header">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq7" aria-expanded="false" aria-controls="faq7">
-                                Can I run auctions?
-                            </button>
-                        </h3>
-                        <div id="faq7" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
-                            <div class="accordion-body text-muted">
-                                Yes. You can list items as fixed price or auction. For auctions, you set a starting price and duration. Buyers place bids, and the highest bidder wins when the auction ends. You can also set a reserve price so the item won't sell below a minimum you're comfortable with.
-                            </div>
-                        </div>
-                    </div>
-                    <div class="accordion-item">
-                        <h3 class="accordion-header">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq8" aria-expanded="false" aria-controls="faq8">
-                                What is the Make an Offer feature?
+                                Can I run auctions?
                             </button>
                         </h3>
                         <div id="faq8" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
                             <div class="accordion-body text-muted">
-                                When creating a fixed-price listing, you can enable "Allow Offers." Buyers can then submit a price they'd like to pay. You can accept, decline, or counter with a different amount. It's a great way to close sales while still getting a fair price.
+                                Yes. You can list items as fixed price or auction. For auctions, you set a starting price and duration. Buyers place bids, and the highest bidder wins when the auction ends. Anti-sniping protection automatically extends auctions when bids come in during the final minutes, so you get fair market value.
                             </div>
                         </div>
                     </div>
                     <div class="accordion-item">
                         <h3 class="accordion-header">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq9" aria-expanded="false" aria-controls="faq9">
-                                How many photos can I upload per listing?
+                                What is the Make an Offer feature?
                             </button>
                         </h3>
                         <div id="faq9" class="accordion-collapse collapse" data-bs-parent="#sellFaq">
                             <div class="accordion-body text-muted">
-                                You can upload multiple photos per listing. We recommend including clear images of the front, back, and any notable details or flaws. Good photos help buyers feel confident and lead to faster sales.
+                                When creating a fixed-price listing, you can enable "Allow Offers." Buyers can then submit a price they'd like to pay. You can accept, decline, or counter with a different amount. It's a great way to close sales while still getting a fair price.
                             </div>
                         </div>
                     </div>
@@ -676,7 +895,7 @@
 <!-- Bottom CTA -->
 <div style="background: var(--gray-900); color: #fff; padding: 3rem 0;">
     <div class="container text-center">
-        <h2 style="font-size: 1.75rem; color: #fff; margin-bottom: 0.5rem;">Ready to start selling?</h2>
+        <h2 style="font-size: 1.75rem; color: #fff; margin-bottom: 0.5rem;">Your Collection Deserves Better Than eBay Fees.</h2>
         <p style="color: var(--gray-400); margin-bottom: 1.5rem;">Create your free account and list your first item today.</p>
         <a href="#" class="btn btn-light fw-semibold px-4 py-2" onclick="window.scrollTo({top: 0, behavior: 'smooth'}); return false;">
             Get Started Free
