@@ -283,7 +283,8 @@ def listing_create(request):
     sub = getattr(request.user, 'seller_subscription', None)
     if sub:
         tier = sub.tier
-    video_limits = django_settings.VIDEO_TIER_LIMITS.get(tier, django_settings.VIDEO_TIER_LIMITS['starter'])
+    video_limits = django_settings.VIDEO_TIER_LIMITS.get(tier, django_settings.VIDEO_TIER_LIMITS['starter']).copy()
+    video_limits['tier_name'] = tier.capitalize()
 
     context = {
         'form': form,
@@ -322,7 +323,8 @@ def listing_edit(request, pk):
     sub = getattr(request.user, 'seller_subscription', None)
     if sub:
         tier = sub.tier
-    video_limits = django_settings.VIDEO_TIER_LIMITS.get(tier, django_settings.VIDEO_TIER_LIMITS['starter'])
+    video_limits = django_settings.VIDEO_TIER_LIMITS.get(tier, django_settings.VIDEO_TIER_LIMITS['starter']).copy()
+    video_limits['tier_name'] = tier.capitalize()
 
     context = {
         'form': form,

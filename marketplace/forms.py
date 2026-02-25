@@ -91,7 +91,22 @@ class ListingForm(forms.ModelForm):
 
         cleaned_data['is_graded'] = bool(grading_service or grade)
 
-        # Video validation
+        # Video validation — upload OR URL, not both
+        has_upload = any(
+            cleaned_data.get(f) and hasattr(cleaned_data.get(f), 'name')
+            for f in ['video1', 'video2', 'video3']
+        )
+        has_existing_upload = self.instance and self.instance.pk and any(
+            getattr(self.instance, f) and getattr(self.instance, f).name
+            for f in ['video1', 'video2', 'video3']
+        )
+        has_url = bool((cleaned_data.get('video_url') or '').strip())
+
+        if (has_upload or has_existing_upload) and has_url:
+            raise forms.ValidationError(
+                'Please choose either a video upload or a YouTube/Vimeo URL, not both.'
+            )
+
         self._validate_videos(cleaned_data)
         self._validate_video_url(cleaned_data)
 
