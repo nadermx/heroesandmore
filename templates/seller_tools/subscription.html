@@ -94,7 +94,16 @@
                             {{ tier.featured_slots }} featured slots
                         </li>
                         {% endif %}
-                        {% if tier_key == 'basic' %}
+                        {% if tier_key == 'starter' %}
+                        <li class="mb-2">
+                            <i class="bi bi-camera-video me-2" style="color: var(--accent-success);"></i>
+                            1 video per listing (250MB)
+                        </li>
+                        {% elif tier_key == 'basic' %}
+                        <li class="mb-2">
+                            <i class="bi bi-camera-video me-2" style="color: var(--accent-success);"></i>
+                            1 video per listing (500MB)
+                        </li>
                         <li class="mb-2">
                             <i class="bi bi-check-lg me-2" style="color: var(--accent-success);"></i>
                             Bulk import
@@ -104,6 +113,10 @@
                             Priority support
                         </li>
                         {% elif tier_key == 'featured' %}
+                        <li class="mb-2">
+                            <i class="bi bi-camera-video me-2" style="color: var(--accent-success);"></i>
+                            2 videos per listing (1GB each)
+                        </li>
                         <li class="mb-2">
                             <i class="bi bi-check-lg me-2" style="color: var(--accent-success);"></i>
                             Featured placement
@@ -117,6 +130,10 @@
                             Advanced analytics
                         </li>
                         {% elif tier_key == 'premium' %}
+                        <li class="mb-2">
+                            <i class="bi bi-camera-video me-2" style="color: var(--accent-success);"></i>
+                            3 videos per listing (2GB each)
+                        </li>
                         <li class="mb-2">
                             <i class="bi bi-check-lg me-2" style="color: var(--accent-success);"></i>
                             Top placement
@@ -162,6 +179,15 @@
         {% endfor %}
     </div>
 
+    <!-- Video note -->
+    <div class="d-flex align-items-center gap-2 mb-4 p-3" style="background: var(--gray-50); border: 1px solid var(--border-color); border-radius: 0.75rem;">
+        <i class="bi bi-camera-video" style="font-size: 1.25rem; color: var(--gray-600);"></i>
+        <div class="small">
+            <strong>Video uploads</strong> are included with every plan. Higher tiers allow more videos and larger files.
+            YouTube and Vimeo embeds are <strong>free on all plans</strong> with no limit.
+        </div>
+    </div>
+
     <!-- FAQ -->
     <div class="card mt-4">
         <div class="card-header bg-transparent">
@@ -178,7 +204,7 @@
                 </div>
                 <div class="col-md-6">
                     <h6>How do commission rates work?</h6>
-                    <p class="text-muted small">A $0.30 transaction fee plus your tier's commission rate is deducted from your sale price when a buyer completes a purchase. Higher tiers get lower commission rates.</p>
+                    <p class="text-muted small">Commission is deducted from your sale price when a buyer completes a purchase. Higher tiers get lower commission rates.</p>
 
                     <h6>Can I cancel anytime?</h6>
                     <p class="text-muted small mb-0">Yes! Cancel anytime. Your subscription benefits continue until the end of your billing period.</p>
