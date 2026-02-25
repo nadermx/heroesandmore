@@ -80,10 +80,9 @@
 </div>
 
 <!-- Stripe Connect.js -->
-<script src="https://connect-js.stripe.com/v1.0/connect.js"></script>
+<script src="https://connect-js.stripe.com/v1.0/connect.js" async></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', async function() {
     const container = document.getElementById('onboarding-container');
     const errorDiv = document.getElementById('onboarding-error');
     const errorMessage = document.getElementById('error-message');
@@ -96,62 +95,58 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     };
 
-    try {
-        // Fetch client secret from our server
-        const fetchClientSecret = async () => {
-            const response = await fetch('{% url "marketplace:seller_setup_session" %}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Failed to initialize payment setup');
-            }
-
-            const { client_secret } = await response.json();
-            return client_secret;
-        };
-
-        // Initialize Stripe Connect
-        const stripeConnectInstance = await StripeConnect.init({
-            publishableKey: "{{ stripe_public_key }}",
-            fetchClientSecret: fetchClientSecret,
-            appearance: {
-                overlays: 'dialog',
-                variables: {
-                    colorPrimary: '#171717',
-                    colorBackground: '#ffffff',
-                    colorText: '#171717',
-                    colorDanger: '#DC2626',
-                    fontFamily: 'Inter, system-ui, sans-serif',
-                    fontSizeBase: '16px',
-                    spacingUnit: '4px',
-                    borderRadius: '8px',
-                },
+    const fetchClientSecret = async () => {
+        const response = await fetch('{% url "marketplace:seller_setup_session" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
             },
         });
 
-        // Create the onboarding component
-        const onboarding = stripeConnectInstance.create('account-onboarding');
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to initialize payment setup');
+        }
 
-        // Handle exit (user completes or exits onboarding)
-        onboarding.setOnExit(() => {
-            // Redirect to check status
-            window.location.href = '{% url "marketplace:seller_setup_return" %}';
-        });
+        const { client_secret } = await response.json();
+        return client_secret;
+    };
 
-        // Clear loading state and mount component
-        container.innerHTML = '';
-        container.appendChild(onboarding);
+    // Use Stripe's onLoad callback pattern (recommended for script tag approach)
+    window.StripeConnect = window.StripeConnect || {};
+    StripeConnect.onLoad = () => {
+        try {
+            const stripeConnectInstance = StripeConnect.init({
+                publishableKey: "{{ stripe_public_key }}",
+                fetchClientSecret: fetchClientSecret,
+                appearance: {
+                    overlays: 'dialog',
+                    variables: {
+                        colorPrimary: '#171717',
+                        colorBackground: '#ffffff',
+                        colorText: '#171717',
+                        colorDanger: '#DC2626',
+                        fontFamily: 'Inter, system-ui, sans-serif',
+                        fontSizeBase: '16px',
+                        spacingUnit: '4px',
+                        borderRadius: '8px',
+                    },
+                },
+            });
 
-    } catch (error) {
-        console.error('Stripe Connect error:', error);
-        showError(error.message);
-    }
-});
+            const onboarding = stripeConnectInstance.create('account-onboarding');
+
+            onboarding.setOnExit(() => {
+                window.location.href = '{% url "marketplace:seller_setup_return" %}';
+            });
+
+            container.innerHTML = '';
+            container.appendChild(onboarding);
+        } catch (error) {
+            console.error('Stripe Connect error:', error);
+            showError(error.message);
+        }
+    };
 </script>
 {% endblock %}

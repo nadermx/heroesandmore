@@ -286,6 +286,8 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = getattr(config, 'SECURE_SSL_REDIRECT', True)
     SESSION_COOKIE_SECURE = getattr(config, 'SECURE_SSL_REDIRECT', True)
     CSRF_COOKIE_SECURE = getattr(config, 'SECURE_SSL_REDIRECT', True)
+    # Allow Stripe Connect embedded components to open cross-origin popups
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
     if getattr(config, 'SECURE_SSL_REDIRECT', True):
         SECURE_HSTS_SECONDS = 31536000
         SECURE_HSTS_INCLUDE_SUBDOMAINS = True
