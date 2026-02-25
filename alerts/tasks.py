@@ -179,6 +179,7 @@ def send_alert_emails():
 @shared_task
 def notify_outbid(listing_id, new_bid_amount, new_bidder_id):
     """Notify previous high bidder they've been outbid"""
+    from django.template.loader import render_to_string
     from .models import Alert
     from marketplace.models import Listing, Bid
 
@@ -192,14 +193,39 @@ def notify_outbid(listing_id, new_bid_amount, new_bidder_id):
     ).order_by('-amount').first()
 
     if previous_bid:
+        current_price = listing.get_current_price()
+
+        # In-app alert
         Alert.objects.create(
             user=previous_bid.bidder,
             alert_type='outbid',
             title=f'Outbid on: {listing.title}',
-            message=f'Someone placed a higher bid of ${new_bid_amount}. Current price: ${listing.get_current_price()}',
+            message=f'You\'ve been outbid! Current price: ${current_price}. Place a higher maximum bid to win.',
             link=listing.get_absolute_url(),
             listing=listing,
         )
+
+        # Email notification
+        if previous_bid.bidder.email:
+            site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+            context = {
+                'listing': listing,
+                'user': previous_bid.bidder,
+                'current_price': current_price,
+                'site_url': site_url,
+            }
+            try:
+                html_content = render_to_string('marketplace/emails/outbid.html', context)
+                send_mail(
+                    subject=f'You\'ve been outbid on: {listing.title}',
+                    message=f'You\'ve been outbid on {listing.title}. Current price: ${current_price}. Place a higher maximum bid to win.',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[previous_bid.bidder.email],
+                    html_message=html_content,
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
 
 
 @shared_task

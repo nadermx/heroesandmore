@@ -532,11 +532,12 @@
                         <span class="input-group-text">$</span>
                         <input type="number" name="amount" id="bidAmount" class="form-control" step="0.01"
                                min="{{ listing.get_current_price|add:1 }}"
-                               placeholder="Enter bid amount" required>
+                               placeholder="Enter max bid" required>
                         <button type="submit" class="btn btn-dark action-button">
                             Place Bid
                         </button>
                     </div>
+                    <small class="text-muted d-block mb-1">Enter the max you're willing to pay. We'll bid just enough to keep you winning.</small>
                     <small class="text-muted">Minimum bid: ${{ listing.get_current_price|add:1|intcomma }}</small>
                     <!-- Quick Bid Buttons -->
                     <div class="d-flex gap-2 mt-2">
@@ -545,6 +546,20 @@
                         <button type="button" class="btn btn-outline-dark btn-sm quick-bid-btn" data-increment="50">+$50</button>
                     </div>
                 </form>
+
+                <!-- Active Auto-Bid Indicator -->
+                {% if user_autobid %}
+                <div class="alert alert-success d-flex align-items-center justify-content-between mt-3 mb-0 py-2 px-3" style="font-size: 0.85rem;">
+                    <div>
+                        <i class="bi bi-robot me-1"></i>
+                        <strong>Auto-bidding active</strong> up to ${{ user_autobid.max_amount|intcomma }}
+                    </div>
+                    <form method="post" action="{% url 'marketplace:cancel_autobid' pk=listing.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2">Cancel</button>
+                    </form>
+                </div>
+                {% endif %}
 
                 <!-- Bid History -->
                 {% if bids %}
@@ -559,6 +574,7 @@
                                         <td>
                                             {% if forloop.first %}<i class="bi bi-trophy-fill" style="color: var(--brand-gold);"></i> {% endif %}
                                             {{ bid.bidder.username }}
+                                            {% if bid.is_auto_bid %}<span class="badge bg-secondary" style="font-size: 0.65rem; vertical-align: middle;">auto</span>{% endif %}
                                         </td>
                                         <td class="text-end fw-semibold">${{ bid.amount|intcomma }}</td>
                                         <td class="text-end text-muted">{{ bid.created|timesince }} ago</td>
@@ -929,7 +945,7 @@
             <div class="input-group ms-auto" style="max-width: 300px;">
                 <span class="input-group-text">$</span>
                 <input type="number" name="amount" id="stickyBidAmount" class="form-control" step="0.01"
-                       min="{{ listing.get_current_price|add:1 }}" placeholder="Bid" required>
+                       min="{{ listing.get_current_price|add:1 }}" placeholder="Max bid" required>
                 <button type="submit" class="btn btn-dark fw-semibold">Place Bid</button>
             </div>
         </form>

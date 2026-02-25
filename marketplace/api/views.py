@@ -108,57 +108,34 @@ class ListingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def bid(self, request, pk=None):
-        """Place a bid on an auction listing"""
+        """Place a proxy bid (max bid) on an auction listing"""
         listing = get_object_or_404(Listing, pk=pk, status='active', listing_type='auction')
-
-        # Check if auction is still active
-        if listing.is_auction_ended():
-            return Response(
-                {'error': 'Auction has ended'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Cannot bid on own listing
-        if listing.seller == request.user:
-            return Response(
-                {'error': 'Cannot bid on your own listing'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
         serializer = BidCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        amount = serializer.validated_data['amount']
-        current_price = listing.get_current_price()
-        min_bid = current_price + Decimal('1.00')  # Minimum increment
+        # Use max_bid_amount if provided (backward compat), else amount IS the max
+        max_amount = serializer.validated_data.get('max_bid_amount') or serializer.validated_data['amount']
 
-        if amount < min_bid:
+        from marketplace.services.autobid_service import AutoBidService
+        result = AutoBidService.place_bid(listing, request.user, max_amount)
+
+        if not result.success:
             return Response(
-                {'error': f'Bid must be at least ${min_bid}'},
+                {'error': result.message},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Create bid
-        bid = Bid.objects.create(
-            listing=listing,
-            bidder=request.user,
-            amount=amount,
-            max_bid_amount=serializer.validated_data.get('max_bid_amount')
-        )
+        response_data = {
+            'current_price': str(result.current_price),
+            'is_winning': result.is_winning,
+            'was_auto_outbid': result.was_auto_outbid,
+            'message': result.message,
+        }
+        if result.bid:
+            response_data['bid'] = BidSerializer(result.bid).data
 
-        # Handle extended bidding (anti-sniping)
-        if listing.use_extended_bidding and listing.auction_end:
-            time_left = listing.auction_end - timezone.now()
-            if time_left.total_seconds() < listing.extended_bidding_minutes * 60:
-                listing.auction_end = timezone.now() + timedelta(
-                    minutes=listing.extended_bidding_minutes
-                )
-                listing.times_extended += 1
-                listing.save()
-                bid.triggered_extension = True
-                bid.save()
-
-        return Response(BidSerializer(bid).data, status=status.HTTP_201_CREATED)
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def relist(self, request, pk=None):
@@ -856,7 +833,7 @@ class AutoBidListView(views.APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        """Create or update an auto-bid"""
+        """Create or update an auto-bid (places proxy bid immediately)"""
         serializer = AutoBidCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -867,38 +844,30 @@ class AutoBidListView(views.APIView):
             Listing, pk=listing_id, status='active', listing_type='auction'
         )
 
-        if listing.seller == request.user:
+        from marketplace.services.autobid_service import AutoBidService
+        result = AutoBidService.place_bid(listing, request.user, max_amount)
+
+        if not result.success:
             return Response(
-                {'error': 'Cannot auto-bid on your own listing'},
+                {'error': result.message},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check auction is still active
-        if listing.is_auction_ended():
-            return Response(
-                {'error': 'Auction has ended'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Fetch the updated auto-bid record
+        auto_bid = AutoBid.objects.filter(
+            user=request.user, listing=listing
+        ).first()
 
-        # Must be higher than current price
-        current_price = listing.get_current_price()
-        if max_amount <= current_price:
-            return Response(
-                {'error': f'Max amount must be higher than current price ${current_price}'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        response_data = {
+            'current_price': str(result.current_price),
+            'is_winning': result.is_winning,
+            'was_auto_outbid': result.was_auto_outbid,
+            'message': result.message,
+        }
+        if auto_bid:
+            response_data['auto_bid'] = AutoBidSerializer(auto_bid).data
 
-        # Create or update auto-bid
-        auto_bid, created = AutoBid.objects.update_or_create(
-            user=request.user,
-            listing=listing,
-            defaults={'max_amount': max_amount, 'is_active': True}
-        )
-
-        return Response(
-            AutoBidSerializer(auto_bid).data,
-            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
-        )
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 
 class AutoBidDeleteView(views.APIView):

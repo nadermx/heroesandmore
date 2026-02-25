@@ -83,6 +83,10 @@ def end_auctions():
 
                 logger.info(f"Auction ended with no bids: Listing {listing.id}")
 
+            # Deactivate all auto-bids for this listing
+            from .services.autobid_service import AutoBidService
+            AutoBidService.deactivate_listing_autobids(listing)
+
             processed += 1
 
         except Exception as e:

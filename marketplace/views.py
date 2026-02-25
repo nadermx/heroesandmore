@@ -165,6 +165,14 @@ def listing_detail(request, pk):
     if listing.listing_type == 'auction' and listing.auction_end:
         auction_end_iso = listing.auction_end.isoformat()
 
+    # Active auto-bid for logged-in user
+    user_autobid = None
+    if request.user.is_authenticated and listing.listing_type == 'auction':
+        from .models import AutoBid
+        user_autobid = AutoBid.objects.filter(
+            user=request.user, listing=listing, is_active=True
+        ).first()
+
     context = {
         'listing': listing,
         'is_saved': is_saved,
@@ -179,6 +187,7 @@ def listing_detail(request, pk):
         'bid_war_active': bid_war_active,
         'comps_range': comps_range,
         'auction_end_iso': auction_end_iso,
+        'user_autobid': user_autobid,
     }
     return render(request, 'marketplace/listing_detail.html', context)
 
@@ -344,44 +353,45 @@ def listing_cancel(request, pk):
 
 @login_required
 def place_bid(request, pk):
-    """Place bid on auction"""
+    """Place a proxy bid (max bid) on an auction"""
     listing = get_object_or_404(Listing, pk=pk, status='active', listing_type='auction')
-
-    if request.user == listing.seller:
-        messages.error(request, "You cannot bid on your own listing.")
-        return redirect('marketplace:listing_detail', pk=pk)
-
-    if listing.is_auction_ended():
-        messages.error(request, "This auction has ended.")
-        return redirect('marketplace:listing_detail', pk=pk)
 
     if request.method == 'POST':
         try:
-            amount = Decimal(request.POST.get('amount', 0))
-        except:
+            max_amount = Decimal(request.POST.get('amount', 0))
+        except (Exception,):
             messages.error(request, "Invalid bid amount.")
             return redirect('marketplace:listing_detail', pk=pk)
 
-        current_price = listing.get_current_price()
-        min_bid = current_price + Decimal('1.00')
+        from .services.autobid_service import AutoBidService
+        result = AutoBidService.place_bid(listing, request.user, max_amount)
 
-        if amount < min_bid:
-            messages.error(request, f"Minimum bid is ${min_bid:.2f}")
-            return redirect('marketplace:listing_detail', pk=pk)
+        if result.success:
+            if result.was_auto_outbid:
+                messages.warning(request, result.message)
+            else:
+                messages.success(request, result.message)
+        else:
+            messages.error(request, result.message)
 
-        # Get the previous high bidder before creating new bid
-        previous_high_bid = listing.bids.order_by('-amount').first()
+    return redirect('marketplace:listing_detail', pk=pk)
 
-        Bid.objects.create(listing=listing, bidder=request.user, amount=amount)
-        messages.success(request, f'You are now the high bidder at ${amount:.2f}!')
 
-        # Notify previous high bidder they've been outbid
-        if previous_high_bid and previous_high_bid.bidder != request.user:
-            try:
-                from alerts.tasks import notify_outbid
-                notify_outbid.delay(listing.id, float(amount), request.user.id)
-            except Exception:
-                pass
+@login_required
+def cancel_autobid(request, pk):
+    """Cancel user's auto-bid on a listing"""
+    listing = get_object_or_404(Listing, pk=pk)
+
+    if request.method == 'POST':
+        from .models import AutoBid
+        autobid = AutoBid.objects.filter(
+            user=request.user, listing=listing, is_active=True
+        ).first()
+        if autobid:
+            autobid.deactivate()
+            messages.success(request, "Auto-bid cancelled.")
+        else:
+            messages.info(request, "No active auto-bid to cancel.")
 
     return redirect('marketplace:listing_detail', pk=pk)
 

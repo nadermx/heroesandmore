@@ -208,6 +208,7 @@ class ListingDetailSerializer(serializers.ModelSerializer):
             return [{
                 'bidder': bid.bidder.username,
                 'amount': str(bid.amount),
+                'is_auto_bid': bid.is_auto_bid,
                 'created': bid.created.isoformat()
             } for bid in bids]
         return []
@@ -268,8 +269,8 @@ class BidSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bid
-        fields = ['id', 'amount', 'bidder_username', 'is_winning', 'created']
-        read_only_fields = ['bidder_username', 'is_winning', 'created']
+        fields = ['id', 'amount', 'bidder_username', 'is_winning', 'is_auto_bid', 'triggered_extension', 'created']
+        read_only_fields = ['bidder_username', 'is_winning', 'is_auto_bid', 'triggered_extension', 'created']
 
 
 class BidCreateSerializer(serializers.Serializer):

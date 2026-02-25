@@ -22,6 +22,7 @@ urlpatterns = [
 
     # Bidding and offers
     path('<int:pk>/bid/', views.place_bid, name='place_bid'),
+    path('<int:pk>/cancel-autobid/', views.cancel_autobid, name='cancel_autobid'),
     path('<int:pk>/offer/', views.make_offer, name='make_offer'),
     path('offer/<int:pk>/respond/', views.respond_offer, name='respond_offer'),
     path('offer/<int:pk>/respond-counter/', views.respond_counter_offer, name='respond_counter_offer'),
