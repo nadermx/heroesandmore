@@ -12,9 +12,9 @@ def _get_site_stats():
     """Get real site-wide stats for homepage and about page."""
     active_listings = Listing.objects.filter(status='active').count()
     collectors = User.objects.filter(is_active=True).count()
-    sold_total = Order.objects.filter(status='paid').aggregate(
-        total=Sum('item_price')
-    )['total'] or 0
+    sold_total = Order.objects.filter(
+        status__in=['paid', 'shipped', 'delivered', 'completed']
+    ).aggregate(total=Sum('item_price'))['total'] or 0
     avg_rating = Review.objects.aggregate(avg=Avg('rating'))['avg']
     return {
         'stat_active_listings': active_listings,

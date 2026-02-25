@@ -62,19 +62,19 @@
     <div class="container">
         <div class="row text-center">
             <div class="col-3">
-                <div class="stat-value">{{ active_listings|default:"0"|intcomma }}</div>
+                <div class="stat-value">{{ stat_active_listings|default:"0"|intcomma }}</div>
                 <div class="stat-label">Active Listings</div>
             </div>
             <div class="col-3">
-                <div class="stat-value">{{ collectors_count|default:"0"|intcomma }}</div>
+                <div class="stat-value">{{ stat_collectors|default:"0"|intcomma }}</div>
                 <div class="stat-label">Collectors</div>
             </div>
             <div class="col-3">
-                <div class="stat-value">{{ total_sold|default:"0"|intcomma }}</div>
-                <div class="stat-label">Items Sold</div>
+                <div class="stat-value">${{ stat_sold_total|default:"0"|intcomma }}</div>
+                <div class="stat-label">Total Sold</div>
             </div>
             <div class="col-3">
-                <div class="stat-value">{{ avg_rating|default:"5.0"|floatformat:1 }}</div>
+                <div class="stat-value">{% if stat_avg_rating %}{{ stat_avg_rating }}{% else %}5.0{% endif %}</div>
                 <div class="stat-label">Avg Rating</div>
             </div>
         </div>
