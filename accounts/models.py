@@ -57,6 +57,12 @@ class Profile(models.Model):
     is_founding_member = models.BooleanField(default=False)
     founding_member_since = models.DateTimeField(null=True, blank=True)
 
+    # Shipping
+    default_ship_from = models.ForeignKey(
+        'shipping.Address', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='+'
+    )
+
     # Settings
     is_public = models.BooleanField(default=True)
     email_notifications = models.BooleanField(default=True)

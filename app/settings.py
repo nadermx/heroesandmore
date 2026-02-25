@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'pricing',
     'scanner',
     'seller_tools',
+    'shipping',
 ]
 
 MIDDLEWARE = [
@@ -240,6 +241,12 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760   # 10 MB (files above this go to temp di
 
 # Founding Collector badge cutoff date (YYYY-MM-DD)
 FOUNDING_MEMBER_CUTOFF = '2026-06-01'
+
+# EasyPost Shipping
+EASYPOST_API_KEY = getattr(config, 'EASYPOST_API_KEY', None)
+EASYPOST_WEBHOOK_SECRET = getattr(config, 'EASYPOST_WEBHOOK_SECRET', '')
+SHIPPING_RATE_CACHE_MINUTES = 30
+SHIPPING_LABEL_FORMAT = 'PDF'
 
 # Site URL for callbacks
 SITE_URL = getattr(config, 'SITE_URL', 'http://localhost:8000')
@@ -465,6 +472,11 @@ LOGGING = {
         'scanner': {
             'handlers': ['console', 'app_file'],
             'level': 'INFO',
+            'propagate': False,
+        },
+        'shipping': {
+            'handlers': ['console', 'app_file', 'error_file'],
+            'level': 'DEBUG',
             'propagate': False,
         },
         'api': {

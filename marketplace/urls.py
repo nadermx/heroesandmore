@@ -49,6 +49,12 @@ urlpatterns = [
     path('order/track/', views.guest_order_lookup, name='guest_order_lookup'),
     path('order/track/<str:token>/', views.guest_order_detail, name='guest_order_detail'),
 
+    # Shipping AJAX
+    path('shipping/validate-address/', views.validate_address, name='validate_address'),
+    path('<int:pk>/shipping-rates/', views.get_shipping_rates, name='get_shipping_rates'),
+    path('order/<int:pk>/select-rate/', views.select_shipping_rate, name='select_shipping_rate'),
+    path('order/<int:pk>/buy-label/', views.buy_shipping_label, name='buy_label'),
+
     # User pages
     path('saved/', views.saved_listings, name='saved_listings'),
     path('my-listings/', views.my_listings, name='my_listings'),

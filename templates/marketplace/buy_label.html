@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Buy Shipping Label - Order #{{ order.id }} - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb mb-0" style="font-size: 0.875rem;">
+                <li class="breadcrumb-item"><a href="{% url 'marketplace:order_detail' pk=order.pk %}" class="text-muted">Order #{{ order.id }}</a></li>
+                <li class="breadcrumb-item active">Buy Shipping Label</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 1.75rem; margin-bottom: 0;">Buy Shipping Label</h1>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Shipment Info -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Shipment Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <h6 class="text-muted small text-uppercase" style="letter-spacing: 0.05em;">Ship To</h6>
+                            {% if order.shipping_address_obj %}
+                            <p class="mb-0" style="color: var(--gray-900);">{{ order.shipping_address_obj.formatted|linebreaks }}</p>
+                            {% else %}
+                            <p class="mb-0" style="color: var(--gray-900);">{{ order.shipping_address|linebreaks }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted small text-uppercase" style="letter-spacing: 0.05em;">Item</h6>
+                            {% if order.listing %}
+                            <p class="mb-0" style="color: var(--gray-900);">{{ order.listing.title }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rate Options -->
+            <div class="card">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Select Shipping Rate</h6>
+                </div>
+                <div class="card-body">
+                    {% if rates %}
+                    <form method="post">
+                        {% csrf_token %}
+                        {% for rate in rates %}
+                        <div class="border rounded p-3 mb-2 {% if forloop.first %}border-dark{% endif %}" style="cursor: pointer;"
+                             onclick="this.querySelector('input').checked=true;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <input type="radio" name="rate_id" value="{{ rate.rate_id }}" class="form-check-input me-3"
+                                           {% if forloop.first %}checked{% endif %}>
+                                    <input type="hidden" name="shipment_id" value="{{ rate.shipment_id }}">
+                                    <div>
+                                        <strong>{{ rate.carrier }}</strong> — {{ rate.service }}
+                                        {% if rate.days %}
+                                        <br><small class="text-muted">Est. {{ rate.days }} day{{ rate.days|pluralize }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <strong style="font-size: 1.1rem;">${{ rate.rate }}</strong>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <div class="mt-3 p-3" style="background: var(--gray-50); border-radius: 0.5rem;">
+                            <small class="text-muted">
+                                The label cost will be deducted from your payout. After purchase, tracking will be automatically added to the order and the buyer will be notified.
+                            </small>
+                        </div>
+
+                        <button type="submit" class="btn btn-dark btn-lg w-100 mt-3">
+                            Buy Label &amp; Ship
+                        </button>
+                    </form>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 2rem; color: var(--gray-400);"></i>
+                        <p class="text-muted mt-2">No shipping rates available. Please check the ship-to address and try again.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Manual shipping fallback -->
+            <div class="text-center mt-3">
+                <a href="{% url 'marketplace:order_detail' pk=order.pk %}" class="text-muted small">
+                    Or enter tracking manually on the order page
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

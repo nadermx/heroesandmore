@@ -5,6 +5,7 @@ redis
 celery
 pillow
 stripe
+easypost
 django-htmx
 boto3
 django-storages

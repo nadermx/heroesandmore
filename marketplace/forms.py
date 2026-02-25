@@ -29,7 +29,8 @@ class ListingForm(forms.ModelForm):
             'price', 'listing_type', 'quantity', 'reserve_price', 'allow_offers',
             'image1', 'image2', 'image3', 'image4', 'image5',
             'video1', 'video2', 'video3', 'video_url',
-            'shipping_price', 'ships_from',
+            'shipping_mode', 'shipping_price', 'ships_from',
+            'shipping_profile', 'weight_oz', 'length_in', 'width_in', 'height_in',
         ]
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
@@ -54,13 +55,28 @@ class ListingForm(forms.ModelForm):
             'video2': forms.FileInput(attrs={'class': 'form-control', 'accept': 'video/mp4,video/webm,video/quicktime'}),
             'video3': forms.FileInput(attrs={'class': 'form-control', 'accept': 'video/mp4,video/webm,video/quicktime'}),
             'video_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://youtube.com/watch?v=... or https://vimeo.com/...'}),
+            'shipping_mode': forms.Select(attrs={'class': 'form-select', 'id': 'id_shipping_mode'}),
             'shipping_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'ships_from': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City, State'}),
+            'shipping_profile': forms.Select(attrs={'class': 'form-select'}),
+            'weight_oz': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'oz'}),
+            'length_in': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'in'}),
+            'width_in': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'in'}),
+            'height_in': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'in'}),
         }
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._user = user
+        # Shipping mode defaults to flat rate — not required so existing forms still work
+        self.fields['shipping_mode'].required = False
+        self.fields['shipping_mode'].initial = 'flat'
+        # Calculated shipping fields are optional
+        self.fields['shipping_profile'].required = False
+        self.fields['weight_oz'].required = False
+        self.fields['length_in'].required = False
+        self.fields['width_in'].required = False
+        self.fields['height_in'].required = False
         # Require an image for manual listings, but allow programmatic imports to omit
         if 'image1' in self.fields:
             self.fields['image1'].required = True
@@ -79,6 +95,10 @@ class ListingForm(forms.ModelForm):
         listing_type = cleaned_data.get('listing_type')
         grading_service = cleaned_data.get('grading_service')
         grade = cleaned_data.get('grade')
+
+        # Default shipping mode to flat if not provided
+        if not cleaned_data.get('shipping_mode'):
+            cleaned_data['shipping_mode'] = 'flat'
 
         if listing_type == 'auction':
             duration = cleaned_data.get('auction_duration')

@@ -1061,3 +1061,83 @@ def import_photo_delete(request, pk, listing_id, position):
         'bulk_import': bulk_import,
         'listing': listing,
     })
+
+
+@login_required
+def ship_from_address(request):
+    """Manage seller's ship-from (return) address."""
+    from shipping.models import Address
+
+    profile = request.user.profile
+    address = profile.default_ship_from
+
+    if request.method == 'POST':
+        addr_data = {
+            'name': request.POST.get('name', '').strip(),
+            'company': request.POST.get('company', '').strip(),
+            'street1': request.POST.get('street1', '').strip(),
+            'street2': request.POST.get('street2', '').strip(),
+            'city': request.POST.get('city', '').strip(),
+            'state': request.POST.get('state', '').strip(),
+            'zip_code': request.POST.get('zip_code', '').strip(),
+            'country': request.POST.get('country', 'US').strip(),
+            'phone': request.POST.get('phone', '').strip(),
+        }
+
+        if not all([addr_data['name'], addr_data['street1'], addr_data['city'],
+                     addr_data['state'], addr_data['zip_code']]):
+            messages.error(request, 'Please fill in all required fields.')
+            return render(request, 'seller_tools/ship_from_address.html', {
+                'address': addr_data,
+            })
+
+        # Verify via EasyPost if configured
+        verified = False
+        easypost_id = ''
+        if settings.EASYPOST_API_KEY:
+            from marketplace.services.easypost_service import EasyPostService
+            result = EasyPostService.verify_address({
+                'name': addr_data['name'],
+                'company': addr_data.get('company'),
+                'street1': addr_data['street1'],
+                'street2': addr_data.get('street2'),
+                'city': addr_data['city'],
+                'state': addr_data['state'],
+                'zip': addr_data['zip_code'],
+                'country': addr_data['country'],
+            })
+            if result['verified']:
+                verified = True
+                easypost_id = result['easypost_id']
+                # Use corrected address
+                corrected = result['address']
+                addr_data['street1'] = corrected['street1']
+                addr_data['street2'] = corrected.get('street2', '')
+                addr_data['city'] = corrected['city']
+                addr_data['state'] = corrected['state']
+                addr_data['zip_code'] = corrected['zip']
+
+        if address:
+            for key, val in addr_data.items():
+                setattr(address, key, val)
+            address.is_verified = verified
+            address.easypost_id = easypost_id
+            address.save()
+        else:
+            address = Address.objects.create(
+                user=request.user,
+                is_verified=verified,
+                easypost_id=easypost_id,
+                **addr_data,
+            )
+            profile.default_ship_from = address
+            profile.save(update_fields=['default_ship_from'])
+
+        messages.success(request, 'Ship-from address saved!' +
+                         (' (verified)' if verified else ''))
+        return redirect('seller_tools:ship_from_address')
+
+    context = {
+        'address': address,
+    }
+    return render(request, 'seller_tools/ship_from_address.html', context)

@@ -47,6 +47,7 @@ urlpatterns = [
     path('price-guide/', include('pricing.urls')),
     path('scanner/', include('scanner.urls')),
     path('seller/', include('seller_tools.urls')),
+    path('shipping/', include('shipping.urls')),
 
     # Ad landing pages (media buy destinations)
     path('sell/', sell_landing, name='sell'),

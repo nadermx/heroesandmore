@@ -106,12 +106,20 @@
                             {% endif %}
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted">Shipping</span>
-                            <span style="color: var(--gray-900);">{% if order.shipping_price %}${{ order.shipping_price }}{% else %}<span style="color: var(--accent-success);">Free</span>{% endif %}</span>
+                                <span id="shipping-display" style="color: var(--gray-900);">
+                                    {% if use_calculated_shipping %}
+                                        <span class="text-muted small">Select rate below</span>
+                                    {% elif order.shipping_price %}
+                                        ${{ order.shipping_price }}
+                                    {% else %}
+                                        <span style="color: var(--accent-success);">Free</span>
+                                    {% endif %}
+                                </span>
                             </div>
                             <hr style="border-color: var(--gray-200);">
                             <div class="d-flex justify-content-between">
                                 <strong style="color: var(--gray-900);">Total</strong>
-                                <strong style="font-size: 1.25rem; color: var(--gray-900);">${{ total|intcomma }}</strong>
+                                <strong id="total-display" style="font-size: 1.25rem; color: var(--gray-900);">${{ total|intcomma }}</strong>
                             </div>
                         </div>
                     </div>
@@ -159,17 +167,80 @@
                             <h6 class="fw-bold mb-0">Shipping Address</h6>
                         </div>
                         <div class="card-body">
+                            {% if saved_addresses %}
                             <div class="mb-3">
-                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Full Name</label>
-                                <input type="text" id="shipping-name" class="form-control" value="{% if not is_guest %}{{ user.get_full_name }}{% endif %}" required>
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Saved Addresses</label>
+                                <select id="saved-address-select" class="form-select mb-2">
+                                    <option value="">Enter new address</option>
+                                    {% for addr in saved_addresses %}
+                                    <option value="{{ addr.id }}"
+                                            data-name="{{ addr.name }}" data-street1="{{ addr.street1 }}"
+                                            data-street2="{{ addr.street2 }}" data-city="{{ addr.city }}"
+                                            data-state="{{ addr.state }}" data-zip="{{ addr.zip_code }}"
+                                            data-country="{{ addr.country }}" data-phone="{{ addr.phone }}">
+                                        {{ addr.street1 }}, {{ addr.city }}, {{ addr.state }} {{ addr.zip_code }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
                             </div>
+                            {% endif %}
 
-                            <div class="mb-0">
-                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Address</label>
-                                <textarea id="shipping-address" class="form-control" rows="3" required placeholder="Street Address&#10;City, State ZIP&#10;Country">{{ order.shipping_address }}</textarea>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Full Name *</label>
+                                <input type="text" id="addr-name" class="form-control" value="{% if not is_guest %}{{ user.get_full_name }}{% endif %}" required>
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Street Address *</label>
+                                <input type="text" id="addr-street1" class="form-control" required placeholder="123 Main St">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Apt / Suite / Unit</label>
+                                <input type="text" id="addr-street2" class="form-control" placeholder="Apt 4B">
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">City *</label>
+                                    <input type="text" id="addr-city" class="form-control" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">State *</label>
+                                    <input type="text" id="addr-state" class="form-control" required maxlength="2" placeholder="CA">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">ZIP Code *</label>
+                                    <input type="text" id="addr-zip" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Country</label>
+                                    <input type="text" id="addr-country" class="form-control" maxlength="2" value="US">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Phone</label>
+                                    <input type="tel" id="addr-phone" class="form-control">
+                                </div>
+                            </div>
+                            <div id="address-verification-result"></div>
                         </div>
                     </div>
+
+                    {% if use_calculated_shipping %}
+                    <!-- Rate Shopping (calculated shipping only) -->
+                    <div class="card mb-4" id="rate-shopping-card" style="display: none;">
+                        <div class="card-header bg-transparent">
+                            <h6 class="fw-bold mb-0">Shipping Options</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="rates-loading" class="text-center py-3" style="display: none;">
+                                <div class="spinner-border spinner-border-sm" role="status"></div>
+                                <span class="ms-2 text-muted">Calculating shipping rates...</span>
+                            </div>
+                            <div id="rates-list"></div>
+                            <div id="rates-error" class="text-danger small" style="display: none;"></div>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <!-- Payment Method -->
                     <div class="card">
@@ -294,6 +365,146 @@ document.querySelectorAll('.saved-card').forEach(card => {
     });
 });
 
+// Saved address selector
+document.getElementById('saved-address-select')?.addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    if (opt.value) {
+        document.getElementById('addr-name').value = opt.dataset.name || '';
+        document.getElementById('addr-street1').value = opt.dataset.street1 || '';
+        document.getElementById('addr-street2').value = opt.dataset.street2 || '';
+        document.getElementById('addr-city').value = opt.dataset.city || '';
+        document.getElementById('addr-state').value = opt.dataset.state || '';
+        document.getElementById('addr-zip').value = opt.dataset.zip || '';
+        document.getElementById('addr-country').value = opt.dataset.country || 'US';
+        document.getElementById('addr-phone').value = opt.dataset.phone || '';
+    }
+});
+
+// Calculated shipping: fetch rates when address fields are filled
+const useCalculatedShipping = {{ use_calculated_shipping|yesno:"true,false" }};
+let selectedRateData = null;
+
+function getAddressFields() {
+    return {
+        name: document.getElementById('addr-name')?.value.trim() || '',
+        street1: document.getElementById('addr-street1')?.value.trim() || '',
+        street2: document.getElementById('addr-street2')?.value.trim() || '',
+        city: document.getElementById('addr-city')?.value.trim() || '',
+        state: document.getElementById('addr-state')?.value.trim() || '',
+        zip: document.getElementById('addr-zip')?.value.trim() || '',
+        country: document.getElementById('addr-country')?.value.trim() || 'US',
+    };
+}
+
+async function fetchShippingRates() {
+    if (!useCalculatedShipping) return;
+    const addr = getAddressFields();
+    if (!addr.street1 || !addr.city || !addr.state || !addr.zip) return;
+
+    const rateCard = document.getElementById('rate-shopping-card');
+    const ratesLoading = document.getElementById('rates-loading');
+    const ratesList = document.getElementById('rates-list');
+    const ratesError = document.getElementById('rates-error');
+
+    rateCard.style.display = 'block';
+    ratesLoading.style.display = 'block';
+    ratesList.innerHTML = '';
+    ratesError.style.display = 'none';
+
+    try {
+        const resp = await fetch('{% url "marketplace:get_shipping_rates" pk=listing.pk %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: new URLSearchParams(addr)
+        });
+        const data = await resp.json();
+        ratesLoading.style.display = 'none';
+
+        if (data.error) {
+            ratesError.textContent = data.error;
+            ratesError.style.display = 'block';
+            return;
+        }
+
+        if (!data.rates || !data.rates.length) {
+            ratesError.textContent = 'No shipping rates available for this address.';
+            ratesError.style.display = 'block';
+            return;
+        }
+
+        data.rates.forEach((rate, i) => {
+            const div = document.createElement('div');
+            div.className = 'border rounded p-3 mb-2' + (i === 0 ? ' border-dark' : '');
+            div.style.cursor = 'pointer';
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <input type="radio" name="shipping_rate" value="${rate.id}" class="form-check-input me-3" ${i === 0 ? 'checked' : ''}>
+                        <div>
+                            <strong>${rate.carrier}</strong> &mdash; ${rate.service}
+                            ${rate.days ? '<br><small class="text-muted">Est. ' + rate.days + ' day' + (rate.days !== 1 ? 's' : '') + '</small>' : ''}
+                        </div>
+                    </div>
+                    <strong>$${rate.rate}</strong>
+                </div>
+            `;
+            div.addEventListener('click', () => {
+                div.querySelector('input').checked = true;
+                selectRate(rate);
+            });
+            ratesList.appendChild(div);
+        });
+
+        // Auto-select first rate
+        if (data.rates.length) selectRate(data.rates[0]);
+
+    } catch (e) {
+        ratesLoading.style.display = 'none';
+        ratesError.textContent = 'Failed to get shipping rates. Please try again.';
+        ratesError.style.display = 'block';
+    }
+}
+
+async function selectRate(rate) {
+    selectedRateData = rate;
+    document.getElementById('shipping-display').textContent = '$' + rate.rate;
+    // Update total
+    const itemPrice = {{ order.item_price|floatformat:2 }};
+    const newTotal = (parseFloat(itemPrice) + parseFloat(rate.rate)).toFixed(2);
+    document.getElementById('total-display').textContent = '$' + newTotal;
+    document.getElementById('button-text').textContent = 'Pay $' + newTotal;
+
+    // Save rate selection on server
+    await fetch('{% url "marketplace:select_shipping_rate" pk=order.pk %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: new URLSearchParams({
+            rate_id: rate.id,
+            shipment_id: rate.shipment_id,
+            rate: rate.rate,
+            carrier: rate.carrier,
+            service: rate.service,
+        })
+    });
+}
+
+// Debounced rate fetching when address changes
+let rateTimer;
+if (useCalculatedShipping) {
+    ['addr-street1', 'addr-city', 'addr-state', 'addr-zip', 'addr-country'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', () => {
+            clearTimeout(rateTimer);
+            rateTimer = setTimeout(fetchShippingRates, 500);
+        });
+    });
+}
+
 // Process payment
 document.getElementById('pay-button').addEventListener('click', async function() {
     const button = this;
@@ -301,11 +512,15 @@ document.getElementById('pay-button').addEventListener('click', async function()
     const buttonText = document.getElementById('button-text');
 
     // Validate shipping address
-    const shippingName = document.getElementById('shipping-name').value.trim();
-    const shippingAddress = document.getElementById('shipping-address').value.trim();
-
-    if (!shippingName || !shippingAddress) {
+    const addr = getAddressFields();
+    if (!addr.name || !addr.street1 || !addr.city || !addr.state || !addr.zip) {
         document.getElementById('card-errors').textContent = 'Please enter your shipping address.';
+        return;
+    }
+
+    // Validate rate selection for calculated shipping
+    if (useCalculatedShipping && !selectedRateData) {
+        document.getElementById('card-errors').textContent = 'Please select a shipping option.';
         return;
     }
 
@@ -335,12 +550,11 @@ document.getElementById('pay-button').addEventListener('click', async function()
             paymentMethodId = selectedCard.value;
         } else {
             saveCard = document.getElementById('save-card')?.checked;
-            // Create new payment method
             const { paymentMethod, error } = await stripe.createPaymentMethod({
                 type: 'card',
                 card: cardElement,
                 billing_details: {
-                    name: shippingName,
+                    name: addr.name,
                 }
             });
 
@@ -353,7 +567,14 @@ document.getElementById('pay-button').addEventListener('click', async function()
         const bodyParams = {
             payment_method_id: paymentMethodId,
             save_card: saveCard,
-            shipping_address: shippingAddress
+            addr_name: addr.name,
+            addr_street1: addr.street1,
+            addr_street2: addr.street2 || '',
+            addr_city: addr.city,
+            addr_state: addr.state,
+            addr_zip: addr.zip,
+            addr_country: addr.country || 'US',
+            addr_phone: document.getElementById('addr-phone')?.value.trim() || '',
         };
         if (isGuest) {
             bodyParams.guest_email = guestEmail;

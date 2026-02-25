@@ -283,19 +283,56 @@
 
                         <h6 class="fw-bold mb-3" style="color: var(--gray-900);">Shipping</h6>
 
-                        <div class="row mb-4">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Shipping Method</label>
+                            {{ form.shipping_mode }}
+                            <small class="text-muted d-block mt-1">
+                                <strong>Flat Rate:</strong> You set the price. <strong>Calculated:</strong> Real-time carrier rates at checkout. <strong>Free:</strong> No shipping charge.
+                            </small>
+                        </div>
+
+                        <!-- Flat rate fields -->
+                        <div id="flat-shipping-fields" class="row mb-3">
                             <div class="col-md-6 mb-3 mb-md-0">
                                 <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Shipping Price</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
                                     {{ form.shipping_price }}
                                 </div>
-                                <small class="text-muted d-block mt-1">Enter 0 for free shipping.</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Ships From</label>
                                 {{ form.ships_from }}
                             </div>
+                        </div>
+
+                        <!-- Calculated shipping fields -->
+                        <div id="calculated-shipping-fields" class="mb-3" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Shipping Profile</label>
+                                {{ form.shipping_profile }}
+                                <small class="text-muted d-block mt-1">Select a preset or choose "Custom" to enter dimensions manually.</small>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Weight (oz)</label>
+                                    {{ form.weight_oz }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Length (in)</label>
+                                    {{ form.length_in }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Width (in)</label>
+                                    {{ form.width_in }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Height (in)</label>
+                                    {{ form.height_in }}
+                                </div>
+                            </div>
+                            <small class="text-muted">Dimensions override the profile values. Leave blank to use profile defaults.</small>
                         </div>
 
                         <hr class="my-4" style="border-color: var(--gray-200);">
@@ -372,6 +409,31 @@ document.addEventListener('DOMContentLoaded', function() {
     var videoUrlField = document.getElementById('id_video_url');
     if (videoUrlField && videoUrlField.value) {
         setVideoType('url');
+    }
+
+    // Shipping mode toggle
+    const shippingMode = document.getElementById('id_shipping_mode');
+    const flatFields = document.getElementById('flat-shipping-fields');
+    const calcFields = document.getElementById('calculated-shipping-fields');
+
+    function toggleShippingMode() {
+        if (!shippingMode) return;
+        const mode = shippingMode.value;
+        if (mode === 'calculated') {
+            flatFields.style.display = 'none';
+            calcFields.style.display = 'block';
+        } else if (mode === 'free') {
+            flatFields.style.display = 'none';
+            calcFields.style.display = 'none';
+        } else {
+            flatFields.style.display = 'flex';
+            calcFields.style.display = 'none';
+        }
+    }
+
+    if (shippingMode) {
+        shippingMode.addEventListener('change', toggleShippingMode);
+        toggleShippingMode();
     }
 
     {% if not listing %}

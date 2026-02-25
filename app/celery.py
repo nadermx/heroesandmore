@@ -96,4 +96,9 @@ app.conf.beat_schedule = {
         'task': 'alerts.tasks.send_weekly_results_recap',
         'schedule': crontab(hour=10, minute=0, day_of_week=1),  # Monday
     },
+    # Cleanup expired shipping rate quotes (daily at 1 AM)
+    'cleanup-expired-shipping-rates': {
+        'task': 'shipping.tasks.cleanup_expired_rates',
+        'schedule': crontab(hour=1, minute=0),
+    },
 }

@@ -641,7 +641,16 @@ def checkout(request, pk):
         unit_price = listing.get_current_price()
         item_price = unit_price * qty
         platform_fee = StripeService.calculate_platform_fee(item_price, listing.seller)
-        total = item_price + listing.shipping_price
+
+        # Shipping price: for calculated mode, starts at 0 (set after rate selection)
+        if listing.shipping_mode == 'free':
+            shipping_price = Decimal('0')
+        elif listing.shipping_mode == 'calculated':
+            shipping_price = Decimal('0')  # Will be set when buyer selects rate
+        else:
+            shipping_price = listing.shipping_price
+
+        total = item_price + shipping_price
 
         if is_guest:
             # Check if guest already has a pending order via session token
@@ -660,11 +669,12 @@ def checkout(request, pk):
                     seller=listing.seller,
                     quantity=qty,
                     item_price=item_price,
-                    shipping_price=listing.shipping_price,
+                    shipping_price=shipping_price,
                     amount=total,
                     platform_fee=platform_fee,
                     seller_payout=item_price - platform_fee,
                     shipping_address='',
+                    shipping_mode=listing.shipping_mode,
                 )
                 # Store token in session
                 request.session['guest_order_token'] = order.guest_order_token
@@ -678,11 +688,12 @@ def checkout(request, pk):
                     'seller': listing.seller,
                     'quantity': qty,
                     'item_price': item_price,
-                    'shipping_price': listing.shipping_price,
+                    'shipping_price': shipping_price,
                     'amount': total,
                     'platform_fee': platform_fee,
                     'seller_payout': item_price - platform_fee,
                     'shipping_address': '',
+                    'shipping_mode': listing.shipping_mode,
                 }
             )
     else:
@@ -694,14 +705,25 @@ def checkout(request, pk):
     if not is_guest:
         payment_methods = StripeService.list_payment_methods(request.user)
 
+    # Get saved addresses for authenticated users
+    saved_addresses = []
+    if not is_guest:
+        from shipping.models import Address
+        saved_addresses = Address.objects.filter(user=request.user)
+
+    # Get shipping profiles for display
+    use_calculated_shipping = listing.shipping_mode == 'calculated'
+
     context = {
         'listing': listing,
         'order': order,
         'payment_methods': payment_methods,
+        'saved_addresses': saved_addresses,
         'platform_fee': platform_fee,
         'total': total,
         'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
         'is_guest': is_guest,
+        'use_calculated_shipping': use_calculated_shipping,
     }
     return render(request, 'marketplace/checkout.html', context)
 
@@ -802,13 +824,39 @@ def process_payment(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
 
-    # Update shipping address
-    shipping_address = request.POST.get('shipping_address', '').strip()
-    if shipping_address:
-        order.shipping_address = shipping_address
-        order.save(update_fields=['shipping_address'])
-    elif not order.shipping_address:
-        return JsonResponse({'error': 'Shipping address is required'}, status=400)
+    # Update shipping address — support both structured fields and legacy textarea
+    addr_street1 = request.POST.get('addr_street1', '').strip()
+    if addr_street1:
+        # Structured address fields
+        from shipping.models import Address
+        addr_data = {
+            'name': request.POST.get('addr_name', '').strip(),
+            'street1': addr_street1,
+            'street2': request.POST.get('addr_street2', '').strip(),
+            'city': request.POST.get('addr_city', '').strip(),
+            'state': request.POST.get('addr_state', '').strip(),
+            'zip_code': request.POST.get('addr_zip', '').strip(),
+            'country': request.POST.get('addr_country', 'US').strip(),
+            'phone': request.POST.get('addr_phone', '').strip(),
+        }
+        if not all([addr_data['name'], addr_data['city'], addr_data['state'], addr_data['zip_code']]):
+            return JsonResponse({'error': 'Please fill in all required address fields'}, status=400)
+
+        # Create or update address object
+        addr_obj = Address.objects.create(
+            user=request.user if request.user.is_authenticated else None,
+            **addr_data,
+        )
+        order.shipping_address_obj = addr_obj
+        order.shipping_address = addr_obj.formatted
+        order.save(update_fields=['shipping_address', 'shipping_address_obj'])
+    else:
+        shipping_address = request.POST.get('shipping_address', '').strip()
+        if shipping_address:
+            order.shipping_address = shipping_address
+            order.save(update_fields=['shipping_address'])
+        elif not order.shipping_address:
+            return JsonResponse({'error': 'Shipping address is required'}, status=400)
 
     # Guest checkout: update guest email/name
     is_guest = not request.user.is_authenticated
@@ -1565,3 +1613,261 @@ def submit_auction_lot(request, slug):
         'submissions': submissions,
     }
     return render(request, 'marketplace/submit_auction_lot.html', context)
+
+
+# --- Shipping AJAX endpoints ---
+
+def validate_address(request):
+    """AJAX: Verify a shipping address via EasyPost."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    from marketplace.services.easypost_service import EasyPostService
+
+    address_dict = {
+        'name': request.POST.get('name', '').strip(),
+        'street1': request.POST.get('street1', '').strip(),
+        'street2': request.POST.get('street2', '').strip(),
+        'city': request.POST.get('city', '').strip(),
+        'state': request.POST.get('state', '').strip(),
+        'zip': request.POST.get('zip', '').strip(),
+        'country': request.POST.get('country', 'US').strip(),
+    }
+
+    if not all([address_dict['name'], address_dict['street1'], address_dict['city'],
+                address_dict['state'], address_dict['zip']]):
+        return JsonResponse({'error': 'Please fill in all required address fields'}, status=400)
+
+    result = EasyPostService.verify_address(address_dict)
+    return JsonResponse(result)
+
+
+def get_shipping_rates(request, pk):
+    """AJAX: Get shipping rates for a listing given a destination address."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    listing = get_object_or_404(Listing, pk=pk, shipping_mode='calculated')
+
+    from marketplace.services.easypost_service import EasyPostService
+    from shipping.models import Address, ShippingRate
+
+    # Build to-address from POST
+    to_address = {
+        'name': request.POST.get('name', '').strip(),
+        'street1': request.POST.get('street1', '').strip(),
+        'street2': request.POST.get('street2', '').strip(),
+        'city': request.POST.get('city', '').strip(),
+        'state': request.POST.get('state', '').strip(),
+        'zip': request.POST.get('zip', '').strip(),
+        'country': request.POST.get('country', 'US').strip(),
+    }
+
+    # Build from-address from seller's ship-from address
+    seller_profile = listing.seller.profile
+    if seller_profile.default_ship_from:
+        from_address = seller_profile.default_ship_from.to_easypost_dict()
+    elif listing.ships_from:
+        # Fallback: use ships_from text as city/state
+        parts = listing.ships_from.split(',')
+        from_address = {
+            'name': listing.seller.get_full_name() or listing.seller.username,
+            'street1': 'N/A',
+            'city': parts[0].strip() if parts else '',
+            'state': parts[1].strip() if len(parts) > 1 else '',
+            'zip': '00000',
+            'country': 'US',
+        }
+    else:
+        return JsonResponse({'error': 'Seller has not configured a ship-from address'}, status=400)
+
+    # Build parcel from listing
+    parcel = EasyPostService.build_parcel(listing)
+
+    # Build customs info for international
+    customs_info = None
+    if to_address.get('country', 'US') != 'US':
+        customs_info = EasyPostService.build_customs_info(listing, float(listing.get_current_price()))
+
+    try:
+        rates = EasyPostService.get_rates(from_address, to_address, parcel, customs_info)
+    except Exception as e:
+        return JsonResponse({'error': f'Could not get shipping rates: {e}'}, status=400)
+
+    # Cache rates in DB
+    addr_obj, _ = Address.objects.get_or_create(
+        street1=to_address['street1'],
+        city=to_address['city'],
+        state=to_address['state'],
+        zip_code=to_address['zip'],
+        country=to_address.get('country', 'US'),
+        defaults={
+            'name': to_address['name'],
+            'street2': to_address.get('street2', ''),
+        }
+    )
+
+    expires = timezone.now() + timedelta(minutes=settings.SHIPPING_RATE_CACHE_MINUTES)
+    # Clear old rates for this listing/address combo
+    ShippingRate.objects.filter(listing=listing, to_address=addr_obj).delete()
+
+    for rate_data in rates:
+        ShippingRate.objects.create(
+            listing=listing,
+            to_address=addr_obj,
+            easypost_shipment_id=rate_data['shipment_id'],
+            easypost_rate_id=rate_data['rate_id'],
+            carrier=rate_data['carrier'],
+            service=rate_data['service'],
+            rate=rate_data['rate'],
+            est_delivery_days=rate_data['days'],
+            expires_at=expires,
+        )
+
+    return JsonResponse({
+        'rates': [{
+            'id': r['rate_id'],
+            'shipment_id': r['shipment_id'],
+            'carrier': r['carrier'],
+            'service': r['service'],
+            'rate': str(r['rate']),
+            'days': r['days'],
+        } for r in rates]
+    })
+
+
+def select_shipping_rate(request, pk):
+    """AJAX: Buyer selects a shipping rate — update order total."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    order = _get_order_for_checkout(request, pk)
+    if order.shipping_mode != 'calculated':
+        return JsonResponse({'error': 'Order does not use calculated shipping'}, status=400)
+
+    rate_id = request.POST.get('rate_id', '')
+    shipment_id = request.POST.get('shipment_id', '')
+    rate_amount = request.POST.get('rate', '')
+    carrier = request.POST.get('carrier', '')
+    service = request.POST.get('service', '')
+
+    if not rate_id or not rate_amount:
+        return JsonResponse({'error': 'Rate selection required'}, status=400)
+
+    try:
+        shipping_price = Decimal(rate_amount)
+    except Exception:
+        return JsonResponse({'error': 'Invalid rate amount'}, status=400)
+
+    order.shipping_price = shipping_price
+    order.amount = order.item_price + shipping_price
+    order.easypost_shipment_id = shipment_id
+    order.selected_carrier = carrier
+    order.selected_service = service
+    order.save(update_fields=[
+        'shipping_price', 'amount', 'easypost_shipment_id',
+        'selected_carrier', 'selected_service'
+    ])
+
+    return JsonResponse({
+        'success': True,
+        'shipping_price': str(shipping_price),
+        'total': str(order.amount),
+    })
+
+
+@login_required
+def buy_shipping_label(request, pk):
+    """Seller purchases a shipping label for an order."""
+    order = get_object_or_404(Order, pk=pk, seller=request.user, status='paid')
+
+    from marketplace.services.easypost_service import EasyPostService
+    from shipping.models import ShippingLabel, Address
+
+    if request.method == 'POST':
+        rate_id = request.POST.get('rate_id', '')
+        shipment_id = request.POST.get('shipment_id', '')
+
+        if not rate_id or not shipment_id:
+            messages.error(request, 'Please select a shipping rate.')
+            return redirect('marketplace:buy_label', pk=pk)
+
+        try:
+            label_data = EasyPostService.buy_label(shipment_id, rate_id)
+
+            # Create label record
+            label = ShippingLabel.objects.create(
+                order=order,
+                easypost_shipment_id=shipment_id,
+                easypost_label_id=rate_id,
+                carrier=label_data['carrier'],
+                service=label_data['service'],
+                rate=label_data['rate'],
+                tracking_number=label_data['tracking_number'],
+                label_url=label_data['label_url'],
+            )
+
+            # Update order with tracking info
+            order.tracking_number = label_data['tracking_number']
+            order.tracking_carrier = label_data['carrier']
+            order.label_cost = label_data['rate']
+            order.status = 'shipped'
+            order.shipped_at = timezone.now()
+            order.save(update_fields=[
+                'tracking_number', 'tracking_carrier', 'label_cost',
+                'status', 'shipped_at', 'updated'
+            ])
+
+            # Send notification to buyer
+            try:
+                from alerts.tasks import send_order_notifications
+                send_order_notifications.delay(order.id, 'shipped')
+            except Exception:
+                pass
+
+            messages.success(request, f'Label purchased! Tracking: {label_data["tracking_number"]}')
+            return redirect('marketplace:order_detail', pk=pk)
+
+        except Exception as e:
+            messages.error(request, f'Failed to purchase label: {e}')
+            return redirect('marketplace:buy_label', pk=pk)
+
+    # GET: Show rate options for label purchase
+    seller_profile = request.user.profile
+    if not seller_profile.default_ship_from:
+        messages.warning(request, 'Please set up your ship-from address first.')
+        return redirect('seller_tools:ship_from_address')
+
+    from_address = seller_profile.default_ship_from.to_easypost_dict()
+
+    # Build to-address from order
+    if order.shipping_address_obj:
+        to_address = order.shipping_address_obj.to_easypost_dict()
+    else:
+        # Fallback: parse from free-form text (best effort)
+        to_address = {
+            'name': order.buyer_display_name,
+            'street1': order.shipping_address.split('\n')[0] if order.shipping_address else 'N/A',
+            'city': 'N/A',
+            'state': 'N/A',
+            'zip': '00000',
+            'country': 'US',
+        }
+
+    # Build parcel from listing
+    if order.listing:
+        parcel = EasyPostService.build_parcel(order.listing)
+    else:
+        parcel = {'weight': 8, 'length': 10, 'width': 7, 'height': 2}
+
+    try:
+        rates = EasyPostService.get_rates(from_address, to_address, parcel)
+    except Exception as e:
+        rates = []
+        messages.error(request, f'Could not get shipping rates: {e}')
+
+    context = {
+        'order': order,
+        'rates': rates,
+    }
+    return render(request, 'marketplace/buy_label.html', context)

@@ -204,8 +204,24 @@ class Listing(models.Model):
     video_url = models.URLField(max_length=500, blank=True, help_text="YouTube or Vimeo URL")
 
     # Shipping
+    SHIPPING_MODE_CHOICES = [
+        ('flat', 'Flat Rate'),
+        ('calculated', 'Calculated (EasyPost)'),
+        ('free', 'Free Shipping'),
+    ]
+    shipping_mode = models.CharField(max_length=20, choices=SHIPPING_MODE_CHOICES, default='flat')
     shipping_price = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     ships_from = models.CharField(max_length=100, blank=True)
+    shipping_profile = models.ForeignKey(
+        'shipping.ShippingProfile', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='listings'
+    )
+    weight_oz = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    length_in = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    width_in = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    height_in = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    customs_description = models.CharField(max_length=200, blank=True)
+    hs_tariff_number = models.CharField(max_length=20, blank=True)
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     views = models.PositiveIntegerField(default=0)
@@ -480,6 +496,15 @@ class Order(models.Model):
 
     # Shipping
     shipping_address = models.TextField()
+    shipping_address_obj = models.ForeignKey(
+        'shipping.Address', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='orders'
+    )
+    shipping_mode = models.CharField(max_length=20, default='flat')
+    easypost_shipment_id = models.CharField(max_length=100, blank=True)
+    selected_carrier = models.CharField(max_length=50, blank=True)
+    selected_service = models.CharField(max_length=100, blank=True)
+    label_cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     tracking_number = models.CharField(max_length=100, blank=True)
     tracking_carrier = models.CharField(max_length=50, blank=True)
 

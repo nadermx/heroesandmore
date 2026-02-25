@@ -31,8 +31,10 @@ class StripeService:
         profile.save(update_fields=['stripe_customer_id'])
         return customer
 
-    # Flat fee per transaction to cover Stripe processing costs ($0.30 + 2.9%)
-    PLATFORM_FLAT_FEE = Decimal('0.30')
+    # Per-transaction flat fees
+    STRIPE_PROCESSING_FEE = Decimal('0.29')   # Stripe's fixed per-txn fee
+    SHIPPING_LABEL_FEE = Decimal('0.05')      # Per-order shipping label fee
+    PLATFORM_FLAT_FEE = STRIPE_PROCESSING_FEE + SHIPPING_LABEL_FEE  # $0.34 total
 
     # Trusted seller commission discount (2%)
     TRUSTED_SELLER_DISCOUNT = Decimal('0.02')

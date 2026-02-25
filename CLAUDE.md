@@ -27,6 +27,7 @@ heroesandmore/
 ├── pricing/                # Price guide, valuation, market data
 ├── scanner/                # Image recognition for collectibles
 ├── seller_tools/           # Bulk import, inventory, subscriptions
+├── shipping/               # EasyPost shipping: addresses, labels, rates, tracking
 ├── templates/              # HTML templates
 ├── static/                 # CSS, JS, images
 ├── ansible/                # Deployment automation
@@ -105,6 +106,10 @@ python manage.py test --verbosity=2                             # Verbose output
 - `marketplace.AuctionEvent` - Scheduled auction events
 - `marketplace.Order` - Purchases (supports both authenticated buyers and guest checkout)
 - `marketplace.Offer` - Make offer/counteroffer system
+- `shipping.Address` - Structured shipping addresses with EasyPost verification
+- `shipping.ShippingProfile` - Pre-seeded package profiles for collectibles
+- `shipping.ShippingLabel` - Purchased shipping labels with tracking
+- `shipping.ShippingRate` - Cached rate quotes (30-min expiry)
 - `user_collections.Collection` - User collections with value tracking
 - `user_collections.CollectionValueSnapshot` - Daily value snapshots for charts
 
@@ -288,7 +293,7 @@ logger.warning('Something unexpected')
 logger.error('Error occurred', exc_info=True)  # Include traceback
 ```
 
-Available loggers: `accounts`, `marketplace`, `pricing`, `alerts`, `scanner`, `api`, `seller_tools`, `frontend`
+Available loggers: `accounts`, `marketplace`, `pricing`, `alerts`, `scanner`, `api`, `seller_tools`, `frontend`, `shipping`
 
 ## Config Values Needed (config.py)
 Copy `config.py.example` to `config.py` and set:
@@ -305,6 +310,10 @@ Copy `config.py.example` to `config.py` and set:
 
 **Optional (for subscriptions):**
 - `STRIPE_PRICE_BASIC`, `STRIPE_PRICE_FEATURED`, `STRIPE_PRICE_PREMIUM` - Stripe price IDs for seller tiers
+
+**Optional (for shipping):**
+- `EASYPOST_API_KEY` - EasyPost API key for shipping rates/labels
+- `EASYPOST_WEBHOOK_SECRET` - EasyPost webhook HMAC secret
 
 **Defaults usually fine:**
 - `DATABASE_HOST`, `DATABASE_PORT` - Database connection (default: localhost:5432)
@@ -538,6 +547,84 @@ Subscription billing is handled internally using PaymentIntents instead of Strip
 SUBSCRIPTION_GRACE_PERIOD_DAYS = 7      # Days before downgrading
 SUBSCRIPTION_MAX_RETRY_ATTEMPTS = 4     # Max payment retries
 SUBSCRIPTION_RETRY_INTERVALS = [1, 3, 5, 7]  # Days between retries
+```
+
+## EasyPost Shipping Integration
+
+Full EasyPost integration for real-time carrier rates, label purchase, address validation, and automated tracking.
+
+### Shipping Modes
+- `flat` (default) — seller sets fixed price, existing behavior unchanged
+- `calculated` — real-time carrier rates at checkout via EasyPost
+- `free` — $0 shipping
+
+### Shipping App (`shipping/`)
+```
+shipping/
+├── models.py          # Address, ShippingProfile, ShippingLabel, ShippingRate
+├── admin.py
+├── apps.py
+├── webhooks.py        # EasyPost webhook handler (HMAC verified)
+├── tasks.py           # cleanup_expired_rates (daily 1 AM)
+├── urls.py            # /shipping/webhooks/easypost/
+├── api/               # DRF endpoints for mobile app
+│   ├── serializers.py
+│   ├── views.py
+│   └── urls.py
+└── tests/
+    ├── test_models.py, test_service.py, test_views.py, test_webhooks.py
+```
+
+### Key Models
+- **Address** — Structured shipping address with EasyPost verification, `to_easypost_dict()`, `formatted` property, unique default per user
+- **ShippingProfile** — Pre-seeded package profiles: `standard-card` (2oz), `graded-slab` (8oz), `multiple-cards` (16oz), `figure-toy` (32oz), `custom`
+- **ShippingLabel** — Purchased labels with tracking, void support
+- **ShippingRate** — Cached rate quotes (expire after 30 min)
+
+### Service Layer (`marketplace/services/easypost_service.py`)
+Static method pattern matching StripeService:
+- `verify_address()` — Verify + return corrected address
+- `get_rates()` — Get sorted carrier rate list
+- `buy_label()` — Purchase label, return tracking/URL
+- `refund_label()` — Void/refund label
+- `build_parcel()` — Build from listing fields or profile
+- `build_customs_info()` — For international shipments
+- `process_tracking_webhook()` — Map EasyPost → order statuses
+
+### Fee Structure
+Platform fee = $0.29 (Stripe processing) + $0.05 (shipping label) + commission % per tier. See `StripeService.PLATFORM_FLAT_FEE`.
+
+### Checkout Flow (Calculated Shipping)
+1. Buyer enters structured address fields (replaces textarea for new orders)
+2. Address verified via EasyPost AJAX (`/marketplace/shipping/validate-address/`)
+3. Rates fetched (`/marketplace/<pk>/shipping-rates/`)
+4. Buyer selects rate → total updated (`/marketplace/order/<pk>/select-rate/`)
+5. Payment proceeds as normal
+
+### Seller Label Purchase
+Seller clicks "Buy Label" on order detail → selects rate → label purchased → tracking auto-populated.
+URL: `/marketplace/order/<pk>/buy-label/`
+
+### Webhook
+`/shipping/webhooks/easypost/` — HMAC-verified, handles `tracker.updated` events, maps statuses: `in_transit`→`shipped`, `delivered`→`delivered`. Status never goes backwards.
+
+### API Endpoints
+```
+GET/POST  /api/v1/shipping/addresses/              # CRUD
+POST      /api/v1/shipping/addresses/validate/      # Verify address
+POST      /api/v1/shipping/rates/                   # Get rates
+POST      /api/v1/shipping/labels/<order_id>/buy/   # Buy label
+POST      /api/v1/shipping/labels/<order_id>/void/  # Void label
+GET       /api/v1/shipping/tracking/<order_id>/     # Tracking info
+GET       /api/v1/shipping/profiles/                # List profiles
+```
+
+### Settings
+```python
+EASYPOST_API_KEY = getattr(config, 'EASYPOST_API_KEY', None)
+EASYPOST_WEBHOOK_SECRET = getattr(config, 'EASYPOST_WEBHOOK_SECRET', '')
+SHIPPING_RATE_CACHE_MINUTES = 30
+SHIPPING_LABEL_FORMAT = 'PDF'
 ```
 
 ## Email (Self-Hosted)

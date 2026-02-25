@@ -19,6 +19,9 @@ urlpatterns = [
     # Payout settings
     path('payouts/', views.payout_settings, name='payout_settings'),
 
+    # Ship-from address
+    path('ship-from/', views.ship_from_address, name='ship_from_address'),
+
     # Bulk import
     path('import/', views.bulk_import_list, name='import_list'),
     path('import/new/', views.bulk_import_create, name='import_create'),

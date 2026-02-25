@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Ship-From Address - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb mb-0" style="font-size: 0.875rem;">
+                <li class="breadcrumb-item"><a href="{% url 'seller_tools:dashboard' %}" class="text-muted">Seller Dashboard</a></li>
+                <li class="breadcrumb-item active">Ship-From Address</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Ship-From Address</h1>
+        <p class="text-muted mb-0">This is the return address used on shipping labels.</p>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-body p-4">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Name *</label>
+                            <input type="text" name="name" class="form-control" required
+                                   value="{% if address.name %}{{ address.name }}{% elif address %}{{ address.name }}{% else %}{{ user.get_full_name }}{% endif %}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Company</label>
+                            <input type="text" name="company" class="form-control"
+                                   value="{% if address %}{{ address.company }}{% endif %}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Street Address *</label>
+                            <input type="text" name="street1" class="form-control" required
+                                   value="{% if address %}{{ address.street1 }}{% endif %}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Apt / Suite / Unit</label>
+                            <input type="text" name="street2" class="form-control"
+                                   value="{% if address %}{{ address.street2 }}{% endif %}">
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-5">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">City *</label>
+                                <input type="text" name="city" class="form-control" required
+                                       value="{% if address %}{{ address.city }}{% endif %}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">State *</label>
+                                <input type="text" name="state" class="form-control" required maxlength="2" placeholder="e.g. CA"
+                                       value="{% if address %}{{ address.state }}{% endif %}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">ZIP Code *</label>
+                                <input type="text" name="zip_code" class="form-control" required
+                                       value="{% if address %}{{ address.zip_code }}{% endif %}">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Country</label>
+                                <input type="text" name="country" class="form-control" maxlength="2"
+                                       value="{% if address %}{{ address.country }}{% else %}US{% endif %}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Phone</label>
+                                <input type="tel" name="phone" class="form-control"
+                                       value="{% if address %}{{ address.phone }}{% endif %}">
+                            </div>
+                        </div>
+
+                        {% if address and address.is_verified %}
+                        <div class="alert alert-success small py-2 mb-3">
+                            <i class="bi bi-check-circle me-1"></i> Address verified
+                        </div>
+                        {% endif %}
+
+                        <button type="submit" class="btn btn-dark w-100">
+                            {% if address %}Update Address{% else %}Save Address{% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

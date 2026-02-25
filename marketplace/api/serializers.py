@@ -44,7 +44,7 @@ class ListingListSerializer(serializers.ModelSerializer):
             'seller_is_trusted', 'seller_is_founding',
             'category_name', 'category_slug', 'primary_image',
             'auction_end', 'time_remaining', 'bid_count',
-            'shipping_price', 'views', 'created', 'quantity_available',
+            'shipping_mode', 'shipping_price', 'views', 'created', 'quantity_available',
             'is_platform_listing', 'save_count', 'recent_bids', 'has_video'
         ]
 
@@ -121,7 +121,7 @@ class ListingDetailSerializer(serializers.ModelSerializer):
             'category_slug', 'images', 'videos', 'video_url', 'video_embed_url',
             'allow_offers', 'minimum_offer_percent',
             'quantity', 'quantity_available', 'quantity_sold',
-            'shipping_price', 'ships_from', 'auction_end', 'time_remaining',
+            'shipping_mode', 'shipping_price', 'ships_from', 'auction_end', 'time_remaining',
             'reserve_price', 'no_reserve', 'starting_bid',
             'bid_count', 'high_bidder', 'is_saved', 'recent_sales',
             'views', 'status', 'created', 'is_platform_listing',
@@ -247,7 +247,9 @@ class ListingCreateSerializer(serializers.ModelSerializer):
             'listing_type', 'quantity', 'auction_end', 'reserve_price', 'no_reserve',
             'starting_bid', 'allow_offers', 'minimum_offer_percent',
             'grading_service', 'grade', 'cert_number',
-            'shipping_price', 'ships_from',
+            'shipping_mode', 'shipping_price', 'ships_from',
+            'shipping_profile', 'weight_oz', 'length_in', 'width_in', 'height_in',
+            'customs_description', 'hs_tariff_number',
             'image1', 'image2', 'image3', 'image4', 'image5',
             'video1', 'video2', 'video3', 'video_url',
         ]
@@ -426,7 +428,8 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'listing', 'buyer_username', 'seller_username',
             'quantity', 'item_price', 'shipping_price', 'amount', 'platform_fee',
-            'seller_payout', 'status', 'shipping_address',
+            'seller_payout', 'status', 'shipping_address', 'shipping_mode',
+            'selected_carrier', 'selected_service', 'label_cost',
             'tracking_number', 'tracking_carrier',
             'shipped_at', 'delivered_at', 'created'
         ]
