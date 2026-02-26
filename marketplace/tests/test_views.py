@@ -21,23 +21,29 @@ class SellerSetupViewTests(TestCase):
         self.url = reverse('marketplace:seller_setup')
 
     def test_seller_setup_requires_login(self):
-        """Unauthenticated users should be redirected to login."""
+        """Unauthenticated users should be redirected to signup."""
         self.client.logout()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 302)
-        self.assertIn('/auth/login/', response.url)
+        self.assertIn('/auth/signup/', response.url)
+
+    def test_seller_setup_shows_country_picker(self):
+        """GET with no Stripe account should show country selection."""
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'marketplace/seller_setup_country.html')
 
     @patch('marketplace.services.connect_service.stripe.Account.create')
-    def test_seller_setup_creates_account_if_none_exists(self, mock_create):
-        """Should create Stripe account if user doesn't have one."""
+    def test_seller_setup_creates_account_on_post(self, mock_create):
+        """Should create Stripe account when country is submitted via POST."""
         mock_account = MagicMock()
         mock_account.id = 'acct_test123'
         mock_create.return_value = mock_account
 
-        response = self.client.get(self.url)
+        response = self.client.post(self.url, {'country': 'US'})
 
         mock_create.assert_called_once()
-        # Should render embedded onboarding or redirect
+        # Should render embedded onboarding
         self.assertIn(response.status_code, [200, 302])
 
     @patch('marketplace.services.connect_service.stripe.Account.retrieve')

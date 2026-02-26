@@ -1,16 +1,49 @@
 """
 Tests for accounts views - registration, login, profile.
 """
+import time
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User
+from django.contrib.sites.models import Site
+from allauth.socialaccount.models import SocialApp
 
 
-class RegistrationTests(TestCase):
+class SocialAppMixin:
+    """Create the Google SocialApp that allauth templates require."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        site = Site.objects.get_current()
+        app, _ = SocialApp.objects.get_or_create(
+            provider='google',
+            defaults={
+                'name': 'Google',
+                'client_id': 'fake-client-id',
+                'secret': 'fake-secret',
+            },
+        )
+        app.sites.add(site)
+
+
+class RegistrationTests(SocialAppMixin, TestCase):
     """Tests for user registration."""
 
     def setUp(self):
         self.client = Client()
+
+    def _signup_data(self, **overrides):
+        """Build valid signup POST data including honeypot timestamp."""
+        data = {
+            'username': 'newuser',
+            'email': 'newuser@example.com',
+            'password1': 'SecurePass123!',
+            'password2': 'SecurePass123!',
+            '_ts': str(int(time.time()) - 5),  # 5 seconds ago (bypasses honeypot)
+        }
+        data.update(overrides)
+        return data
 
     def test_registration_page_loads(self):
         """Registration page should be accessible."""
@@ -19,24 +52,13 @@ class RegistrationTests(TestCase):
 
     def test_registration_with_valid_data(self):
         """Should create user with valid registration data."""
-        data = {
-            'username': 'newuser',
-            'email': 'newuser@example.com',
-            'password1': 'SecurePass123!',
-            'password2': 'SecurePass123!',
-        }
-        response = self.client.post('/auth/signup/', data)
+        response = self.client.post('/auth/signup/', self._signup_data())
         # Should redirect after successful signup
         self.assertIn(response.status_code, [200, 302])
 
     def test_registration_password_mismatch(self):
         """Should reject mismatched passwords."""
-        data = {
-            'username': 'newuser',
-            'email': 'newuser@example.com',
-            'password1': 'SecurePass123!',
-            'password2': 'DifferentPass123!',
-        }
+        data = self._signup_data(password2='DifferentPass123!')
         response = self.client.post('/auth/signup/', data)
         self.assertEqual(response.status_code, 200)  # Form re-displayed
         self.assertFalse(User.objects.filter(username='newuser').exists())
@@ -44,17 +66,15 @@ class RegistrationTests(TestCase):
     def test_registration_duplicate_username(self):
         """Should reject duplicate usernames."""
         User.objects.create_user('existinguser', 'existing@example.com', 'pass123')
-        data = {
-            'username': 'existinguser',
-            'email': 'new@example.com',
-            'password1': 'SecurePass123!',
-            'password2': 'SecurePass123!',
-        }
+        data = self._signup_data(
+            username='existinguser',
+            email='new@example.com',
+        )
         response = self.client.post('/auth/signup/', data)
         self.assertEqual(response.status_code, 200)
 
 
-class LoginTests(TestCase):
+class LoginTests(SocialAppMixin, TestCase):
     """Tests for user login."""
 
     def setUp(self):

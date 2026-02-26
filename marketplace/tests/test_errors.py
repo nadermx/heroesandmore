@@ -2,7 +2,6 @@
 Tests for custom error pages.
 """
 from django.test import TestCase, Client, override_settings
-from django.urls import reverse
 
 
 class ErrorPageTests(TestCase):
@@ -18,12 +17,11 @@ class ErrorPageTests(TestCase):
 
     @override_settings(DEBUG=False)
     def test_404_contains_helpful_links(self):
-        """404 page should contain links to help users navigate."""
+        """404 page should contain a link back to the home page."""
         response = self.client.get('/this-page-does-not-exist-12345/')
         content = response.content.decode()
-        # Check for home and marketplace links
-        self.assertIn('Go Home', content)
-        self.assertIn('/marketplace/', content)
+        self.assertIn('Go to home', content)
+        self.assertIn('href="/"', content)
 
     def test_403_template_exists(self):
         """403 template should exist and be valid."""
@@ -46,18 +44,18 @@ class ErrorPageTests(TestCase):
     def test_error_pages_are_standalone(self):
         """Error pages should not depend on base template context."""
         from django.template.loader import render_to_string
-        
-        # These should render without any context
+
+        # These should render without any context (standalone HTML)
         for template_name in ['404.html', '403.html', '500.html']:
             try:
                 content = render_to_string(template_name, {})
-                self.assertIn('<!DOCTYPE html>', content)
-                self.assertIn('HeroesAndMore', content)
+                self.assertIn('<!doctype html>', content)
+                self.assertIn('Go to home', content)
             except Exception as e:
                 self.fail(f"Error page {template_name} failed to render: {e}")
 
-    def test_error_pages_contain_contact_info(self):
-        """Error pages should contain support contact for 500."""
+    def test_500_page_content(self):
+        """500 page should tell user something went wrong."""
         from django.template.loader import render_to_string
         content = render_to_string('500.html', {})
-        self.assertIn('support@heroesandmore.com', content)
+        self.assertIn('Something went wrong', content)

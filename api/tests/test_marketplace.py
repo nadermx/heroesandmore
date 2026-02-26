@@ -655,7 +655,8 @@ class AutoBidAPITests(TestCase):
             'max_amount': '150.00',  # Must be higher than current price
         })
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['max_amount'], '150.00')
+        self.assertIn('auto_bid', response.data)
+        self.assertEqual(response.data['auto_bid']['max_amount'], '150.00')
 
     def test_cannot_autobid_own_listing(self):
         """Seller cannot auto-bid on own listing."""
