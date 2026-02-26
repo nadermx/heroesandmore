@@ -159,7 +159,7 @@ def send_alert_emails():
 
         message = f"Hi {user.username},\n\nYou have new notifications:\n\n"
         message += "\n\n".join(message_parts)
-        message += "\n\nVisit https://herosandmore.com/alerts/ to view all notifications."
+        message += "\n\nVisit https://heroesandmore.com/alerts/ to view all notifications."
 
         try:
             send_mail(

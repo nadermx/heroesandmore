@@ -116,3 +116,37 @@ class SocialViewTests(TestCase):
         self.client.login(username='socialuser', password='pass123')
         response = self.client.get('/social/messages/')
         self.assertIn(response.status_code, [200, 302])
+
+
+class ForumThreadDetailTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user('poster', 'poster@test.com', 'pass123')
+        self.category = ForumCategory.objects.create(name='General', slug='general')
+        self.thread = ForumThread.objects.create(
+            category=self.category,
+            author=self.user,
+            title='Thread Title',
+            last_post_by=self.user,
+        )
+        self.first_post = ForumPost.objects.create(
+            thread=self.thread,
+            author=self.user,
+            content='First post content',
+        )
+
+    def test_thread_detail_shows_first_post_content(self):
+        response = self.client.get(f'/social/thread/{self.thread.pk}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'First post content')
+
+    def test_reply_thread_creates_post(self):
+        self.client.login(username='poster', password='pass123')
+        response = self.client.post(
+            f'/social/thread/{self.thread.pk}/reply/',
+            {'content': 'Reply body'}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            ForumPost.objects.filter(thread=self.thread, content='Reply body').exists()
+        )

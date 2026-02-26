@@ -11,12 +11,17 @@ from accounts.api.views import (
     GoogleAuthView, AppleAuthView, PasswordResetView, PasswordResetConfirmView,
     ChangePasswordView
 )
-from app.views import bid_landing, contact, log_frontend_error, sell_landing, trusted_seller_landing
+from app.views import (
+    bid_landing, contact, log_frontend_error, sell_landing, trusted_seller_landing,
+    robots_txt, sitemap_xml
+)
 from alerts.views import newsletter_subscribe, newsletter_verify, newsletter_preferences, newsletter_unsubscribe
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home, name='home'),
+    path('robots.txt', robots_txt, name='robots_txt'),
+    path('sitemap.xml', sitemap_xml, name='sitemap_xml'),
 
     # Frontend error logging
     path('api/log-error/', log_frontend_error, name='log_frontend_error'),

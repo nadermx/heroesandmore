@@ -2,6 +2,7 @@
 
 {% block title %}Marketplace - HeroesAndMore{% endblock %}
 {% block meta_description %}Browse the HeroesAndMore marketplace. Buy and sell trading cards, comics, action figures, and collectibles. Fixed price and auction listings available.{% endblock %}
+{% block robots %}{% if request.GET %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 
 {% block structured_data %}
 <script type="application/ld+json">

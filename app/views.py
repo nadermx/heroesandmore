@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.db.models import Count, Q, Sum
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -18,6 +18,77 @@ from items.views import _get_site_stats
 
 logger = logging.getLogger('frontend')
 app_logger = logging.getLogger('app')
+
+
+def robots_txt(request):
+    """Serve robots.txt with sitemap reference."""
+    site_url = getattr(settings, 'SITE_URL', '').rstrip('/')
+    if not site_url:
+        site_url = f"{request.scheme}://{request.get_host()}"
+
+    content = "\n".join([
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /admin/",
+        "Disallow: /api/",
+        f"Sitemap: {site_url}/sitemap.xml",
+    ])
+    return HttpResponse(content, content_type='text/plain; charset=utf-8')
+
+
+def sitemap_xml(request):
+    """Lightweight XML sitemap for indexable public pages."""
+    from marketplace.models import Listing
+    from items.models import Category, Item
+    from pricing.models import PriceGuideItem
+    from social.models import ForumThread
+
+    site_url = getattr(settings, 'SITE_URL', '').rstrip('/')
+    if not site_url:
+        site_url = f"{request.scheme}://{request.get_host()}"
+
+    today = timezone.now().date().isoformat()
+    urls = [
+        (f"{site_url}/", today, "daily", "1.0"),
+        (f"{site_url}/marketplace/", today, "hourly", "0.9"),
+        (f"{site_url}/items/", today, "daily", "0.8"),
+        (f"{site_url}/price-guide/", today, "daily", "0.9"),
+        (f"{site_url}/social/forums/", today, "daily", "0.7"),
+        (f"{site_url}/sell/", today, "weekly", "0.6"),
+        (f"{site_url}/bid/", today, "daily", "0.7"),
+    ]
+
+    for category in Category.objects.filter(is_active=True).only('slug', 'updated')[:5000]:
+        urls.append((f"{site_url}{category.get_absolute_url()}", category.updated.date().isoformat(), "daily", "0.7"))
+
+    for listing in Listing.objects.filter(status='active').only('id', 'updated').order_by('-updated')[:10000]:
+        urls.append((f"{site_url}{listing.get_absolute_url()}", listing.updated.date().isoformat(), "hourly", "0.8"))
+
+    for item in Item.objects.select_related('category').only('slug', 'category__slug', 'updated')[:10000]:
+        urls.append((f"{site_url}{item.get_absolute_url()}", item.updated.date().isoformat(), "weekly", "0.6"))
+
+    for price_item in PriceGuideItem.objects.only('slug', 'updated').order_by('-updated')[:20000]:
+        urls.append((f"{site_url}{price_item.get_absolute_url()}", price_item.updated.date().isoformat(), "daily", "0.9"))
+
+    for thread in ForumThread.objects.only('id', 'updated').order_by('-updated')[:5000]:
+        urls.append((f"{site_url}{thread.get_absolute_url()}", thread.updated.date().isoformat(), "weekly", "0.5"))
+
+    xml_parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for loc, lastmod, changefreq, priority in urls:
+        xml_parts.extend([
+            "  <url>",
+            f"    <loc>{loc}</loc>",
+            f"    <lastmod>{lastmod}</lastmod>",
+            f"    <changefreq>{changefreq}</changefreq>",
+            f"    <priority>{priority}</priority>",
+            "  </url>",
+        ])
+    xml_parts.append("</urlset>")
+
+    return HttpResponse("\n".join(xml_parts), content_type='application/xml; charset=utf-8')
 
 
 def sell_landing(request):

@@ -25,11 +25,11 @@
     <title>{% block title %}HeroesAndMore - The Premium Collectables Marketplace and Auction House{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}HeroesAndMore - The Premium Collectables Marketplace and Auction House. Buy, sell, and collect comics, cards, toys, and more.{% endblock %}">
     {% block robots %}{% endblock %}
-    <link rel="canonical" href="{% block canonical %}{{ request.build_absolute_uri }}{% endblock %}">
+    <link rel="canonical" href="{% block canonical %}{{ request.scheme }}://{{ request.get_host }}{{ request.path }}{% endblock %}">
     <meta property="og:title" content="{% block og_title %}HeroesAndMore - The Premium Collectables Marketplace and Auction House{% endblock %}">
     <meta property="og:description" content="{% block og_description %}The Premium Collectables Marketplace and Auction House. Buy, sell, and collect comics, cards, toys, and more.{% endblock %}">
     <meta property="og:type" content="{% block og_type %}website{% endblock %}">
-    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
     <meta property="og:site_name" content="HeroesAndMore">
     <meta property="og:image" content="{% block og_image %}{{ default_og_image }}{% endblock %}">
     <meta name="twitter:card" content="{% block twitter_card %}summary_large_image{% endblock %}">

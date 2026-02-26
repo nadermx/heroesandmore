@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from scanner.models import ScanResult, ScanSession
+from scanner.services.identification import quick_identify_scan
 from api.pagination import StandardResultsPagination
 from .serializers import (
     ScanResultSerializer, ScanUploadSerializer,
@@ -32,9 +33,7 @@ class ScanUploadView(APIView):
             status='pending'
         )
 
-        # TODO: Trigger async task for image recognition
-        # from scanner.tasks import process_scan
-        # process_scan.delay(scan.id)
+        quick_identify_scan(scan)
 
         return Response(
             ScanResultSerializer(scan, context={'request': request}).data,
@@ -198,7 +197,7 @@ class ScanSessionViewSet(viewsets.ModelViewSet):
         session.total_scans += 1
         session.save()
 
-        # TODO: Trigger async processing
+        quick_identify_scan(scan)
 
         return Response(
             ScanResultSerializer(scan, context={'request': request}).data,

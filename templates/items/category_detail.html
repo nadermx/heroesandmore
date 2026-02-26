@@ -5,6 +5,7 @@
 {% block meta_description %}Browse {{ category.name }} collectibles on HeroesAndMore. Find listings, track prices, and discover rare items in the {{ category.name }} category.{% endblock %}
 {% block og_title %}{{ category.name }} - HeroesAndMore{% endblock %}
 {% block og_description %}Browse {{ category.name }} collectibles on HeroesAndMore. Find listings, track prices, and discover rare items.{% endblock %}
+{% block robots %}{% if request.GET %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 
 {% block structured_data %}
 <script type="application/ld+json">

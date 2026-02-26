@@ -6,9 +6,9 @@ from django.contrib import messages
 from django.utils import timezone
 
 from .models import ScanResult, ScanSession
+from .services.identification import quick_identify_scan
 from marketplace.models import Listing
 from user_collections.models import Collection, CollectionItem
-from pricing.models import PriceGuideItem
 
 
 @login_required
@@ -37,14 +37,13 @@ def upload_scan(request):
         status='pending'
     )
 
-    # In production, this would trigger a Celery task
-    # process_scan.delay(scan.id)
+    # Process immediately with a safe fallback matcher so result pages don't stall.
+    quick_identify_scan(scan)
 
-    # For now, return the scan ID for polling
     return JsonResponse({
         'scan_id': scan.id,
-        'status': 'pending',
-        'redirect_url': scan.get_absolute_url() if hasattr(scan, 'get_absolute_url') else f'/scanner/result/{scan.id}/'
+        'status': scan.status,
+        'redirect_url': f'/scanner/result/{scan.id}/'
     })
 
 
@@ -178,12 +177,12 @@ def api_scan(request):
         status='pending'
     )
 
-    # Trigger async processing (in production)
-    # process_scan.delay(scan.id)
+    # Process immediately with a safe fallback matcher.
+    quick_identify_scan(scan)
 
     return JsonResponse({
         'scan_id': scan.id,
-        'status': 'pending',
+        'status': scan.status,
     })
 
 

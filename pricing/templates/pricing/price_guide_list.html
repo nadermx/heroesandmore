@@ -2,6 +2,7 @@
 {% load humanize %}
 
 {% block title %}Price Guide{% if current_category %} - {{ current_category.name }}{% endif %} | HeroesAndMore{% endblock %}
+{% block robots %}{% if request.GET %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 
 {% block content %}
 <div class="container py-4">

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.urls import reverse
 
 
 class ScanResult(models.Model):
@@ -88,6 +89,9 @@ class ScanResult(models.Model):
             parts.append(f"{data['grading_company']} {data['grade']}")
 
         return ' '.join(parts)
+
+    def get_absolute_url(self):
+        return reverse('scanner:result', kwargs={'pk': self.pk})
 
 
 class ScanSession(models.Model):

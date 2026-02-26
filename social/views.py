@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.http import JsonResponse, Http404
 from django.core.paginator import Paginator
 from django.db.models import F, Q
+from django.urls import reverse
 from django.utils import timezone
 
 from .models import Follow, Message, Comment, ForumCategory, ForumThread, ForumPost, Activity
@@ -240,10 +241,27 @@ def thread_detail(request, pk):
     """View thread and posts"""
     thread = get_object_or_404(ForumThread.objects.select_related('category', 'author'), pk=pk)
 
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return redirect(f"{reverse('account_signup')}?next={request.path}")
+        if thread.locked:
+            messages.error(request, "This thread is locked.")
+            return redirect('social:thread_detail', pk=pk)
+        form = PostForm(request.POST)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.thread = thread
+            post.author = request.user
+            post.save()
+            return redirect('social:thread_detail', pk=pk)
+
     # Increment views
     ForumThread.objects.filter(pk=pk).update(views=F('views') + 1)
 
+    first_post = thread.posts.select_related('author').order_by('created').first()
     posts = thread.posts.select_related('author').order_by('created')
+    if first_post:
+        posts = posts.exclude(pk=first_post.pk)
 
     paginator = Paginator(posts, 25)
     page = request.GET.get('page')
@@ -254,6 +272,7 @@ def thread_detail(request, pk):
 
     context = {
         'thread': thread,
+        'first_post': first_post,
         'posts': posts,
         'reply_form': reply_form,
     }

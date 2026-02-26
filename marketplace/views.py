@@ -49,7 +49,7 @@ def listing_list(request):
         listings = listings.filter(price__lte=max_price)
 
     # Sort
-    sort = request.GET.get('sort', '-created')
+    sort = request.GET.get('sort', 'newest')
     sort_options = {
         'price_low': 'price',
         'price_high': '-price',
@@ -57,7 +57,10 @@ def listing_list(request):
         'ending': 'auction_end',
         'popular': '-views',
     }
-    listings = listings.order_by(sort_options.get(sort, '-created'))
+    if sort == 'ending':
+        listings = listings.filter(listing_type='auction').order_by('auction_end')
+    else:
+        listings = listings.order_by(sort_options.get(sort, '-created'))
 
     paginator = Paginator(listings, 24)
     page = request.GET.get('page')

@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
+from scanner.models import ScanResult
 
 
 class ScannerViewTests(TestCase):
@@ -30,6 +31,15 @@ class ScannerViewTests(TestCase):
         self.client.login(username='scanner', password='pass123')
         response = self.client.get('/scanner/history/')
         self.assertIn(response.status_code, [200, 404])
+
+    def test_upload_scan_processes_without_stalling_pending(self):
+        self.client.login(username='scanner', password='pass123')
+        upload = SimpleUploadedFile('charizard-base.jpg', b'fake-image-bytes', content_type='image/jpeg')
+        response = self.client.post('/scanner/upload/', {'image': upload})
+        self.assertEqual(response.status_code, 200)
+        scan_id = response.json()['scan_id']
+        scan = ScanResult.objects.get(pk=scan_id)
+        self.assertIn(scan.status, ['success', 'no_match'])
 
 
 class ScannerAPITests(TestCase):
