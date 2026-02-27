@@ -101,7 +101,7 @@ def end_auctions():
 @shared_task
 def expire_unpaid_orders():
     """Cancel unpaid orders that have been pending too long and release listings."""
-    cutoff = timezone.now() - timedelta(hours=settings.ORDER_PAYMENT_TIMEOUT_HOURS)
+    cutoff = timezone.now() - timedelta(minutes=settings.ORDER_PAYMENT_TIMEOUT_MINUTES)
 
     orders = Order.objects.filter(
         status__in=['pending', 'payment_failed'],

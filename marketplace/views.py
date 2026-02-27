@@ -679,6 +679,11 @@ def checkout(request, pk):
                     shipping_address='',
                     shipping_mode=listing.shipping_mode,
                 )
+                # Reserve stock immediately so listing shows correct availability
+                if not listing.record_sale(qty):
+                    order.delete()
+                    messages.error(request, 'Sorry, this item is no longer available in the requested quantity.')
+                    return redirect('marketplace:listing_detail', pk=pk)
                 # Store token in session
                 request.session['guest_order_token'] = order.guest_order_token
         else:
@@ -699,6 +704,12 @@ def checkout(request, pk):
                     'shipping_mode': listing.shipping_mode,
                 }
             )
+            if created:
+                # Reserve stock immediately so listing shows correct availability
+                if not listing.record_sale(qty):
+                    order.delete()
+                    messages.error(request, 'Sorry, this item is no longer available in the requested quantity.')
+                    return redirect('marketplace:listing_detail', pk=pk)
     else:
         platform_fee = order.platform_fee
         total = order.amount
@@ -755,8 +766,6 @@ def payment(request, pk):
             order.stripe_payment_status = 'succeeded'
             order.paid_at = timezone.now()
             order.save()
-            if order.listing:
-                order.listing.record_sale(order.quantity)
             return redirect('marketplace:order_detail', pk=pk)
 
     if order.listing:
@@ -790,10 +799,6 @@ def checkout_complete(request, pk):
             order.stripe_payment_status = 'succeeded'
             order.paid_at = timezone.now()
             order.save()
-
-            # Record sale on listing
-            if order.listing:
-                order.listing.record_sale(order.quantity)
 
     # TikTok server-side CompletePayment event
     if order.status in ('paid', 'shipped', 'delivered', 'completed'):
@@ -889,10 +894,6 @@ def process_payment(request, pk):
             order.stripe_payment_status = 'succeeded'
             order.paid_at = timezone.now()
             order.save()
-
-            # Record sale on listing
-            if order.listing:
-                order.listing.record_sale(order.quantity)
 
             # Redirect to complete page
             redirect_url = f'/marketplace/order/{order.id}/complete/'
@@ -1625,7 +1626,8 @@ def validate_address(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
 
-    from marketplace.services.easypost_service import EasyPostService
+    from marketplace.services.shipping_factory import get_shipping_service
+    ShippingService = get_shipping_service()
 
     address_dict = {
         'name': request.POST.get('name', '').strip(),
@@ -1641,7 +1643,7 @@ def validate_address(request):
                 address_dict['state'], address_dict['zip']]):
         return JsonResponse({'error': 'Please fill in all required address fields'}, status=400)
 
-    result = EasyPostService.verify_address(address_dict)
+    result = ShippingService.verify_address(address_dict)
     return JsonResponse(result)
 
 
@@ -1652,8 +1654,9 @@ def get_shipping_rates(request, pk):
 
     listing = get_object_or_404(Listing, pk=pk, shipping_mode='calculated')
 
-    from marketplace.services.easypost_service import EasyPostService
+    from marketplace.services.shipping_factory import get_shipping_service
     from shipping.models import Address, ShippingRate
+    ShippingService = get_shipping_service()
 
     # Build to-address from POST
     to_address = {
@@ -1685,15 +1688,15 @@ def get_shipping_rates(request, pk):
         return JsonResponse({'error': 'Seller has not configured a ship-from address'}, status=400)
 
     # Build parcel from listing
-    parcel = EasyPostService.build_parcel(listing)
+    parcel = ShippingService.build_parcel(listing)
 
     # Build customs info for international
     customs_info = None
     if to_address.get('country', 'US') != 'US':
-        customs_info = EasyPostService.build_customs_info(listing, float(listing.get_current_price()))
+        customs_info = ShippingService.build_customs_info(listing, float(listing.get_current_price()))
 
     try:
-        rates = EasyPostService.get_rates(from_address, to_address, parcel, customs_info)
+        rates = ShippingService.get_rates(from_address, to_address, parcel, customs_info)
     except Exception as e:
         return JsonResponse({'error': f'Could not get shipping rates: {e}'}, status=400)
 
@@ -1784,8 +1787,9 @@ def buy_shipping_label(request, pk):
     """Seller purchases a shipping label for an order."""
     order = get_object_or_404(Order, pk=pk, seller=request.user, status='paid')
 
-    from marketplace.services.easypost_service import EasyPostService
+    from marketplace.services.shipping_factory import get_shipping_service
     from shipping.models import ShippingLabel, Address
+    ShippingService = get_shipping_service()
 
     if request.method == 'POST':
         rate_id = request.POST.get('rate_id', '')
@@ -1796,7 +1800,7 @@ def buy_shipping_label(request, pk):
             return redirect('marketplace:buy_label', pk=pk)
 
         try:
-            label_data = EasyPostService.buy_label(shipment_id, rate_id)
+            label_data = ShippingService.buy_label(shipment_id, rate_id)
 
             # Create label record
             label = ShippingLabel.objects.create(
@@ -1859,12 +1863,12 @@ def buy_shipping_label(request, pk):
 
     # Build parcel from listing
     if order.listing:
-        parcel = EasyPostService.build_parcel(order.listing)
+        parcel = ShippingService.build_parcel(order.listing)
     else:
         parcel = {'weight': 8, 'length': 10, 'width': 7, 'height': 2}
 
     try:
-        rates = EasyPostService.get_rates(from_address, to_address, parcel)
+        rates = ShippingService.get_rates(from_address, to_address, parcel)
     except Exception as e:
         rates = []
         messages.error(request, f'Could not get shipping rates: {e}')

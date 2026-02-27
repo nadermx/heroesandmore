@@ -106,6 +106,7 @@ python manage.py test --verbosity=2                             # Verbose output
 - `marketplace.AuctionEvent` - Scheduled auction events
 - `marketplace.Order` - Purchases (supports both authenticated buyers and guest checkout)
 - `marketplace.Offer` - Make offer/counteroffer system
+- `marketplace.AutoBid` - Proxy bidding (eBay-style auto-bid up to max amount)
 - `shipping.Address` - Structured shipping addresses with EasyPost verification
 - `shipping.ShippingProfile` - Pre-seeded package profiles for collectibles
 - `shipping.ShippingLabel` - Purchased shipping labels with tracking
@@ -401,7 +402,7 @@ Curated auction events run by the platform. Trusted sellers submit lots for staf
 
 ### Listing & Alert Tasks
 - `marketplace.tasks.end_auctions` - End expired auctions, notify winners/sellers, expire no-bid listings (every 5 min)
-- `marketplace.tasks.expire_unpaid_orders` - Cancel orders pending > 24h, restore listing stock (hourly :15)
+- `marketplace.tasks.expire_unpaid_orders` - Cancel orders pending > 15min, restore listing stock (every 5 min)
 - `alerts.tasks.send_listing_expired_notification` - Email + in-app alert when auction ends with no bids
 - `alerts.tasks.send_relist_reminders` - Remind sellers about expired listings after 3 days (daily 11 AM)
 
@@ -511,7 +512,8 @@ Uses Stripe Connect embedded components so users stay on-site:
 - Onboarding page: `/marketplace/seller-setup/`
 - Account session API: `/marketplace/seller-setup/session/`
 - Template: `templates/marketplace/seller_setup.html`
-- Uses `StripeConnect.init()` with `account-onboarding` component
+- Uses `StripeConnect.onLoad` callback with `account-onboarding` component
+- First visit shows country picker (`seller_setup_country.html`), POST creates account, then shows embedded onboarding
 - **International sellers supported** — `connect_service.py` does NOT restrict `country` parameter, allowing Stripe to handle supported countries automatically
 
 ### Local Testing
@@ -660,6 +662,8 @@ Project is split across three standalone repositories (each in its own directory
 - Stripe API calls should be mocked in tests - see `marketplace/tests/test_orders.py` for examples
 - API tests use `rest_framework.test.APIClient` with JWT authentication
 - Test database uses SQLite in-memory for speed
+- **Allauth SocialApp required**: Tests rendering login/signup pages must create a Google `SocialApp` in setUp — use the `SocialAppMixin` from `accounts/tests/test_views.py`
+- **Honeypot in signup tests**: POST to `/auth/signup/` must include `'_ts': str(int(time.time()) - 5)` or the honeypot middleware silently redirects (fakes success). See `accounts/tests/test_views.py` `_signup_data()` helper.
 
 ## Shared Utilities
 
@@ -801,7 +805,7 @@ When adding a new badge type, update ALL these locations:
 - On server, `config.py` is owned by `www:www` — use `sudo -u www` when running scripts that need it
 - **Celery Beat scheduler**: Uses default file-based scheduler — do NOT use `django_celery_beat.schedulers:DatabaseScheduler` (it's installed but not in INSTALLED_APPS, will crash)
 - **Auth templates**: Custom templates exist for `login.html`, `signup.html`, `logout.html`, `password_reset.html`, `password_reset_done.html`, `password_reset_from_key.html`, `password_reset_from_key_done.html` — any missing allauth template will render unstyled
-- **Pre-existing test failures**: Tests for login/registration pages fail with `SocialApp.DoesNotExist` because allauth template tags need a SocialApp in the test DB; error page tests and seller setup tests also fail — these are known issues
+- **COOP header**: `SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'` is required for Stripe Connect embedded components — `same-origin` blocks their cross-origin popups
 - **Three-repo consistency**: When adding new API fields or badges, update all three repos (web, Android, iOS) — see "Badge Display" checklist under Founding Collector Program
 - **Order "completed" status filter**: When counting sold/completed orders, always use `status__in=['paid', 'shipped', 'delivered', 'completed']` — not just `status='paid'`, which misses orders that have progressed
 - **Landing page views live in `app/views.py`**: `sell_landing`, `bid_landing`, `trusted_seller_landing`, `contact` — not in any app's views.py

@@ -46,10 +46,10 @@ app.conf.beat_schedule = {
         'task': 'seller_tools.tasks.send_renewal_reminders',
         'schedule': crontab(hour=10, minute=0),  # Daily at 10 AM
     },
-    # Expire unpaid orders hourly
+    # Expire unpaid orders every 5 minutes (releases reserved stock)
     'expire-unpaid-orders': {
         'task': 'marketplace.tasks.expire_unpaid_orders',
-        'schedule': crontab(minute=15),
+        'schedule': crontab(minute='*/5'),
     },
     # End auctions every 5 minutes
     'end-auctions': {
@@ -100,5 +100,10 @@ app.conf.beat_schedule = {
     'cleanup-expired-shipping-rates': {
         'task': 'shipping.tasks.cleanup_expired_rates',
         'schedule': crontab(hour=1, minute=0),
+    },
+    # Poll USPS tracking for shipped orders (every 2 hours)
+    'poll-usps-tracking': {
+        'task': 'shipping.tasks.poll_usps_tracking',
+        'schedule': crontab(minute=0, hour='*/2'),
     },
 }

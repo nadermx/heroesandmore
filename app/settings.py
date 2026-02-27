@@ -85,6 +85,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'app.context_processors.seo',
+                'app.context_processors.alerts',
                 'app.context_processors.auction_banner',
             ],
         },
@@ -219,8 +220,8 @@ SUBSCRIPTION_GRACE_PERIOD_DAYS = 7  # Days before downgrading after failed payme
 SUBSCRIPTION_MAX_RETRY_ATTEMPTS = 4  # Max payment retry attempts
 SUBSCRIPTION_RETRY_INTERVALS = [1, 3, 5, 7]  # Days between retry attempts
 
-# Order payment timeout (hours) before auto-canceling unpaid orders
-ORDER_PAYMENT_TIMEOUT_HOURS = getattr(config, 'ORDER_PAYMENT_TIMEOUT_HOURS', 24)
+# Order payment timeout (minutes) before auto-canceling unpaid orders and releasing stock
+ORDER_PAYMENT_TIMEOUT_MINUTES = getattr(config, 'ORDER_PAYMENT_TIMEOUT_MINUTES', 15)
 
 # Platform fee (3% base, adjusted per seller tier)
 from decimal import Decimal
@@ -247,6 +248,15 @@ EASYPOST_API_KEY = getattr(config, 'EASYPOST_API_KEY', None)
 EASYPOST_WEBHOOK_SECRET = getattr(config, 'EASYPOST_WEBHOOK_SECRET', '')
 SHIPPING_RATE_CACHE_MINUTES = 30
 SHIPPING_LABEL_FORMAT = 'PDF'
+
+# USPS REST API v3
+USPS_CLIENT_ID = getattr(config, 'USPS_CLIENT_ID', '')
+USPS_CLIENT_SECRET = getattr(config, 'USPS_CLIENT_SECRET', '')
+USPS_EPS_ACCOUNT_NUMBER = getattr(config, 'USPS_EPS_ACCOUNT_NUMBER', '')
+USPS_BASE_URL = getattr(config, 'USPS_BASE_URL', 'https://apis.usps.com')
+
+# Shipping provider: 'usps' or 'easypost'
+SHIPPING_PROVIDER = getattr(config, 'SHIPPING_PROVIDER', 'usps')
 
 # Site URL for callbacks
 SITE_URL = getattr(config, 'SITE_URL', 'http://localhost:8000')

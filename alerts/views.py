@@ -43,6 +43,13 @@ def alerts_list(request):
 
 
 @login_required
+def unread_count(request):
+    """AJAX: Return unread alert count as JSON."""
+    count = Alert.objects.filter(user=request.user, read=False).count()
+    return JsonResponse({'count': count})
+
+
+@login_required
 def mark_read(request, pk):
     """Mark alert as read"""
     alert = get_object_or_404(Alert, pk=pk, user=request.user)

@@ -1094,9 +1094,10 @@ def ship_from_address(request):
         # Verify via EasyPost if configured
         verified = False
         easypost_id = ''
-        if settings.EASYPOST_API_KEY:
-            from marketplace.services.easypost_service import EasyPostService
-            result = EasyPostService.verify_address({
+        if settings.EASYPOST_API_KEY or settings.USPS_CLIENT_ID:
+            from marketplace.services.shipping_factory import get_shipping_service
+            ShippingService = get_shipping_service()
+            result = ShippingService.verify_address({
                 'name': addr_data['name'],
                 'company': addr_data.get('company'),
                 'street1': addr_data['street1'],

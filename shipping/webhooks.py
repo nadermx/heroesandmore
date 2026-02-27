@@ -8,7 +8,7 @@ from django.http import HttpResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from marketplace.services.easypost_service import EasyPostService
+from marketplace.services.easypost_service import EasyPostService  # EasyPost webhooks always use EasyPost directly
 
 logger = logging.getLogger('shipping')
 

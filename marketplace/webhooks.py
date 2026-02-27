@@ -99,9 +99,6 @@ def handle_payment_intent_succeeded(event):
 
         logger.info(f"Order {order_id} marked as paid")
 
-        if order.listing:
-            order.listing.record_sale(order.quantity)
-
         # Send notifications (async via Celery if available)
         try:
             from alerts.tasks import send_order_notifications

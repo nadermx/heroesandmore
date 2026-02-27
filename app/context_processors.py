@@ -1,6 +1,14 @@
 from django.conf import settings
 
 
+def alerts(request):
+    """Provide unread alert count for notification badge in navbar."""
+    if request.user.is_authenticated:
+        from alerts.models import Alert
+        return {'unread_alerts_count': Alert.objects.filter(user=request.user, read=False).count()}
+    return {'unread_alerts_count': 0}
+
+
 def seo(request):
     site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000').rstrip('/')
     return {

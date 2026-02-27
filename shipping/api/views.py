@@ -5,7 +5,7 @@ from rest_framework.response import Response
 
 from shipping.models import Address, ShippingProfile, ShippingLabel
 from marketplace.models import Listing, Order
-from marketplace.services.easypost_service import EasyPostService
+from marketplace.services.shipping_factory import get_shipping_service
 from api.permissions import IsOwner
 
 from .serializers import (
@@ -38,7 +38,7 @@ def validate_address(request):
     """Verify a shipping address via EasyPost."""
     serializer = ValidateAddressSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    result = EasyPostService.verify_address(serializer.validated_data)
+    result = get_shipping_service().verify_address(serializer.validated_data)
     return Response(result)
 
 
@@ -63,14 +63,14 @@ def get_rates(request):
 
     from_address = seller_profile.default_ship_from.to_easypost_dict()
     to_address = {k: v for k, v in data.items() if k != 'listing_id'}
-    parcel = EasyPostService.build_parcel(listing)
+    parcel = get_shipping_service().build_parcel(listing)
 
     customs_info = None
     if to_address.get('country', 'US') != 'US':
-        customs_info = EasyPostService.build_customs_info(listing, float(listing.get_current_price()))
+        customs_info = get_shipping_service().build_customs_info(listing, float(listing.get_current_price()))
 
     try:
-        rates = EasyPostService.get_rates(from_address, to_address, parcel, customs_info)
+        rates = get_shipping_service().get_rates(from_address, to_address, parcel, customs_info)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -91,7 +91,7 @@ def buy_label(request, order_id):
     serializer.is_valid(raise_exception=True)
 
     try:
-        label_data = EasyPostService.buy_label(
+        label_data = get_shipping_service().buy_label(
             serializer.validated_data['shipment_id'],
             serializer.validated_data['rate_id'],
         )
@@ -160,7 +160,7 @@ def void_label(request, order_id):
         return Response({'error': 'No active label found'}, status=status.HTTP_404_NOT_FOUND)
 
     try:
-        EasyPostService.refund_label(label.easypost_shipment_id)
+        get_shipping_service().refund_label(label.easypost_shipment_id)
         from django.utils import timezone
         label.is_voided = True
         label.voided_at = timezone.now()
@@ -186,7 +186,7 @@ def tracking_info(request, order_id):
         return Response({'error': 'No tracking info'}, status=status.HTTP_404_NOT_FOUND)
 
     try:
-        result = EasyPostService.get_tracking(order.tracking_number, order.tracking_carrier)
+        result = get_shipping_service().get_tracking(order.tracking_number, order.tracking_carrier)
         serializer = TrackingSerializer(result)
         return Response(serializer.data)
     except Exception as e:

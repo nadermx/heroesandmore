@@ -59,8 +59,11 @@ class ValidateAddressViewTests(TestCase):
     def setUp(self):
         self.client = Client()
 
-    @patch('marketplace.services.easypost_service.EasyPostService.verify_address')
-    def test_validate_address(self, mock_verify):
+    @patch('marketplace.services.shipping_factory.get_shipping_service')
+    def test_validate_address(self, mock_factory):
+        mock_service = MagicMock()
+        mock_factory.return_value = mock_service
+        mock_verify = mock_service.verify_address
         mock_verify.return_value = {
             'verified': True,
             'easypost_id': 'adr_123',

@@ -57,6 +57,15 @@ APPLE_TEAM_ID = ''  # Your 10-char Team ID
 APPLE_KEY_ID = ''  # Key ID from Keys section
 APPLE_CERTIFICATE = ''  # Contents of .p8 private key file
 
+# USPS REST API v3 (from developers.usps.com > My Apps)
+USPS_CLIENT_ID = ''       # Consumer Key
+USPS_CLIENT_SECRET = ''   # Consumer Secret
+USPS_EPS_ACCOUNT_NUMBER = ''  # EPS account (required for label purchase only)
+# USPS_BASE_URL = 'https://apis-tem.usps.com'  # Uncomment for test environment
+
+# Shipping provider: 'usps' or 'easypost'
+SHIPPING_PROVIDER = 'usps'
+
 # Debug mode - set to False in production
 DEBUG = True
 

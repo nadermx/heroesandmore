@@ -34,3 +34,7 @@ vault_google_client_secret: ""
 
 # Email password (if using authenticated SMTP)
 vault_email_host_password: ""
+
+# USPS REST API v3 (from developers.usps.com > My Apps)
+vault_usps_client_id: ""
+vault_usps_client_secret: ""

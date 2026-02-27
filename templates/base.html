@@ -1080,13 +1080,11 @@
                             </ul>
                         </li>
                         <li class="nav-item ms-1">
-                            <a class="btn btn-ghost position-relative" href="{% url 'alerts:alerts_list' %}">
+                            <a class="btn btn-ghost position-relative" href="{% url 'alerts:alerts_list' %}" id="notification-bell">
                                 <i class="bi bi-bell fs-5"></i>
-                                {% if unread_alerts_count %}
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
-                                    {{ unread_alerts_count }}
+                                <span id="notification-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger{% if not unread_alerts_count %} d-none{% endif %}" style="font-size: 0.65rem;">
+                                    {{ unread_alerts_count|default:"" }}
                                 </span>
-                                {% endif %}
                             </a>
                         </li>
                         <li class="nav-item">
@@ -1351,6 +1349,28 @@
         });
     })();
     </script>
+
+    {% if user.is_authenticated %}
+    <script>
+    (function() {
+        var badge = document.getElementById('notification-badge');
+        if (!badge) return;
+        setInterval(function() {
+            fetch('{% url "alerts:unread_count" %}', {credentials: 'same-origin'})
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.count > 0) {
+                        badge.textContent = data.count;
+                        badge.classList.remove('d-none');
+                    } else {
+                        badge.classList.add('d-none');
+                        badge.textContent = '';
+                    }
+                }).catch(function() {});
+        }, 60000);
+    })();
+    </script>
+    {% endif %}
 
     {% block extra_js %}{% endblock %}
 

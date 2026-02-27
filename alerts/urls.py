@@ -6,6 +6,7 @@ app_name = 'alerts'
 urlpatterns = [
     # Alerts/Notifications
     path('', views.alerts_list, name='alerts_list'),
+    path('unread-count/', views.unread_count, name='unread_count'),
     path('<int:pk>/read/', views.mark_read, name='mark_read'),
     path('mark-all-read/', views.mark_all_read, name='mark_all_read'),
     path('<int:pk>/delete/', views.delete_alert, name='delete_alert'),

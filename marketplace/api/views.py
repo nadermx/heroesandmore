@@ -803,7 +803,7 @@ class PaymentIntentView(views.APIView):
                 item_price = unit_price * qty
                 platform_fee = StripeService.calculate_platform_fee(item_price, listing.seller)
                 total = item_price + listing.shipping_price
-                order, _ = Order.objects.get_or_create(
+                order, created = Order.objects.get_or_create(
                     listing=listing,
                     buyer=request.user,
                     status='pending',
@@ -818,6 +818,14 @@ class PaymentIntentView(views.APIView):
                         'shipping_address': '',
                     }
                 )
+                if created:
+                    # Reserve stock immediately so listing shows correct availability
+                    if not listing.record_sale(qty):
+                        order.delete()
+                        return Response(
+                            {'error': 'This item is no longer available in the requested quantity.'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
         elif offer_id:
             offer = get_object_or_404(
                 Offer, pk=offer_id, buyer=request.user, status='accepted'
@@ -888,8 +896,6 @@ class PaymentConfirmView(views.APIView):
                 order.stripe_payment_status = 'succeeded'
                 order.paid_at = timezone.now()
                 order.save(update_fields=['status', 'stripe_payment_status', 'paid_at', 'updated'])
-                if order.listing:
-                    order.listing.record_sale(order.quantity)
                 return Response(OrderSerializer(order).data)
             else:
                 return Response(
