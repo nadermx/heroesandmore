@@ -93,9 +93,9 @@
 
                         <hr class="my-4" style="border-color: var(--gray-200);">
 
-                        <h6 class="fw-semibold mb-3" style="color: var(--gray-900);">Privacy & Notifications</h6>
+                        <h6 class="fw-semibold mb-3" style="color: var(--gray-900);">Privacy</h6>
 
-                        <div class="form-check mb-3">
+                        <div class="form-check mb-4">
                             {{ profile_form.is_public }}
                             <label class="form-check-label" for="id_is_public">
                                 <strong>Make my profile public</strong>
@@ -103,12 +103,59 @@
                             <small class="text-muted d-block ms-4">Other users can see your profile and collections.</small>
                         </div>
 
-                        <div class="form-check mb-4">
+                        <hr class="my-4" style="border-color: var(--gray-200);">
+
+                        <h6 class="fw-semibold mb-3" style="color: var(--gray-900);">Email Notifications</h6>
+                        <small class="text-muted d-block mb-3">Order confirmations, payment, and shipping emails always send.</small>
+
+                        <div class="form-check mb-3">
                             {{ profile_form.email_notifications }}
                             <label class="form-check-label" for="id_email_notifications">
                                 <strong>Email notifications</strong>
                             </label>
-                            <small class="text-muted d-block ms-4">Receive emails about orders, messages, and wishlist matches.</small>
+                            <small class="text-muted d-block ms-4">Master switch — turn off to disable all optional emails.</small>
+                        </div>
+
+                        <div id="email-sub-toggles" class="ms-4 ps-2" style="border-left: 2px solid var(--gray-200);">
+                            <div class="form-check mb-2">
+                                {{ profile_form.email_bidding }}
+                                <label class="form-check-label" for="id_email_bidding">
+                                    Bidding & Auctions
+                                </label>
+                                <small class="text-muted d-block ms-4">Outbid alerts, auction won, auction expired</small>
+                            </div>
+
+                            <div class="form-check mb-2">
+                                {{ profile_form.email_offers }}
+                                <label class="form-check-label" for="id_email_offers">
+                                    Offers
+                                </label>
+                                <small class="text-muted d-block ms-4">New offers, counter-offers, offer accepted</small>
+                            </div>
+
+                            <div class="form-check mb-2">
+                                {{ profile_form.email_marketing }}
+                                <label class="form-check-label" for="id_email_marketing">
+                                    Marketing & Digests
+                                </label>
+                                <small class="text-muted d-block ms-4">Weekly digest, auction recaps, watched auction reminders</small>
+                            </div>
+
+                            <div class="form-check mb-2">
+                                {{ profile_form.email_reminders }}
+                                <label class="form-check-label" for="id_email_reminders">
+                                    Reminders
+                                </label>
+                                <small class="text-muted d-block ms-4">Relist reminders, subscription renewal reminders</small>
+                            </div>
+
+                            <div class="form-check mb-3">
+                                {{ profile_form.email_listings }}
+                                <label class="form-check-label" for="id_email_listings">
+                                    Listing Updates
+                                </label>
+                                <small class="text-muted d-block ms-4">Listing expired notifications</small>
+                            </div>
                         </div>
 
                         <button type="submit" class="btn btn-dark">Save Changes</button>
@@ -118,4 +165,24 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const master = document.getElementById('id_email_notifications');
+    const subToggles = document.querySelectorAll('#email-sub-toggles input[type="checkbox"]');
+
+    function syncSubs() {
+        const off = !master.checked;
+        subToggles.forEach(function(cb) {
+            cb.disabled = off;
+            if (off) cb.checked = false;
+        });
+    }
+
+    master.addEventListener('change', syncSubs);
+    syncSubs();
+})();
+</script>
 {% endblock %}

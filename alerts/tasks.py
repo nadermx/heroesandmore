@@ -9,6 +9,14 @@ from django.db.models import Count, Q
 logger = logging.getLogger('alerts')
 
 
+def _should_email(user, category):
+    """Check if user has opted in to a specific email category."""
+    profile = user.profile
+    if not profile.email_notifications:
+        return False
+    return getattr(profile, f'email_{category}', True)
+
+
 @shared_task
 def check_wishlist_matches():
     """Check for new listings matching wishlist items"""
@@ -142,7 +150,7 @@ def send_alert_emails():
     # Group by user
     user_alerts = {}
     for alert in alerts:
-        if alert.user.profile.email_notifications:
+        if _should_email(alert.user, 'notifications'):
             if alert.user_id not in user_alerts:
                 user_alerts[alert.user_id] = []
             user_alerts[alert.user_id].append(alert)
@@ -206,7 +214,7 @@ def notify_outbid(listing_id, new_bid_amount, new_bidder_id):
         )
 
         # Email notification
-        if previous_bid.bidder.email:
+        if previous_bid.bidder.email and _should_email(previous_bid.bidder, 'bidding'):
             site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
             context = {
                 'listing': listing,
@@ -400,7 +408,7 @@ def send_auction_won_notification(order_id):
     context = {'order': order, 'site_url': site_url}
 
     # Email to winner
-    if order.buyer.email:
+    if order.buyer.email and _should_email(order.buyer, 'bidding'):
         html_content = render_to_string('marketplace/emails/auction_won.html', context)
         try:
             send_mail(
@@ -415,7 +423,7 @@ def send_auction_won_notification(order_id):
             pass
 
     # Email to seller
-    if order.seller.email:
+    if order.seller.email and _should_email(order.seller, 'bidding'):
         html_content = render_to_string('marketplace/emails/auction_ended_seller.html', context)
         try:
             send_mail(
@@ -466,7 +474,7 @@ def send_offer_accepted_notification(order_id):
     context = {'order': order, 'site_url': site_url}
 
     # Email to buyer
-    if order.buyer.email:
+    if order.buyer.email and _should_email(order.buyer, 'offers'):
         html_content = render_to_string('marketplace/emails/offer_accepted.html', context)
         try:
             send_mail(
@@ -556,7 +564,7 @@ def send_new_offer_notification(offer_id):
     seller = offer.listing.seller
 
     # Email to seller
-    if seller.email:
+    if seller.email and _should_email(seller, 'offers'):
         html_content = render_to_string('marketplace/emails/new_offer.html', context)
         try:
             send_mail(
@@ -603,7 +611,7 @@ def send_counter_offer_notification(offer_id):
     buyer = offer.buyer
 
     # Email to buyer
-    if buyer.email:
+    if buyer.email and _should_email(buyer, 'offers'):
         html_content = render_to_string('marketplace/emails/counter_offer.html', context)
         try:
             send_mail(
@@ -651,7 +659,7 @@ def send_counter_offer_accepted_notification(offer_id, order_id):
     seller = offer.listing.seller
 
     # Email to seller
-    if seller.email:
+    if seller.email and _should_email(seller, 'offers'):
         html_content = render_to_string('marketplace/emails/counter_offer_accepted.html', context)
         try:
             send_mail(
@@ -749,7 +757,7 @@ def send_listing_expired_notification(listing_id):
     context = {'listing': listing, 'seller': seller, 'site_url': site_url}
 
     # Email to seller
-    if seller.email:
+    if seller.email and _should_email(seller, 'listings'):
         html_content = render_to_string('marketplace/emails/listing_expired.html', context)
         try:
             send_mail(
@@ -814,7 +822,7 @@ def notify_trusted_sellers_new_event(event_id):
         )
 
         # Send email
-        if user.email:
+        if user.email and _should_email(user, 'marketing'):
             html_content = render_to_string(
                 'marketplace/emails/auction_event_submissions_open.html', context
             )
@@ -871,7 +879,7 @@ def send_relist_reminders():
         context = {'listing': listing, 'seller': seller, 'site_url': site_url}
 
         # Email
-        if seller.email:
+        if seller.email and _should_email(seller, 'reminders'):
             html_content = render_to_string('marketplace/emails/relist_reminder.html', context)
             try:
                 send_mail(
@@ -991,9 +999,10 @@ def send_weekly_auction_digest():
 
     site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
 
-    # Send to users with email notifications enabled
+    # Send to users with email notifications + marketing enabled
     users = User.objects.filter(
         profile__email_notifications=True,
+        profile__email_marketing=True,
         is_active=True,
     ).exclude(email='')
 
@@ -1056,7 +1065,7 @@ def send_watched_auction_final_24h():
             user = saved.user
             if not user.is_active or not user.email:
                 continue
-            if not user.profile.email_notifications:
+            if not _should_email(user, 'marketing'):
                 continue
 
             # Dedup: skip if already alerted for this listing in last 24h
@@ -1137,6 +1146,7 @@ def send_weekly_results_recap():
 
     users = User.objects.filter(
         profile__email_notifications=True,
+        profile__email_marketing=True,
         is_active=True,
     ).exclude(email='')
 

@@ -66,6 +66,11 @@ class Profile(models.Model):
     # Settings
     is_public = models.BooleanField(default=True)
     email_notifications = models.BooleanField(default=True)
+    email_bidding = models.BooleanField(default=True)
+    email_offers = models.BooleanField(default=True)
+    email_marketing = models.BooleanField(default=True)
+    email_reminders = models.BooleanField(default=True)
+    email_listings = models.BooleanField(default=True)
 
     # Push notification settings
     push_new_bid = models.BooleanField(default=True)

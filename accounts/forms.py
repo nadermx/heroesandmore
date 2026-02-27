@@ -6,7 +6,11 @@ from .models import Profile
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = Profile
-        fields = ['avatar', 'bio', 'location', 'website', 'is_public', 'email_notifications']
+        fields = [
+            'avatar', 'bio', 'location', 'website', 'is_public',
+            'email_notifications', 'email_bidding', 'email_offers',
+            'email_marketing', 'email_reminders', 'email_listings',
+        ]
         widgets = {
             'bio': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
             'location': forms.TextInput(attrs={'class': 'form-control'}),
@@ -14,6 +18,11 @@ class ProfileForm(forms.ModelForm):
             'avatar': forms.FileInput(attrs={'class': 'form-control'}),
             'is_public': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'email_notifications': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'email_bidding': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'email_offers': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'email_marketing': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'email_reminders': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'email_listings': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 

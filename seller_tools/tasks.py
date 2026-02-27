@@ -473,8 +473,13 @@ def process_bulk_import(bulk_import_id):
 @shared_task
 def send_subscription_renewal_notification(subscription_id):
     from seller_tools.models import SellerSubscription
-    subscription = SellerSubscription.objects.filter(id=subscription_id).select_related('user').first()
+    subscription = SellerSubscription.objects.filter(id=subscription_id).select_related('user', 'user__profile').first()
     if not subscription:
+        return
+
+    # Check reminders preference
+    profile = subscription.user.profile
+    if not profile.email_notifications or not profile.email_reminders:
         return
 
     subject = 'Your HeroesAndMore subscription renews soon'
