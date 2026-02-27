@@ -369,6 +369,8 @@ Curated auction events run by the platform. Trusted sellers submit lots for staf
 3. Staff reviews in admin — approve auto-assigns `lot_number` and links listing to event
 4. Event goes live, lots displayed in grid on `/marketplace/auctions/<slug>/`
 
+**Auto-linking on approval:** `AuctionLotSubmission.save()` automatically sets `listing.auction_event` and assigns `lot_number` when status changes to `approved`. This works whether approval happens via the admin action, inline edit, or model admin — no manual FK linking needed.
+
 ### URLs
 - `/marketplace/auctions/` — browse platform events
 - `/marketplace/auctions/<slug>/` — event detail with lots
@@ -780,6 +782,41 @@ When adding a new badge type, update ALL these locations:
 - `accounts/api/serializers.py` — ProfileSerializer and PublicProfileSerializer
 - Android app: DTOs, domain models, repository mappings, UI composables
 - iOS app: Model structs, SwiftUI views
+
+## Email Notification Preferences
+
+Granular per-category email controls on `Profile`. Settings page: `/settings/`
+
+### Fields on `accounts.Profile`
+- `email_notifications` — Master switch (if off, no optional emails sent)
+- `email_bidding` — Outbid alerts, auction won, auction ended (seller)
+- `email_offers` — New offer, counter-offer, offer accepted
+- `email_marketing` — Weekly digest, results recap, watched auction 24h, trusted seller events
+- `email_reminders` — Relist reminders, subscription renewal reminders
+- `email_listings` — Listing expired notifications
+
+All default `True`. The settings UI (`templates/accounts/settings.html`) shows the master toggle with sub-toggles indented below; JS disables sub-toggles when master is off.
+
+### `_should_email(user, category)` Helper
+Defined in `alerts/tasks.py`. Checks master switch first, then the specific `email_{category}` field. Use this before sending any optional email in tasks.
+
+### Always-Send Emails (no toggle)
+These are transactional/critical and bypass preferences:
+- Order confirmed, shipped, delivered (`send_order_notifications`)
+- Payment failed, refund, cancellation
+- Welcome email (`send_welcome_email`)
+- Subscription payment failed/recovered/expired (`seller_tools/tasks.py`)
+
+### Category-Gated Emails
+| Category | Tasks |
+|----------|-------|
+| `bidding` | `notify_outbid`, `send_auction_won_notification` |
+| `offers` | `send_offer_accepted_notification`, `send_new_offer_notification`, `send_counter_offer_notification`, `send_counter_offer_accepted_notification` |
+| `marketing` | `send_weekly_auction_digest`, `send_watched_auction_final_24h`, `send_weekly_results_recap`, `notify_trusted_sellers_new_event` |
+| `reminders` | `send_relist_reminders`, `send_subscription_renewal_notification` (seller_tools) |
+| `listings` | `send_listing_expired_notification` |
+
+When adding new email tasks, use `_should_email(user, category)` for optional emails. For transactional emails involving money, skip the check.
 
 ## Email Marketing Flows
 
