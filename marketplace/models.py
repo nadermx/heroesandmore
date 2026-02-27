@@ -695,3 +695,14 @@ class AuctionLotSubmission(models.Model):
 
     def __str__(self):
         return f"{self.seller.username} submitted {self.listing.title} to {self.auction_event.name}"
+
+    def save(self, *args, **kwargs):
+        # Auto-link listing to event when submission is approved
+        if self.status == 'approved' and self.listing.auction_event_id != self.auction_event_id:
+            max_lot = self.auction_event.listings.aggregate(
+                max_lot=models.Max('lot_number')
+            )['max_lot'] or 0
+            self.listing.auction_event = self.auction_event
+            self.listing.lot_number = max_lot + 1
+            self.listing.save(update_fields=['auction_event', 'lot_number'])
+        super().save(*args, **kwargs)
