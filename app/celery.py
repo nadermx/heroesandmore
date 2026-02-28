@@ -56,6 +56,11 @@ app.conf.beat_schedule = {
         'task': 'marketplace.tasks.end_auctions',
         'schedule': crontab(minute='*/5'),  # Every 5 minutes
     },
+    # Auto-activate platform auction events at bidding_start
+    'activate-platform-events': {
+        'task': 'marketplace.tasks.activate_platform_events',
+        'schedule': crontab(minute='*/5'),  # Every 5 minutes
+    },
     # Send alert emails every 15 minutes
     'send-alert-emails': {
         'task': 'alerts.tasks.send_alert_emails',

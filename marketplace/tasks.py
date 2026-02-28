@@ -99,6 +99,43 @@ def end_auctions():
 
 
 @shared_task
+def activate_platform_events():
+    """
+    Auto-activate platform auction events when bidding_start is reached.
+    Converts draft lots to active auctions and sets event status to live.
+    Runs every 5 minutes.
+    """
+    from .models import AuctionEvent
+
+    now = timezone.now()
+
+    # Find events that should be live but aren't yet
+    events = AuctionEvent.objects.filter(
+        is_platform_event=True,
+        status__in=['draft', 'preview'],
+        bidding_start__lte=now,
+    )
+
+    activated = 0
+    for event in events:
+        lots = event.listings.filter(status='draft')
+        count = lots.update(
+            status='active',
+            auction_end=event.bidding_end,
+            listing_type='auction',
+        )
+        event.total_lots = event.listings.filter(status='active').count()
+        event.status = 'live'
+        event.save(update_fields=['total_lots', 'status'])
+        activated += 1
+        logger.info(
+            f"Auto-activated platform event '{event.name}': {count} lots set live"
+        )
+
+    return activated
+
+
+@shared_task
 def expire_unpaid_orders():
     """Cancel unpaid orders that have been pending too long and release listings."""
     cutoff = timezone.now() - timedelta(minutes=settings.ORDER_PAYMENT_TIMEOUT_MINUTES)
