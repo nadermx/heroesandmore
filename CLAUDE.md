@@ -364,12 +364,15 @@ Curated auction events run by the platform. Trusted sellers submit lots for staf
 - `AuctionLotSubmission` — links seller + listing to an event with status (pending/approved/rejected/withdrawn), staff review fields
 
 ### Workflow
-1. Staff creates `AuctionEvent` with `is_platform_event=True`, `accepting_submissions=True`
+1. Staff creates `AuctionEvent` with `is_platform_event=True`, `accepting_submissions=True`, sets `preview_start` and `bidding_start` times
 2. Trusted sellers submit listings via `/marketplace/auctions/<slug>/submit/`
 3. Staff reviews in admin — approve auto-assigns `lot_number` and links listing to event
-4. Event goes live, lots displayed in grid on `/marketplace/auctions/<slug>/`
+4. At `preview_start`: lots visible on event page (still showing original listing type/price)
+5. At `bidding_start`: `activate_platform_events` task auto-converts lots to auctions and sets event live
 
 **Auto-linking on approval:** `AuctionLotSubmission.save()` automatically sets `listing.auction_event` and assigns `lot_number` when status changes to `approved`. This works whether approval happens via the admin action, inline edit, or model admin — no manual FK linking needed.
+
+**Auto-activation at bidding_start:** `marketplace.tasks.activate_platform_events` (every 5 min) finds events past `bidding_start` still in draft/preview, converts all draft lots to `listing_type='auction'` with `auction_end=event.bidding_end`, sets them `status='active'`, and flips event to `live`. No manual admin action needed.
 
 ### URLs
 - `/marketplace/auctions/` — browse platform events
@@ -404,6 +407,7 @@ Curated auction events run by the platform. Trusted sellers submit lots for staf
 
 ### Listing & Alert Tasks
 - `marketplace.tasks.end_auctions` - End expired auctions, notify winners/sellers, expire no-bid listings (every 5 min)
+- `marketplace.tasks.activate_platform_events` - Auto-activate platform events at bidding_start, convert lots to auctions (every 5 min)
 - `marketplace.tasks.expire_unpaid_orders` - Cancel orders pending > 15min, restore listing stock (every 5 min)
 - `alerts.tasks.send_listing_expired_notification` - Email + in-app alert when auction ends with no bids
 - `alerts.tasks.send_relist_reminders` - Remind sellers about expired listings after 3 days (daily 11 AM)
