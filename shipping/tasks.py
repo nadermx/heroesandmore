@@ -1,8 +1,12 @@
+import re
 import logging
 from celery import shared_task
 from django.utils import timezone
 
 logger = logging.getLogger('shipping')
+
+# USPS tracking numbers are 20-34 digits; skip obvious placeholders
+_VALID_TRACKING_RE = re.compile(r'^\d{20,34}$')
 
 
 @shared_task
@@ -39,6 +43,10 @@ def poll_usps_tracking():
 
     updated = 0
     for order in orders:
+        if not _VALID_TRACKING_RE.match(order.tracking_number.strip()):
+            logger.debug(f"Skipping order #{order.id}: invalid tracking number '{order.tracking_number}'")
+            continue
+
         try:
             result = USPSService.get_tracking(order.tracking_number)
             new_status = result.get('status')
