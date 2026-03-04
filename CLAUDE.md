@@ -41,7 +41,7 @@ Each app has `tests/` with `test_models.py`, `test_views.py`. API tests in `api/
 
 ## Key Models
 
-**Core:** `accounts.Profile` (profiles, seller verification, subscriptions, founding member) | `items.Category` (hierarchical) | `items.Item` (base DB) | `marketplace.Listing` (fixed + auction, `collector_notes`) | `marketplace.Bid` (`related_name='bids'`, `created`) | `marketplace.SavedListing` (`related_name='saves'`) | `marketplace.AuctionEvent` | `marketplace.Order` (auth + guest) | `marketplace.Offer` (offer/counteroffer) | `marketplace.AutoBid` (proxy bidding)
+**Core:** `accounts.Profile` (profiles, seller verification, subscriptions, founding member) | `items.Category` (hierarchical) | `items.Item` (base DB) | `marketplace.Listing` (fixed + auction, `collector_notes`) | `marketplace.Bid` (`related_name='bids'`, `created`) | `marketplace.SavedListing` (`related_name='saves'`) | `marketplace.AuctionEvent` | `marketplace.Order` (auth + guest) | `marketplace.Offer` (offer/counteroffer) | `marketplace.AutoBid` (proxy bidding) | `marketplace.GuestListingSubmission` (guest sell page submissions)
 
 **Shipping:** `shipping.Address` (EasyPost verified) | `shipping.ShippingProfile` (pre-seeded packages) | `shipping.ShippingLabel` (tracking, void) | `shipping.ShippingRate` (30-min cache)
 
@@ -163,6 +163,9 @@ Mobile API auth independent of allauth — direct token verification + JWT.
 
 ## Guest Checkout
 Fixed-price only (auctions redirect to signup). `Order.buyer` nullable, `guest_email`/`guest_name`/`guest_order_token`. Track: `/marketplace/order/track/` + `/track/<token>/`. Ephemeral Stripe customer, no saved cards.
+
+## Category Sell Landing Pages
+Media buy destinations at `/sell/<category>/` — MTG, Pokemon, Yu-Gi-Oh, Comics, Vintage Baseball. Guests can submit listings without an account via `GuestListingSubmission` model (honeypot-protected). Claim flow at `/sell/claim/<token>/` converts submission to draft Listing on signup/login. Auth users create draft Listings directly. Index hub at `/sell/`. Templates in `templates/pages/sell/`. Config dict `CATEGORY_LANDING_CONFIG` in `app/views.py`. Celery cleanup expires pending submissions after 7 days.
 
 ## Founding Collector Program
 `Profile.is_founding_member` auto-set at signup before `FOUNDING_MEMBER_CUTOFF` (2026-06-01).
