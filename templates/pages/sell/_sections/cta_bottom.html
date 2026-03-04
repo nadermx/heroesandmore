@@ -9,12 +9,12 @@
             Join a marketplace built for collectors. Lower fees, faster payouts, and a community that actually cares about what you're selling.
         </p>
         {% if is_guest %}
-        <a href="#signup-form" class="btn btn-lg fw-semibold px-5 py-3"
+        <a href="#listing-form" class="btn btn-lg fw-semibold px-5 py-3"
            style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-cyan)); color: #fff; border: none; border-radius: 0.5rem; font-size: 1rem;">
             <i class="bi bi-rocket-takeoff me-2"></i> Start Selling
         </a>
         {% else %}
-        <a href="{% url 'marketplace:create_listing' %}" class="btn btn-lg fw-semibold px-5 py-3"
+        <a href="{% url 'marketplace:listing_create' %}" class="btn btn-lg fw-semibold px-5 py-3"
            style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-cyan)); color: #fff; border: none; border-radius: 0.5rem; font-size: 1rem;">
             <i class="bi bi-plus-lg me-2"></i> Start Selling
         </a>

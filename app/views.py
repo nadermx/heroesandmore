@@ -159,8 +159,9 @@ def sitemap_xml(request):
 
 
 def sell_landing(request):
-    """Sell index hub — links to all category sell pages."""
-    from marketplace.models import Listing, Order
+    """Sell index page with listing form + category links below."""
+    from marketplace.models import Listing, Order, GuestListingSubmission
+    from marketplace.forms import GuestListingForm, ListingForm
     from accounts.models import Profile
 
     now = timezone.now()
@@ -168,6 +169,53 @@ def sell_landing(request):
     one_hour_ago = now - timedelta(hours=1)
 
     categories = Category.objects.filter(parent=None, is_active=True).order_by('order')[:8]
+
+    if request.method == 'POST':
+        if request.user.is_authenticated:
+            form = ListingForm(request.POST, request.FILES, user=request.user)
+            if form.is_valid():
+                listing = form.save(commit=False)
+                listing.seller = request.user
+                listing.status = 'draft'
+                listing.save()
+                messages.success(request, 'Your listing draft has been created! Review and publish it below.')
+                return redirect('marketplace:listing_edit', pk=listing.pk)
+        else:
+            # Honeypot check
+            if request.POST.get('website', ''):
+                app_logger.warning(f"Sell form spam blocked (honeypot): {request.POST.get('guest_email', '')}")
+                messages.success(request, 'Your listing has been submitted! Check your email to finish setting up.')
+                return redirect('sell')
+
+            form_ts = request.POST.get('_ts', '')
+            if form_ts:
+                try:
+                    elapsed = time.time() - float(form_ts)
+                    if elapsed < 3:
+                        app_logger.warning(f"Sell form spam blocked (too fast: {elapsed:.1f}s): {request.POST.get('guest_email', '')}")
+                        messages.success(request, 'Your listing has been submitted! Check your email to finish setting up.')
+                        return redirect('sell')
+                except (ValueError, TypeError):
+                    pass
+
+            form = GuestListingForm(request.POST, request.FILES)
+            if form.is_valid():
+                submission = form.save(commit=False)
+                submission.source_category_key = 'general'
+                submission.guest_token = secrets.token_urlsafe(48)
+                submission.utm_source = request.GET.get('utm_source', '')[:200]
+                submission.utm_medium = request.GET.get('utm_medium', '')[:200]
+                submission.utm_campaign = request.GET.get('utm_campaign', '')[:200]
+                submission.save()
+
+                _send_claim_email(request, submission)
+                messages.success(request, 'Your listing has been submitted! Check your email to finish setting up your account.')
+                return redirect('sell_claim', token=submission.guest_token)
+    else:
+        if request.user.is_authenticated:
+            form = ListingForm(user=request.user)
+        else:
+            form = GuestListingForm()
 
     # Recent completed sales (last 30 days) for social proof
     recent_sales = (
@@ -223,6 +271,8 @@ def sell_landing(request):
 
     context = {
         'categories': categories,
+        'form': form,
+        'is_guest': not request.user.is_authenticated,
         'recent_sales': recent_sales,
         'sales_count_30d': sales_agg['count'] or 0,
         'sales_value_30d': sales_agg['total_value'] or 0,
@@ -231,6 +281,7 @@ def sell_landing(request):
         'active_auctions': active_auctions,
         'top_sellers': top_sellers,
         'sell_categories': CATEGORY_LANDING_CONFIG,
+        'category_key': '',
         **_get_site_stats(),
     }
     return render(request, 'pages/sell/index.html', context)

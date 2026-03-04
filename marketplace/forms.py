@@ -189,6 +189,7 @@ class GuestListingForm(forms.ModelForm):
     class Meta:
         model = GuestListingSubmission
         fields = [
+            'category',
             'title', 'description', 'collector_notes', 'condition',
             'grading_service', 'grade', 'cert_number',
             'price', 'listing_type', 'quantity', 'reserve_price', 'allow_offers',
@@ -197,6 +198,7 @@ class GuestListingForm(forms.ModelForm):
             'guest_email', 'guest_name',
         ]
         widgets = {
+            'category': forms.Select(attrs={'class': 'form-select'}),
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'What are you selling?'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Describe your item — condition details, notable features, etc.'}),
             'collector_notes': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "e.g. 'Press candidate, strong eye appeal'"}),
