@@ -1,4 +1,5 @@
 import json
+import secrets
 import time
 import logging
 from django.conf import settings
@@ -7,7 +8,7 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.db.models import Count, Q, Sum
 from django.http import JsonResponse, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -18,6 +19,67 @@ from items.views import _get_site_stats
 
 logger = logging.getLogger('frontend')
 app_logger = logging.getLogger('app')
+
+
+# ── Category sell page configuration ──────────────────────────────────────────
+
+CATEGORY_LANDING_CONFIG = {
+    'mtg': {
+        'slug': 'mtg',
+        'name': 'Magic: The Gathering',
+        'short_name': 'MTG',
+        'template': 'pages/sell/mtg.html',
+        'meta_title': 'Sell Magic: The Gathering Cards | Lower Fees Than TCGplayer - HeroesAndMore',
+        'meta_description': 'Sell MTG cards with fees from 5.95% — less than half of TCGplayer. List Reserve List staples, Commander decks, and sealed product. Fast Stripe payouts.',
+        'db_category_slug': 'mtg',
+        'grading_services': ['psa', 'bgs', 'cgc'],
+        'competitor': 'TCGplayer',
+    },
+    'pokemon': {
+        'slug': 'pokemon',
+        'name': 'Pokemon',
+        'short_name': 'Pokemon',
+        'template': 'pages/sell/pokemon.html',
+        'meta_title': 'Sell Pokemon Cards | Lower Fees Than eBay - HeroesAndMore',
+        'meta_description': 'Sell Pokemon cards with fees from 5.95%. WOTC vintage, Japanese exclusives, modern chase cards. Secure payments, fast payouts, built for collectors.',
+        'db_category_slug': 'pokemon',
+        'grading_services': ['psa', 'bgs', 'cgc'],
+        'competitor': 'eBay',
+    },
+    'yugioh': {
+        'slug': 'yugioh',
+        'name': 'Yu-Gi-Oh!',
+        'short_name': 'Yu-Gi-Oh',
+        'template': 'pages/sell/yugioh.html',
+        'meta_title': 'Sell Yu-Gi-Oh! Cards | Lower Fees Than TCGplayer - HeroesAndMore',
+        'meta_description': 'Sell Yu-Gi-Oh! cards with fees from 5.95%. Ghost Rares, Starlight Rares, 1st Edition classics. Lower fees than TCGplayer with fast payouts.',
+        'db_category_slug': 'yugioh',
+        'grading_services': ['psa', 'bgs', 'cgc'],
+        'competitor': 'TCGplayer',
+    },
+    'comics': {
+        'slug': 'comics',
+        'name': 'Comics',
+        'short_name': 'Comics',
+        'template': 'pages/sell/comics.html',
+        'meta_title': 'Sell Comic Books | Lower Fees Than eBay - HeroesAndMore',
+        'meta_description': 'Sell comic books with fees from 5.95%. Key issues, first appearances, CGC slabs. Keep more profit than eBay or auction houses. Fast Stripe payouts.',
+        'db_category_slug': 'comics',
+        'grading_services': ['cgc'],
+        'competitor': 'eBay',
+    },
+    'vintage-baseball-cards': {
+        'slug': 'vintage-baseball-cards',
+        'name': 'Vintage Baseball Cards',
+        'short_name': 'Vintage Baseball',
+        'template': 'pages/sell/vintage_baseball.html',
+        'meta_title': 'Sell Vintage Baseball Cards | Lower Fees Than COMC - HeroesAndMore',
+        'meta_description': 'Sell vintage baseball cards with fees from 5.95%. T206, Topps, Bowman pre-war cards. Lower fees than COMC or eBay with secure Stripe payouts.',
+        'db_category_slug': 'sports-cards',
+        'grading_services': ['psa', 'sgc', 'bgs'],
+        'competitor': 'COMC',
+    },
+}
 
 
 def robots_txt(request):
@@ -54,7 +116,12 @@ def sitemap_xml(request):
         (f"{site_url}/items/", today, "daily", "0.8"),
         (f"{site_url}/price-guide/", today, "daily", "0.9"),
         (f"{site_url}/social/forums/", today, "daily", "0.7"),
-        (f"{site_url}/sell/", today, "weekly", "0.6"),
+        (f"{site_url}/sell/", today, "weekly", "0.7"),
+        (f"{site_url}/sell/mtg/", today, "weekly", "0.7"),
+        (f"{site_url}/sell/pokemon/", today, "weekly", "0.7"),
+        (f"{site_url}/sell/yugioh/", today, "weekly", "0.7"),
+        (f"{site_url}/sell/comics/", today, "weekly", "0.7"),
+        (f"{site_url}/sell/vintage-baseball-cards/", today, "weekly", "0.7"),
         (f"{site_url}/bid/", today, "daily", "0.7"),
     ]
 
@@ -92,9 +159,7 @@ def sitemap_xml(request):
 
 
 def sell_landing(request):
-    if request.user.is_authenticated:
-        return redirect('marketplace:listing_create')
-
+    """Sell index hub — links to all category sell pages."""
     from marketplace.models import Listing, Order
     from accounts.models import Profile
 
@@ -165,9 +230,218 @@ def sell_landing(request):
         'lifetime_payouts': lifetime_payouts,
         'active_auctions': active_auctions,
         'top_sellers': top_sellers,
+        'sell_categories': CATEGORY_LANDING_CONFIG,
         **_get_site_stats(),
     }
-    return render(request, 'pages/sell.html', context)
+    return render(request, 'pages/sell/index.html', context)
+
+
+def sell_category_landing(request, category_key):
+    """Category-specific sell landing page with guest or auth listing form."""
+    from marketplace.models import Listing, Order, GuestListingSubmission
+    from marketplace.forms import GuestListingForm, ListingForm
+
+    config = CATEGORY_LANDING_CONFIG.get(category_key)
+    if not config:
+        from django.http import Http404
+        raise Http404
+
+    # Resolve the DB category
+    db_category = get_object_or_404(Category, slug=config['db_category_slug'])
+
+    now = timezone.now()
+    thirty_days_ago = now - timedelta(days=30)
+    one_hour_ago = now - timedelta(hours=1)
+
+    if request.method == 'POST':
+        if request.user.is_authenticated:
+            # Auth user: create draft Listing directly
+            form = ListingForm(request.POST, request.FILES, user=request.user)
+            if form.is_valid():
+                listing = form.save(commit=False)
+                listing.seller = request.user
+                listing.category = db_category
+                listing.status = 'draft'
+                listing.save()
+                messages.success(request, 'Your listing draft has been created! Review and publish it below.')
+                return redirect('marketplace:listing_edit', pk=listing.pk)
+        else:
+            # Guest: honeypot + create GuestListingSubmission
+            # Honeypot check
+            if request.POST.get('website', ''):
+                app_logger.warning(f"Sell form spam blocked (honeypot): {request.POST.get('guest_email', '')}")
+                messages.success(request, 'Your listing has been submitted! Check your email to finish setting up.')
+                return redirect('sell_category', category_key=category_key)
+
+            form_ts = request.POST.get('_ts', '')
+            if form_ts:
+                try:
+                    elapsed = time.time() - float(form_ts)
+                    if elapsed < 3:
+                        app_logger.warning(f"Sell form spam blocked (too fast: {elapsed:.1f}s): {request.POST.get('guest_email', '')}")
+                        messages.success(request, 'Your listing has been submitted! Check your email to finish setting up.')
+                        return redirect('sell_category', category_key=category_key)
+                except (ValueError, TypeError):
+                    pass
+
+            form = GuestListingForm(request.POST, request.FILES)
+            if form.is_valid():
+                submission = form.save(commit=False)
+                submission.category = db_category
+                submission.source_category_key = category_key
+                submission.guest_token = secrets.token_urlsafe(48)
+                # Capture UTM params
+                submission.utm_source = request.GET.get('utm_source', '')[:200]
+                submission.utm_medium = request.GET.get('utm_medium', '')[:200]
+                submission.utm_campaign = request.GET.get('utm_campaign', '')[:200]
+                submission.save()
+
+                # Send claim email
+                _send_claim_email(request, submission)
+
+                messages.success(request, 'Your listing has been submitted! Check your email to finish setting up your account.')
+                return redirect('sell_claim', token=submission.guest_token)
+    else:
+        if request.user.is_authenticated:
+            form = ListingForm(user=request.user, initial={'category': db_category})
+        else:
+            form = GuestListingForm()
+
+    # Category-specific recent sales
+    recent_sales = (
+        Order.objects.filter(
+            status__in=['paid', 'shipped', 'delivered', 'completed'],
+            paid_at__gte=thirty_days_ago,
+            listing__category=db_category,
+        )
+        .select_related('listing')
+        .order_by('-paid_at')[:6]
+    )
+
+    # Active listings in this category
+    active_listings = (
+        Listing.objects.filter(
+            status='active',
+            category=db_category,
+        )
+        .select_related('seller', 'seller__profile', 'category')
+        .annotate(
+            save_count=Count('saves'),
+            bid_count_total=Count('bids'),
+            recent_bids=Count('bids', filter=Q(bids__created__gte=one_hour_ago)),
+        )
+        .order_by('-created')[:8]
+    )
+
+    # Sales stats for this category
+    sales_agg = Order.objects.filter(
+        status__in=['paid', 'shipped', 'delivered', 'completed'],
+        paid_at__gte=thirty_days_ago,
+        listing__category=db_category,
+    ).aggregate(
+        count=Count('id'),
+        total_value=Sum('item_price'),
+    )
+
+    context = {
+        'config': config,
+        'category_key': category_key,
+        'db_category': db_category,
+        'form': form,
+        'recent_sales': recent_sales,
+        'active_listings': active_listings,
+        'sales_count_30d': sales_agg['count'] or 0,
+        'sales_value_30d': sales_agg['total_value'] or 0,
+        'is_guest': not request.user.is_authenticated,
+        **_get_site_stats(),
+    }
+    return render(request, config['template'], context)
+
+
+def _send_claim_email(request, submission):
+    """Send the claim/account creation email for a guest submission."""
+    site_url = getattr(settings, 'SITE_URL', '').rstrip('/') or f"{request.scheme}://{request.get_host()}"
+    claim_url = f"{site_url}/sell/claim/{submission.guest_token}/"
+
+    try:
+        send_mail(
+            subject='Finish setting up your listing on HeroesAndMore',
+            message=(
+                f"Hi {submission.guest_name},\n\n"
+                f"Your listing \"{submission.title}\" has been submitted! "
+                f"Create your free account to publish it:\n\n"
+                f"{claim_url}\n\n"
+                f"This link expires in 7 days.\n\n"
+                f"— The HeroesAndMore Team"
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[submission.guest_email],
+            fail_silently=False,
+        )
+    except Exception:
+        app_logger.error(f'Failed to send claim email to {submission.guest_email}', exc_info=True)
+
+
+def sell_claim_submission(request, token):
+    """Claim a guest listing submission by creating an account or logging in."""
+    from marketplace.models import GuestListingSubmission, Listing
+
+    submission = get_object_or_404(GuestListingSubmission, guest_token=token, status='pending')
+
+    # Already logged in — convert immediately
+    if request.user.is_authenticated:
+        listing = _convert_submission_to_listing(submission, request.user)
+        messages.success(request, f'Your listing "{listing.title}" is ready! Review and publish it below.')
+        return redirect('marketplace:listing_edit', pk=listing.pk)
+
+    context = {
+        'submission': submission,
+        'token': token,
+        'email_matches_existing': User.objects.filter(email=submission.guest_email).exists(),
+    }
+    return render(request, 'pages/sell/claim.html', context)
+
+
+def _convert_submission_to_listing(submission, user):
+    """Convert a GuestListingSubmission into a draft Listing."""
+    from marketplace.models import Listing
+
+    listing = Listing(
+        seller=user,
+        category=submission.category,
+        title=submission.title,
+        description=submission.description,
+        collector_notes=submission.collector_notes,
+        condition=submission.condition,
+        grading_service=submission.grading_service,
+        grade=submission.grade,
+        cert_number=submission.cert_number,
+        is_graded=bool(submission.grading_service or submission.grade),
+        price=submission.price,
+        listing_type=submission.listing_type,
+        quantity=submission.quantity,
+        reserve_price=submission.reserve_price,
+        allow_offers=submission.allow_offers,
+        shipping_mode=submission.shipping_mode,
+        shipping_price=submission.shipping_price,
+        ships_from=submission.ships_from,
+        status='draft',
+    )
+    # Copy images
+    for i in range(1, 6):
+        src = getattr(submission, f'image{i}')
+        if src and src.name:
+            setattr(listing, f'image{i}', src)
+
+    listing.save()
+
+    # Mark submission as converted
+    submission.status = 'converted'
+    submission.converted_listing = listing
+    submission.converted_user = user
+    submission.save()
+
+    return listing
 
 
 def trusted_seller_landing(request):

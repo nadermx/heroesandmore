@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ config.meta_title }}{% endblock %}
+{% block meta_description %}{{ config.meta_description }}{% endblock %}
+{% block og_title %}{{ config.meta_title }}{% endblock %}
+{% block og_description %}{{ config.meta_description }}{% endblock %}
+{% block og_image %}{{ site_url }}/static/images/og-default.png{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "{{ config.meta_title }}",
+  "description": "{{ config.meta_description }}",
+  "url": "{{ site_url }}/sell/{{ config.slug }}/",
+  "publisher": {
+    "@type": "Organization",
+    "name": "HeroesAndMore",
+    "url": "https://heroesandmore.com",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "{{ site_url }}/static/images/og-default.png"
+    }
+  },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ site_url }}/"},
+      {"@type": "ListItem", "position": 2, "name": "Sell", "item": "{{ site_url }}/sell/"},
+      {"@type": "ListItem", "position": 3, "name": "{{ config.name }}", "item": "{{ site_url }}/sell/{{ config.slug }}/"}
+    ]
+  }
+}
+</script>
+{% block extra_structured_data %}{% endblock %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.sell-hero { background: linear-gradient(180deg, var(--gray-900) 0%, var(--gray-800) 100%); color: #fff; padding: 3rem 0 4rem; position: relative; overflow: hidden; }
+.sell-hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E'); opacity: 0.5; }
+.sell-section { padding: 4rem 0; }
+.sell-section-alt { background: var(--gray-50); }
+.sell-comparison-table { border-radius: 0.75rem; overflow: hidden; }
+.sell-comparison-table th { background: var(--gray-900); color: #fff; text-align: center; padding: 0.75rem 1rem; font-size: 0.85rem; }
+.sell-comparison-table td { padding: 0.75rem 1rem; text-align: center; vertical-align: middle; font-size: 0.9rem; }
+.sell-comparison-table tr:nth-child(even) td { background: var(--gray-50); }
+.content-section h2 { font-size: 1.75rem; font-weight: 700; margin-bottom: 1rem; letter-spacing: -0.02em; }
+.content-section h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+.content-section p, .content-section li { font-size: 0.95rem; color: var(--gray-700); line-height: 1.7; }
+.content-section ul { padding-left: 1.25rem; }
+.content-section ul li { margin-bottom: 0.4rem; }
+</style>
+{% block category_extra_css %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="sell-hero">
+    <div class="container position-relative">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-7">
+                <nav aria-label="breadcrumb" class="mb-3">
+                    <ol class="breadcrumb mb-0" style="font-size: 0.85rem;">
+                        <li class="breadcrumb-item"><a href="/" class="text-white-50">Home</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'sell' %}" class="text-white-50">Sell</a></li>
+                        <li class="breadcrumb-item active text-white" aria-current="page">{{ config.name }}</li>
+                    </ol>
+                </nav>
+                {% block hero_content %}
+                <h1 style="font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 1.25rem;">Sell {{ config.name }} for More&mdash;Without the Outrageous Fees.</h1>
+                <p style="font-size: 1.15rem; color: var(--gray-300); max-width: 520px; margin-bottom: 2rem;">Fees from 5.95%. Paid in 2&ndash;3 days. Built by real collectors, not corporations.</p>
+                {% endblock %}
+
+                <div class="row g-3" style="max-width: 520px;">
+                    <div class="col-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="bi bi-percent" style="font-size: 1.1rem;"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold" style="font-size: 0.95rem;">5.95&ndash;12.95% Total Fee</div>
+                                <div style="font-size: 0.8rem; color: var(--gray-400);">No hidden charges</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="bi bi-cash-stack" style="font-size: 1.1rem;"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold" style="font-size: 0.95rem;">Paid in 2&ndash;3 Days</div>
+                                <div style="font-size: 0.8rem; color: var(--gray-400);">Direct to your bank</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="bi bi-trophy" style="font-size: 1.1rem;"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold" style="font-size: 0.95rem;">Curated Marketplace</div>
+                                <div style="font-size: 0.8rem; color: var(--gray-400);">Serious collectors only</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="bi bi-shield-check" style="font-size: 1.1rem;"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold" style="font-size: 0.95rem;">Anti-Sniping Built In</div>
+                                <div style="font-size: 0.8rem; color: var(--gray-400);">Fair auction endings</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <a href="#listing-form" class="btn btn-lg fw-semibold px-4" style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-cyan)); color: #fff; border: none;">
+                        Start Selling <i class="bi bi-arrow-down-circle ms-1"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-lg-5 d-none d-lg-block">
+                {% block hero_right %}
+                <div style="background: rgba(255,255,255,0.05); border-radius: 1rem; padding: 2rem; border: 1px solid rgba(255,255,255,0.1);">
+                    <div class="text-center">
+                        <div style="font-size: 2.5rem; font-weight: 800; color: var(--brand-cyan);">{{ sales_count_30d|default:"0" }}</div>
+                        <div style="font-size: 0.9rem; color: var(--gray-400);">{{ config.name }} items sold this month</div>
+                    </div>
+                    <hr style="border-color: rgba(255,255,255,0.1); margin: 1.5rem 0;">
+                    <div class="text-center">
+                        <div style="font-size: 2.5rem; font-weight: 800; color: var(--brand-gold);">${{ sales_value_30d|intcomma|default:"0" }}</div>
+                        <div style="font-size: 0.9rem; color: var(--gray-400);">Total sales value</div>
+                    </div>
+                    <hr style="border-color: rgba(255,255,255,0.1); margin: 1.5rem 0;">
+                    <div class="text-center">
+                        <div style="font-size: 1rem; color: var(--gray-300);">{{ stat_collectors|intcomma|default:"0" }} collectors browsing</div>
+                    </div>
+                </div>
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Listing Form Section -->
+<div id="listing-form" class="sell-section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                {% if is_guest %}
+                    {% include 'pages/sell/_form_guest.html' %}
+                {% else %}
+                    <div class="card shadow-sm" style="border-radius: 0.75rem; border: 1px solid var(--border-color);">
+                        <div class="card-body p-4">
+                            <h3 class="fw-bold mb-1">Create Your Listing</h3>
+                            <p class="text-muted small mb-4">Category: {{ config.name }} &mdash; you can change this later</p>
+                            <form method="post" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                {% if form.errors %}
+                                <div class="alert alert-danger mb-3">
+                                    <strong>Please fix the errors below:</strong>
+                                    {{ form.non_field_errors }}
+                                </div>
+                                {% endif %}
+                                {% for field in form %}
+                                {% if field.name != 'category' %}
+                                <div class="mb-3">
+                                    <label for="{{ field.id_for_label }}" class="form-label small fw-semibold">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors.0 }}</div>{% endif %}
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                                <button type="submit" class="btn btn-dark w-100 py-2 fw-semibold">Create Draft Listing</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Category-Specific Content -->
+{% block category_content %}{% endblock %}
+
+<!-- Social Proof -->
+<div class="sell-section sell-section-alt">
+    <div class="container">
+        {% include 'pages/sell/_sections/social_proof.html' %}
+    </div>
+</div>
+
+<!-- Active Listings -->
+{% if active_listings %}
+<div class="sell-section">
+    <div class="container">
+        <h2 class="fw-bold text-center mb-4">{{ config.name }} Currently Listed</h2>
+        <div class="row g-3">
+            {% for listing in active_listings|slice:":8" %}
+            <div class="col-6 col-md-3">
+                {% include 'components/listing_card.html' with listing=listing %}
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+            <a href="{% url 'marketplace:listing_list' %}?category={{ db_category.slug }}" class="btn btn-outline-dark">Browse All {{ config.name }} Listings</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Fee Comparison -->
+<div class="sell-section sell-section-alt">
+    <div class="container">
+        {% include 'pages/sell/_sections/fee_comparison.html' %}
+    </div>
+</div>
+
+<!-- How It Works -->
+<div class="sell-section">
+    <div class="container">
+        {% include 'pages/sell/_sections/how_it_works.html' %}
+    </div>
+</div>
+
+<!-- FAQ -->
+<div class="sell-section sell-section-alt">
+    <div class="container">
+        {% include 'pages/sell/_sections/faq.html' %}
+    </div>
+</div>
+
+<!-- Trust Signals -->
+<div class="sell-section">
+    <div class="container">
+        {% include 'pages/sell/_sections/trust_signals.html' %}
+    </div>
+</div>
+
+<!-- Bottom CTA -->
+{% include 'pages/sell/_sections/cta_bottom.html' %}
+
+{% endblock %}

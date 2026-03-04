@@ -1,0 +1,115 @@
+{% load humanize %}
+
+<!-- Fee Comparison Section -->
+<section style="padding: 4rem 0;">
+    <div class="container">
+        <div class="text-center mb-4">
+            <h2 style="font-size: 2rem; font-weight: 800; color: var(--brand-navy); letter-spacing: -0.02em;">Compare Our Fees</h2>
+            <p style="color: var(--gray-600); max-width: 540px; margin: 0.5rem auto 0;">See how much more you keep on every sale.</p>
+        </div>
+
+        <div class="table-responsive" style="max-width: 900px; margin: 0 auto;">
+            <table class="table mb-0" style="border-radius: 0.75rem; overflow: hidden; border-collapse: separate; border-spacing: 0;">
+                <thead>
+                    <tr>
+                        <th style="background: var(--gray-900); color: #fff; text-align: left; padding: 0.85rem 1.25rem; font-size: 0.85rem; font-weight: 600; border: none;"></th>
+                        <th style="background: var(--brand-navy); color: #fff; text-align: center; padding: 0.85rem 1.25rem; font-size: 0.85rem; font-weight: 600; border: none;">
+                            <i class="bi bi-star-fill me-1" style="color: var(--brand-gold);"></i> HeroesAndMore
+                        </th>
+                        <th style="background: var(--gray-900); color: #fff; text-align: center; padding: 0.85rem 1.25rem; font-size: 0.85rem; font-weight: 600; border: none;">eBay</th>
+                        {% if config.competitor and config.competitor != "eBay" %}
+                        <th style="background: var(--gray-900); color: #fff; text-align: center; padding: 0.85rem 1.25rem; font-size: 0.85rem; font-weight: 600; border: none;">{{ config.competitor }}</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Final Value Fee -->
+                    <tr>
+                        <td style="padding: 0.85rem 1.25rem; font-size: 0.9rem; font-weight: 600; color: var(--brand-navy); border-bottom: 1px solid var(--border-color);">Final Value Fee</td>
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; border-bottom: 1px solid var(--border-color); background: rgba(25,135,84,0.04);">
+                            <strong style="color: var(--accent-success);">5.95% &ndash; 12.95%</strong>
+                        </td>
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color);">~13.25%</td>
+                        {% if config.competitor == "TCGplayer" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color);">11% &ndash; 15%</td>
+                        {% elif config.competitor == "COMC" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color);">10% &ndash; 15%</td>
+                        {% elif config.competitor and config.competitor != "eBay" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color);">10% &ndash; 20%</td>
+                        {% endif %}
+                    </tr>
+                    <!-- Payment Processing -->
+                    <tr>
+                        <td style="padding: 0.85rem 1.25rem; font-size: 0.9rem; font-weight: 600; color: var(--brand-navy); border-bottom: 1px solid var(--border-color); background: var(--gray-50);">Payment Processing</td>
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; border-bottom: 1px solid var(--border-color); background: rgba(25,135,84,0.04);">
+                            <strong style="color: var(--accent-success);">Included</strong>
+                            <i class="bi bi-check-circle-fill ms-1" style="color: var(--accent-success); font-size: 0.85rem;"></i>
+                        </td>
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color); background: var(--gray-50);">2.95% + $0.30</td>
+                        {% if config.competitor == "TCGplayer" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color); background: var(--gray-50);">Included</td>
+                        {% elif config.competitor == "COMC" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color); background: var(--gray-50);">Varies</td>
+                        {% elif config.competitor and config.competitor != "eBay" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color); background: var(--gray-50);">Varies</td>
+                        {% endif %}
+                    </tr>
+                    <!-- Insertion Fee -->
+                    <tr>
+                        <td style="padding: 0.85rem 1.25rem; font-size: 0.9rem; font-weight: 600; color: var(--brand-navy); border-bottom: 1px solid var(--border-color);">Insertion / Listing Fee</td>
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; border-bottom: 1px solid var(--border-color); background: rgba(25,135,84,0.04);">
+                            <strong style="color: var(--accent-success);">Free</strong>
+                            <i class="bi bi-check-circle-fill ms-1" style="color: var(--accent-success); font-size: 0.85rem;"></i>
+                        </td>
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color);">$0.35/listing*</td>
+                        {% if config.competitor == "TCGplayer" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color);">Free</td>
+                        {% elif config.competitor == "COMC" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color);">$0.20 &ndash; $2.00</td>
+                        {% elif config.competitor and config.competitor != "eBay" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color);">Varies</td>
+                        {% endif %}
+                    </tr>
+                    <!-- Total on $100 Sale -->
+                    <tr>
+                        <td style="padding: 0.85rem 1.25rem; font-size: 0.9rem; font-weight: 600; color: var(--brand-navy); border-bottom: 1px solid var(--border-color); background: var(--gray-50);">Total on a $100 Sale</td>
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; border-bottom: 1px solid var(--border-color); background: rgba(25,135,84,0.04);">
+                            <strong style="color: var(--accent-success);">$5.95 &ndash; $12.95</strong>
+                        </td>
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color); background: var(--gray-50);">~$16.50</td>
+                        {% if config.competitor == "TCGplayer" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color); background: var(--gray-50);">$11.00 &ndash; $15.00</td>
+                        {% elif config.competitor == "COMC" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color); background: var(--gray-50);">$10.00 &ndash; $17.00</td>
+                        {% elif config.competitor and config.competitor != "eBay" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700); border-bottom: 1px solid var(--border-color); background: var(--gray-50);">$10.00 &ndash; $20.00</td>
+                        {% endif %}
+                    </tr>
+                    <!-- Total on $500 Sale -->
+                    <tr>
+                        <td style="padding: 0.85rem 1.25rem; font-size: 0.9rem; font-weight: 600; color: var(--brand-navy);">Total on a $500 Sale</td>
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; background: rgba(25,135,84,0.04);">
+                            <strong style="color: var(--accent-success);">$29.75 &ndash; $64.75</strong>
+                        </td>
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700);">~$81.55</td>
+                        {% if config.competitor == "TCGplayer" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700);">$55.00 &ndash; $75.00</td>
+                        {% elif config.competitor == "COMC" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700);">$50.00 &ndash; $77.00</td>
+                        {% elif config.competitor and config.competitor != "eBay" %}
+                        <td style="padding: 0.85rem 1.25rem; text-align: center; font-size: 0.9rem; color: var(--gray-700);">$50.00 &ndash; $100.00</td>
+                        {% endif %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="text-center mt-3">
+            <p style="font-size: 0.8rem; color: var(--gray-500);">
+                * eBay fees after 250 free listings/month. HeroesAndMore fee depends on seller tier:
+                Starter (Free) 12.95% | Basic ($9.99/mo) 9.95% | Featured ($29.99/mo) 7.95% | Premium ($99.99/mo) 5.95%.
+                Payment processing included in all tiers.
+            </p>
+        </div>
+    </div>
+</section>

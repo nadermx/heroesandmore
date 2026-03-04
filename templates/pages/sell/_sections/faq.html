@@ -1,0 +1,121 @@
+<!-- FAQ Section -->
+<section style="padding: 4rem 0; background: var(--gray-50);">
+    <div class="container">
+        <div class="text-center mb-4">
+            <h2 style="font-size: 2rem; font-weight: 800; color: var(--brand-navy); letter-spacing: -0.02em;">
+                Frequently Asked Questions About Selling {{ config.name }}
+            </h2>
+        </div>
+
+        <div style="max-width: 760px; margin: 0 auto;">
+            <div class="accordion" id="sellFaqAccordion">
+                {% if faqs %}
+                    {% for faq in faqs %}
+                    <div class="accordion-item" style="border: 1px solid var(--border-color); border-radius: 0.5rem !important; margin-bottom: 0.75rem; overflow: hidden;">
+                        <h3 class="accordion-header" id="faqHead{{ forloop.counter }}">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#faqBody{{ forloop.counter }}"
+                                    aria-expanded="false" aria-controls="faqBody{{ forloop.counter }}"
+                                    style="font-weight: 600; font-size: 0.95rem; color: var(--brand-navy); background: #fff; padding: 1rem 1.25rem;">
+                                {{ faq.question }}
+                            </button>
+                        </h3>
+                        <div id="faqBody{{ forloop.counter }}" class="accordion-collapse collapse"
+                             aria-labelledby="faqHead{{ forloop.counter }}" data-bs-parent="#sellFaqAccordion">
+                            <div class="accordion-body" style="font-size: 0.9rem; color: var(--gray-700); padding: 0 1.25rem 1.25rem;">
+                                {{ faq.answer }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Generic Selling FAQs -->
+                    <div class="accordion-item" style="border: 1px solid var(--border-color); border-radius: 0.5rem !important; margin-bottom: 0.75rem; overflow: hidden;">
+                        <h3 class="accordion-header" id="faqHeadGeneric1">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#faqBodyGeneric1"
+                                    aria-expanded="false" aria-controls="faqBodyGeneric1"
+                                    style="font-weight: 600; font-size: 0.95rem; color: var(--brand-navy); background: #fff; padding: 1rem 1.25rem;">
+                                How much does it cost to sell on HeroesAndMore?
+                            </button>
+                        </h3>
+                        <div id="faqBodyGeneric1" class="accordion-collapse collapse"
+                             aria-labelledby="faqHeadGeneric1" data-bs-parent="#sellFaqAccordion">
+                            <div class="accordion-body" style="font-size: 0.9rem; color: var(--gray-700); padding: 0 1.25rem 1.25rem;">
+                                Listing is always free. When your item sells, a commission is deducted based on your seller tier: Starter (free) at 12.95%, Basic ($9.99/mo) at 9.95%, Featured ($29.99/mo) at 7.95%, or Premium ($99.99/mo) at 5.95%. Payment processing is included in all tiers.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item" style="border: 1px solid var(--border-color); border-radius: 0.5rem !important; margin-bottom: 0.75rem; overflow: hidden;">
+                        <h3 class="accordion-header" id="faqHeadGeneric2">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#faqBodyGeneric2"
+                                    aria-expanded="false" aria-controls="faqBodyGeneric2"
+                                    style="font-weight: 600; font-size: 0.95rem; color: var(--brand-navy); background: #fff; padding: 1rem 1.25rem;">
+                                How do I get paid?
+                            </button>
+                        </h3>
+                        <div id="faqBodyGeneric2" class="accordion-collapse collapse"
+                             aria-labelledby="faqHeadGeneric2" data-bs-parent="#sellFaqAccordion">
+                            <div class="accordion-body" style="font-size: 0.9rem; color: var(--gray-700); padding: 0 1.25rem 1.25rem;">
+                                Payments are processed through Stripe and deposited directly into your bank account, typically within 2-3 business days after a sale. You connect your bank account once during seller setup and every payment after that is automatic.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item" style="border: 1px solid var(--border-color); border-radius: 0.5rem !important; margin-bottom: 0.75rem; overflow: hidden;">
+                        <h3 class="accordion-header" id="faqHeadGeneric3">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#faqBodyGeneric3"
+                                    aria-expanded="false" aria-controls="faqBodyGeneric3"
+                                    style="font-weight: 600; font-size: 0.95rem; color: var(--brand-navy); background: #fff; padding: 1rem 1.25rem;">
+                                Can I sell items as auctions?
+                            </button>
+                        </h3>
+                        <div id="faqBodyGeneric3" class="accordion-collapse collapse"
+                             aria-labelledby="faqHeadGeneric3" data-bs-parent="#sellFaqAccordion">
+                            <div class="accordion-body" style="font-size: 0.9rem; color: var(--gray-700); padding: 0 1.25rem 1.25rem;">
+                                Yes. You can list items as fixed price or timed auction. Auctions include built-in anti-sniping protection that automatically extends the deadline when bids come in during the final minutes, ensuring fair outcomes for both buyers and sellers.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item" style="border: 1px solid var(--border-color); border-radius: 0.5rem !important; margin-bottom: 0.75rem; overflow: hidden;">
+                        <h3 class="accordion-header" id="faqHeadGeneric4">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#faqBodyGeneric4"
+                                    aria-expanded="false" aria-controls="faqBodyGeneric4"
+                                    style="font-weight: 600; font-size: 0.95rem; color: var(--brand-navy); background: #fff; padding: 1rem 1.25rem;">
+                                How does shipping work?
+                            </button>
+                        </h3>
+                        <div id="faqBodyGeneric4" class="accordion-collapse collapse"
+                             aria-labelledby="faqHeadGeneric4" data-bs-parent="#sellFaqAccordion">
+                            <div class="accordion-body" style="font-size: 0.9rem; color: var(--gray-700); padding: 0 1.25rem 1.25rem;">
+                                You can offer flat-rate shipping, calculated shipping based on package weight, or free shipping. After a sale, you can purchase discounted shipping labels directly through our platform, powered by EasyPost. Tracking is updated automatically for buyers.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item" style="border: 1px solid var(--border-color); border-radius: 0.5rem !important; margin-bottom: 0.75rem; overflow: hidden;">
+                        <h3 class="accordion-header" id="faqHeadGeneric5">
+                            <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#faqBodyGeneric5"
+                                    aria-expanded="false" aria-controls="faqBodyGeneric5"
+                                    style="font-weight: 600; font-size: 0.95rem; color: var(--brand-navy); background: #fff; padding: 1rem 1.25rem;">
+                                What is the Make an Offer feature?
+                            </button>
+                        </h3>
+                        <div id="faqBodyGeneric5" class="accordion-collapse collapse"
+                             aria-labelledby="faqHeadGeneric5" data-bs-parent="#sellFaqAccordion">
+                            <div class="accordion-body" style="font-size: 0.9rem; color: var(--gray-700); padding: 0 1.25rem 1.25rem;">
+                                On fixed-price listings, you can enable offers. Buyers submit a price and you can accept, decline, or counter. It helps close sales while keeping negotiation power in your hands.
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>

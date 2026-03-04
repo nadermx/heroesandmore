@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load socialaccount %}
+
+{% block title %}Finish Setting Up Your Listing - HeroesAndMore{% endblock %}
+{% block meta_description %}Create your free account to publish your listing on HeroesAndMore.{% endblock %}
+{% block robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block extra_css %}
+<style>
+.claim-card { background: #fff; border-radius: 0.75rem; border: 1px solid var(--border-color); box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="background: var(--gray-50); min-height: 80vh; padding: 3rem 0;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+
+                <!-- Listing Preview -->
+                <div class="text-center mb-4">
+                    <div style="width: 56px; height: 56px; background: linear-gradient(135deg, var(--brand-primary), var(--brand-cyan)); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                        <i class="bi bi-check-lg text-white" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h1 class="fw-bold" style="font-size: 1.75rem;">Your Listing is Ready!</h1>
+                    <p class="text-muted">Create your free account to publish it</p>
+                </div>
+
+                <!-- Listing Summary -->
+                <div class="claim-card p-3 mb-4">
+                    <div class="d-flex align-items-center gap-3">
+                        {% if submission.image1 %}
+                        <div style="width: 64px; height: 64px; border-radius: 0.5rem; overflow: hidden; flex-shrink: 0;">
+                            <img src="{{ submission.image1.url }}" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                        {% endif %}
+                        <div class="flex-grow-1 min-width-0">
+                            <div class="fw-bold text-truncate">{{ submission.title }}</div>
+                            <div class="text-muted small">{{ submission.get_listing_type_display }} &mdash; ${{ submission.price }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if email_matches_existing %}
+                <!-- Existing User — Prompt Login -->
+                <div class="claim-card p-4">
+                    <h4 class="fw-bold mb-2">Welcome Back!</h4>
+                    <p class="text-muted mb-4">We found an account with <strong>{{ submission.guest_email }}</strong>. Sign in to publish your listing.</p>
+
+                    <div class="d-grid mb-3">
+                        <a href="{% provider_login_url 'google' next='/sell/claim/'|add:token|add:'/' %}" class="btn btn-outline-dark py-2">
+                            <svg class="me-2" width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                            Sign in with Google
+                        </a>
+                    </div>
+
+                    <div class="divider mb-3">
+                        <span class="text-muted small bg-white px-3">or</span>
+                    </div>
+
+                    <form method="get" action="{% url 'account_login' %}">
+                        <input type="hidden" name="next" value="/sell/claim/{{ token }}/">
+                        <div class="mb-3">
+                            <label for="login-email" class="form-label small fw-semibold">Email</label>
+                            <input type="email" class="form-control" id="login-email" value="{{ submission.guest_email }}" disabled>
+                        </div>
+                        <button type="submit" class="btn btn-dark w-100 py-2 fw-semibold">Sign In to Publish</button>
+                    </form>
+                </div>
+
+                {% else %}
+                <!-- New User — Signup Form -->
+                <div class="claim-card p-4">
+                    <h4 class="fw-bold mb-2">Create Your Free Account</h4>
+                    <p class="text-muted mb-4">One quick step and your listing goes live.</p>
+
+                    <div class="d-grid mb-3">
+                        <a href="{% provider_login_url 'google' next='/sell/claim/'|add:token|add:'/' %}" class="btn btn-outline-dark py-2">
+                            <svg class="me-2" width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                            Continue with Google
+                        </a>
+                    </div>
+
+                    <div class="divider mb-3">
+                        <span class="text-muted small bg-white px-3">or sign up with email</span>
+                    </div>
+
+                    <form method="post" action="{% url 'account_signup' %}" id="claim-signup-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="/sell/claim/{{ token }}/">
+                        <!-- Honeypot -->
+                        <div style="position: absolute; left: -9999px;" aria-hidden="true">
+                            <label for="claim-website">Website</label>
+                            <input type="text" name="website" id="claim-website" tabindex="-1" autocomplete="off">
+                        </div>
+                        <input type="hidden" name="_ts" id="claim-signup-ts">
+
+                        <div class="mb-3">
+                            <label for="id_username" class="form-label small fw-semibold">Username</label>
+                            <input type="text" name="username" id="id_username" class="form-control" placeholder="Choose a username" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_email" class="form-label small fw-semibold">Email</label>
+                            <input type="email" name="email" id="id_email" class="form-control" value="{{ submission.guest_email }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_password1" class="form-label small fw-semibold">Password</label>
+                            <input type="password" name="password1" id="id_password1" class="form-control" placeholder="Create a password" required>
+                            <div class="form-text small">Must be at least 8 characters</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="id_password2" class="form-label small fw-semibold">Confirm Password</label>
+                            <input type="password" name="password2" id="id_password2" class="form-control" placeholder="Confirm your password" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-dark w-100 py-2 fw-semibold">Create Account & Publish Listing</button>
+
+                        <p class="text-center text-muted small mt-3 mb-0">
+                            By signing up, you agree to our
+                            <a href="{% url 'terms' %}" class="text-muted">Terms</a> and
+                            <a href="{% url 'privacy' %}" class="text-muted">Privacy Policy</a>
+                        </p>
+                    </form>
+                    <script>document.getElementById('claim-signup-ts').value = (Date.now() / 1000).toFixed(0);</script>
+                </div>
+
+                <p class="text-center mt-3 text-muted small">
+                    Already have an account? <a href="{% url 'account_login' %}?next=/sell/claim/{{ token }}/" class="fw-semibold">Sign in</a>
+                </p>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

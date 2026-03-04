@@ -1,0 +1,26 @@
+<!-- Bottom CTA Section -->
+<section style="background: linear-gradient(180deg, var(--gray-900) 0%, var(--brand-navy) 100%); color: #fff; padding: 4rem 0; position: relative; overflow: hidden;">
+    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E'); opacity: 0.5;"></div>
+    <div class="container position-relative text-center">
+        <h2 style="font-size: 2.25rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 1rem;">
+            Ready to Sell Your {{ config.name }}?
+        </h2>
+        <p style="font-size: 1.1rem; color: var(--gray-300); max-width: 520px; margin: 0 auto 2rem;">
+            Join a marketplace built for collectors. Lower fees, faster payouts, and a community that actually cares about what you're selling.
+        </p>
+        {% if is_guest %}
+        <a href="#signup-form" class="btn btn-lg fw-semibold px-5 py-3"
+           style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-cyan)); color: #fff; border: none; border-radius: 0.5rem; font-size: 1rem;">
+            <i class="bi bi-rocket-takeoff me-2"></i> Start Selling
+        </a>
+        {% else %}
+        <a href="{% url 'marketplace:create_listing' %}" class="btn btn-lg fw-semibold px-5 py-3"
+           style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-cyan)); color: #fff; border: none; border-radius: 0.5rem; font-size: 1rem;">
+            <i class="bi bi-plus-lg me-2"></i> Start Selling
+        </a>
+        {% endif %}
+        <p style="font-size: 0.85rem; color: var(--gray-400); margin-top: 1rem;">
+            Free to list. Fees from 5.95%. No contracts, cancel anytime.
+        </p>
+    </div>
+</section>

@@ -5,7 +5,7 @@ from django import forms
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
-from .models import Listing, Offer, Review
+from .models import Listing, Offer, Review, GuestListingSubmission
 
 
 class ListingForm(forms.ModelForm):
@@ -181,6 +181,60 @@ class ListingForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+class GuestListingForm(forms.ModelForm):
+    """Form for guest listing submissions from category sell pages."""
+
+    class Meta:
+        model = GuestListingSubmission
+        fields = [
+            'title', 'description', 'collector_notes', 'condition',
+            'grading_service', 'grade', 'cert_number',
+            'price', 'listing_type', 'quantity', 'reserve_price', 'allow_offers',
+            'image1', 'image2', 'image3', 'image4', 'image5',
+            'shipping_mode', 'shipping_price', 'ships_from',
+            'guest_email', 'guest_name',
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'What are you selling?'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Describe your item — condition details, notable features, etc.'}),
+            'collector_notes': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "e.g. 'Press candidate, strong eye appeal'"}),
+            'condition': forms.Select(attrs={'class': 'form-select'}),
+            'grading_service': forms.Select(attrs={'class': 'form-select'}),
+            'grade': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 9.5, Gem Mint 10'}),
+            'cert_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
+            'listing_type': forms.Select(attrs={'class': 'form-select'}),
+            'reserve_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'allow_offers': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'image1': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'image2': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'image3': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'image4': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'image5': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'shipping_mode': forms.Select(attrs={'class': 'form-select'}),
+            'shipping_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'ships_from': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'City, State'}),
+            'guest_email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'your@email.com'}),
+            'guest_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Your name'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['image1'].required = True
+        self.fields['shipping_mode'].required = False
+        self.fields['shipping_mode'].initial = 'flat'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        listing_type = cleaned_data.get('listing_type')
+        if listing_type == 'auction':
+            cleaned_data['quantity'] = 1
+        if not cleaned_data.get('shipping_mode'):
+            cleaned_data['shipping_mode'] = 'flat'
+        return cleaned_data
 
 
 class OfferForm(forms.ModelForm):

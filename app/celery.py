@@ -111,4 +111,9 @@ app.conf.beat_schedule = {
         'task': 'shipping.tasks.poll_usps_tracking',
         'schedule': crontab(minute=0, hour='*/2'),
     },
+    # Expire stale guest listing submissions (daily at 2:30 AM)
+    'cleanup-guest-submissions': {
+        'task': 'marketplace.tasks.cleanup_expired_guest_submissions',
+        'schedule': crontab(hour=2, minute=30),
+    },
 }

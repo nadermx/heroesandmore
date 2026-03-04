@@ -706,3 +706,72 @@ class AuctionLotSubmission(models.Model):
             self.listing.lot_number = max_lot + 1
             self.listing.save(update_fields=['auction_event', 'lot_number'])
         super().save(*args, **kwargs)
+
+
+class GuestListingSubmission(models.Model):
+    """
+    Staging table for guest-submitted listings from category sell pages.
+    Converted to a real Listing once the guest creates an account.
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('converted', 'Converted'),
+        ('expired', 'Expired'),
+    ]
+
+    CONDITION_CHOICES = Listing.CONDITION_CHOICES
+    LISTING_TYPE_CHOICES = Listing.LISTING_TYPE_CHOICES
+    GRADING_SERVICE_CHOICES = Listing.GRADING_SERVICE_CHOICES
+    SHIPPING_MODE_CHOICES = Listing.SHIPPING_MODE_CHOICES
+
+    # Guest identity
+    guest_email = models.EmailField()
+    guest_name = models.CharField(max_length=200)
+    guest_token = models.CharField(max_length=100, unique=True, db_index=True)
+
+    # Listing fields
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    collector_notes = models.CharField(max_length=300, blank=True)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    condition = models.CharField(max_length=20, choices=CONDITION_CHOICES)
+    grading_service = models.CharField(max_length=10, choices=GRADING_SERVICE_CHOICES, blank=True)
+    grade = models.CharField(max_length=20, blank=True)
+    cert_number = models.CharField(max_length=50, blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    listing_type = models.CharField(max_length=10, choices=LISTING_TYPE_CHOICES, default='fixed')
+    quantity = models.PositiveIntegerField(default=1)
+    reserve_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    allow_offers = models.BooleanField(default=False)
+
+    # Images
+    image1 = models.ImageField(upload_to='guest_submissions/', blank=True, null=True)
+    image2 = models.ImageField(upload_to='guest_submissions/', blank=True, null=True)
+    image3 = models.ImageField(upload_to='guest_submissions/', blank=True, null=True)
+    image4 = models.ImageField(upload_to='guest_submissions/', blank=True, null=True)
+    image5 = models.ImageField(upload_to='guest_submissions/', blank=True, null=True)
+
+    # Shipping
+    shipping_mode = models.CharField(max_length=20, choices=SHIPPING_MODE_CHOICES, default='flat')
+    shipping_price = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    ships_from = models.CharField(max_length=100, blank=True)
+
+    # Tracking
+    source_category_key = models.CharField(max_length=50, help_text="Sell page category slug e.g. mtg, pokemon")
+    utm_source = models.CharField(max_length=200, blank=True)
+    utm_medium = models.CharField(max_length=200, blank=True)
+    utm_campaign = models.CharField(max_length=200, blank=True)
+
+    # Status
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    converted_listing = models.ForeignKey(Listing, null=True, blank=True, on_delete=models.SET_NULL, related_name='guest_submission')
+    converted_user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='guest_submissions')
+
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created']
+
+    def __str__(self):
+        return f"Guest submission: {self.title} ({self.guest_email})"

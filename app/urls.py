@@ -12,8 +12,8 @@ from accounts.api.views import (
     ChangePasswordView
 )
 from app.views import (
-    bid_landing, contact, log_frontend_error, sell_landing, trusted_seller_landing,
-    robots_txt, sitemap_xml
+    bid_landing, contact, log_frontend_error, sell_landing, sell_category_landing,
+    sell_claim_submission, trusted_seller_landing, robots_txt, sitemap_xml
 )
 from alerts.views import newsletter_subscribe, newsletter_verify, newsletter_preferences, newsletter_unsubscribe
 
@@ -56,6 +56,8 @@ urlpatterns = [
 
     # Ad landing pages (media buy destinations)
     path('sell/', sell_landing, name='sell'),
+    path('sell/claim/<str:token>/', sell_claim_submission, name='sell_claim'),
+    path('sell/<slug:category_key>/', sell_category_landing, name='sell_category'),
     path('bid/', bid_landing, name='bid_landing'),
 
     # Trusted Seller program

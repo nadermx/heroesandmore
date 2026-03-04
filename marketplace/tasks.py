@@ -6,7 +6,7 @@ from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
 
-from .models import Order, Listing, Bid
+from .models import Order, Listing, Bid, GuestListingSubmission
 
 logger = logging.getLogger(__name__)
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -173,3 +173,18 @@ def expire_unpaid_orders():
         logger.info("Expired %s unpaid orders", expired_count)
 
     return expired_count
+
+
+@shared_task
+def cleanup_expired_guest_submissions():
+    """Expire pending guest listing submissions older than 7 days."""
+    cutoff = timezone.now() - timedelta(days=7)
+    expired = GuestListingSubmission.objects.filter(
+        status='pending',
+        created__lt=cutoff,
+    ).update(status='expired')
+
+    if expired:
+        logger.info("Expired %s guest listing submissions", expired)
+
+    return expired

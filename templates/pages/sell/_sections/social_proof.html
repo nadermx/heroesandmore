@@ -1,0 +1,75 @@
+{% load humanize %}
+
+<!-- Recent Sales Section -->
+<section style="padding: 4rem 0; background: var(--gray-50);">
+    <div class="container">
+        <div class="text-center mb-4">
+            <h2 style="font-size: 2rem; font-weight: 800; color: var(--brand-navy); letter-spacing: -0.02em;">Recent Sales in {{ config.name }}</h2>
+            <p style="color: var(--gray-600); max-width: 540px; margin: 0.5rem auto 0;">Real transactions from real collectors on our platform.</p>
+        </div>
+
+        {% if recent_sales %}
+        <div class="row g-4 mb-4">
+            {% for sale in recent_sales %}
+            <div class="col-md-4">
+                <div style="background: #fff; border-radius: 0.75rem; border: 1px solid var(--border-color); overflow: hidden; transition: box-shadow 0.2s;">
+                    {% if sale.listing.image1 %}
+                    <div style="height: 200px; overflow: hidden; background: var(--gray-100);">
+                        <img src="{{ sale.listing.image1.url }}" alt="{{ sale.listing.title }}"
+                             style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    {% else %}
+                    <div style="height: 200px; background: var(--gray-100); display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-image" style="font-size: 2.5rem; color: var(--gray-400);"></i>
+                    </div>
+                    {% endif %}
+                    <div style="padding: 1rem;">
+                        <h6 class="fw-semibold mb-1" style="font-size: 0.9rem; color: var(--brand-navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ sale.listing.title }}</h6>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span style="font-size: 1.1rem; font-weight: 700; color: var(--accent-success);">${{ sale.total|floatformat:2|intcomma }}</span>
+                            <span style="font-size: 0.8rem; color: var(--gray-500);">
+                                Sold {{ sale.created|timesince }} ago
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Stats Bar -->
+        {% if sales_count_30d or sales_value_30d %}
+        <div class="d-flex flex-wrap justify-content-center gap-4" style="background: #fff; border-radius: 0.75rem; border: 1px solid var(--border-color); padding: 1.25rem 2rem;">
+            {% if sales_count_30d %}
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-graph-up-arrow" style="color: var(--accent-success); font-size: 1.25rem;"></i>
+                <span style="font-size: 0.95rem; color: var(--brand-navy);">
+                    <strong>{{ sales_count_30d|intcomma }}</strong> item{{ sales_count_30d|pluralize }} sold in the last 30 days
+                </span>
+            </div>
+            {% endif %}
+            {% if sales_value_30d %}
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-cash-coin" style="color: var(--brand-gold); font-size: 1.25rem;"></i>
+                <span style="font-size: 0.95rem; color: var(--brand-navy);">
+                    Total value: <strong>${{ sales_value_30d|floatformat:2|intcomma }}</strong>
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <!-- No Sales Yet -->
+        <div class="text-center" style="background: #fff; border-radius: 0.75rem; border: 1px solid var(--border-color); padding: 3rem 2rem;">
+            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, var(--brand-primary), var(--brand-cyan)); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem;">
+                <i class="bi bi-rocket-takeoff" style="font-size: 1.75rem; color: #fff;"></i>
+            </div>
+            <h5 class="fw-bold" style="color: var(--brand-navy);">Be Among the First</h5>
+            <p style="color: var(--gray-600); max-width: 400px; margin: 0 auto;">
+                This category is just getting started. List your {{ config.name|lower }} now and get early visibility as the marketplace grows.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</section>
