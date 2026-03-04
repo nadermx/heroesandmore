@@ -39,8 +39,6 @@
 
 {% block extra_css %}
 <style>
-.sell-hero { background: linear-gradient(180deg, var(--gray-900) 0%, var(--gray-800) 100%); color: #fff; padding: 3rem 0 4rem; position: relative; overflow: hidden; }
-.sell-hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E'); opacity: 0.5; }
 .sell-section { padding: 4rem 0; }
 .sell-section-alt { background: var(--gray-50); }
 .sell-comparison-table { border-radius: 0.75rem; overflow: hidden; }
@@ -57,134 +55,66 @@
 {% endblock %}
 
 {% block content %}
-<!-- Hero -->
-<div class="sell-hero">
-    <div class="container position-relative">
-        <div class="row align-items-center g-5">
-            <div class="col-lg-7">
-                <nav aria-label="breadcrumb" class="mb-3">
-                    <ol class="breadcrumb mb-0" style="font-size: 0.85rem;">
-                        <li class="breadcrumb-item"><a href="/" class="text-white-50">Home</a></li>
-                        <li class="breadcrumb-item"><a href="{% url 'sell' %}" class="text-white-50">Sell</a></li>
-                        <li class="breadcrumb-item active text-white" aria-current="page">{{ config.name }}</li>
-                    </ol>
-                </nav>
-                {% block hero_content %}
-                <h1 style="font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 1.25rem;">Sell {{ config.name }} for More&mdash;Without the Outrageous Fees.</h1>
-                <p style="font-size: 1.15rem; color: var(--gray-300); max-width: 520px; margin-bottom: 2rem;">Fees from 5.95%. Paid in 2&ndash;3 days. Built by real collectors, not corporations.</p>
-                {% endblock %}
-
-                <div class="row g-3" style="max-width: 520px;">
-                    <div class="col-6">
-                        <div class="d-flex align-items-start gap-3">
-                            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i class="bi bi-percent" style="font-size: 1.1rem;"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold" style="font-size: 0.95rem;">5.95&ndash;12.95% Total Fee</div>
-                                <div style="font-size: 0.8rem; color: var(--gray-400);">No hidden charges</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="d-flex align-items-start gap-3">
-                            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i class="bi bi-cash-stack" style="font-size: 1.1rem;"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold" style="font-size: 0.95rem;">Paid in 2&ndash;3 Days</div>
-                                <div style="font-size: 0.8rem; color: var(--gray-400);">Direct to your bank</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="d-flex align-items-start gap-3">
-                            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i class="bi bi-trophy" style="font-size: 1.1rem;"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold" style="font-size: 0.95rem;">Curated Marketplace</div>
-                                <div style="font-size: 0.8rem; color: var(--gray-400);">Serious collectors only</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="d-flex align-items-start gap-3">
-                            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i class="bi bi-shield-check" style="font-size: 1.1rem;"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold" style="font-size: 0.95rem;">Anti-Sniping Built In</div>
-                                <div style="font-size: 0.8rem; color: var(--gray-400);">Fair auction endings</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-4">
-                    <a href="#listing-form" class="btn btn-lg fw-semibold px-4" style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-cyan)); color: #fff; border: none;">
-                        Start Selling <i class="bi bi-arrow-down-circle ms-1"></i>
-                    </a>
-                </div>
-            </div>
-
-            <div class="col-lg-5 d-none d-lg-block">
-                {% block hero_right %}
-                <div style="background: rgba(255,255,255,0.05); border-radius: 1rem; padding: 2rem; border: 1px solid rgba(255,255,255,0.1);">
-                    <div class="text-center">
-                        <div style="font-size: 2.5rem; font-weight: 800; color: var(--brand-cyan);">{{ sales_count_30d|default:"0" }}</div>
-                        <div style="font-size: 0.9rem; color: var(--gray-400);">{{ config.name }} items sold this month</div>
-                    </div>
-                    <hr style="border-color: rgba(255,255,255,0.1); margin: 1.5rem 0;">
-                    <div class="text-center">
-                        <div style="font-size: 2.5rem; font-weight: 800; color: var(--brand-gold);">${{ sales_value_30d|intcomma|default:"0" }}</div>
-                        <div style="font-size: 0.9rem; color: var(--gray-400);">Total sales value</div>
-                    </div>
-                    <hr style="border-color: rgba(255,255,255,0.1); margin: 1.5rem 0;">
-                    <div class="text-center">
-                        <div style="font-size: 1rem; color: var(--gray-300);">{{ stat_collectors|intcomma|default:"0" }} collectors browsing</div>
-                    </div>
-                </div>
-                {% endblock %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Listing Form Section -->
-<div id="listing-form" class="sell-section">
+<!-- Form-First Layout -->
+<div style="background: var(--gray-50); padding: 2.5rem 0 3rem;">
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-8">
-                {% if is_guest %}
-                    {% include 'pages/sell/_form_guest.html' %}
-                {% else %}
-                    <div class="card shadow-sm" style="border-radius: 0.75rem; border: 1px solid var(--border-color);">
-                        <div class="card-body p-4">
-                            <h3 class="fw-bold mb-1">Create Your Listing</h3>
-                            <p class="text-muted small mb-4">Category: {{ config.name }} &mdash; you can change this later</p>
-                            <form method="post" enctype="multipart/form-data">
-                                {% csrf_token %}
-                                {% if form.errors %}
-                                <div class="alert alert-danger mb-3">
-                                    <strong>Please fix the errors below:</strong>
-                                    {{ form.non_field_errors }}
-                                </div>
-                                {% endif %}
-                                {% for field in form %}
-                                {% if field.name != 'category' %}
-                                <div class="mb-3">
-                                    <label for="{{ field.id_for_label }}" class="form-label small fw-semibold">{{ field.label }}</label>
-                                    {{ field }}
-                                    {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors.0 }}</div>{% endif %}
-                                </div>
-                                {% endif %}
-                                {% endfor %}
-                                <button type="submit" class="btn btn-dark w-100 py-2 fw-semibold">Create Draft Listing</button>
-                            </form>
+                <!-- Breadcrumb -->
+                <nav aria-label="breadcrumb" class="mb-3">
+                    <ol class="breadcrumb mb-0" style="font-size: 0.85rem;">
+                        <li class="breadcrumb-item"><a href="/">Home</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'sell' %}">Sell</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">{{ config.name }}</li>
+                    </ol>
+                </nav>
+
+                <!-- Headline -->
+                {% block page_header %}
+                <h1 style="font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 0.5rem;">Sell Your {{ config.name }}</h1>
+                <p class="text-muted mb-1" style="font-size: 1.05rem;">Fees from 5.95%. Paid in 2&ndash;3 days. No account needed to get started.</p>
+                {% endblock %}
+
+                <!-- Value props row -->
+                <div class="d-flex flex-wrap gap-3 mb-4" style="font-size: 0.85rem;">
+                    <span class="text-muted"><i class="bi bi-check-circle-fill text-success me-1"></i>Free to list</span>
+                    <span class="text-muted"><i class="bi bi-check-circle-fill text-success me-1"></i>Lower fees than {{ config.competitor }}</span>
+                    <span class="text-muted"><i class="bi bi-check-circle-fill text-success me-1"></i>Anti-sniping auctions</span>
+                    <span class="text-muted"><i class="bi bi-check-circle-fill text-success me-1"></i>Stripe payouts</span>
+                </div>
+
+                <!-- Form -->
+                <div id="listing-form">
+                    {% if is_guest %}
+                        {% include 'pages/sell/_form_guest.html' %}
+                    {% else %}
+                        <div class="card shadow-sm" style="border-radius: 0.75rem; border: 1px solid var(--border-color);">
+                            <div class="card-body p-4">
+                                <h3 class="fw-bold mb-1">Create Your Listing</h3>
+                                <p class="text-muted small mb-4">Category: {{ config.name }} &mdash; you can change this later</p>
+                                <form method="post" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                    {% if form.errors %}
+                                    <div class="alert alert-danger mb-3">
+                                        <strong>Please fix the errors below:</strong>
+                                        {{ form.non_field_errors }}
+                                    </div>
+                                    {% endif %}
+                                    {% for field in form %}
+                                    {% if field.name != 'category' %}
+                                    <div class="mb-3">
+                                        <label for="{{ field.id_for_label }}" class="form-label small fw-semibold">{{ field.label }}</label>
+                                        {{ field }}
+                                        {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors.0 }}</div>{% endif %}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                    <button type="submit" class="btn btn-dark w-100 py-2 fw-semibold">Create Draft Listing</button>
+                                </form>
+                            </div>
                         </div>
-                    </div>
-                {% endif %}
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
