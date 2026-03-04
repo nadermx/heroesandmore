@@ -28,10 +28,17 @@
     {% endif %}
 
     <p style="text-align: center; margin: 30px 0;">
+        {% if order.guest_order_token %}
+        <a href="{{ site_url }}/marketplace/order/track/{{ order.guest_order_token }}/"
+           style="background-color: #171717; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+            View Order Details
+        </a>
+        {% else %}
         <a href="{{ site_url }}/marketplace/order/{{ order.id }}/"
            style="background-color: #171717; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
             View Order Details
         </a>
+        {% endif %}
     </p>
 
     <p style="color: #737373; font-size: 14px; margin-top: 40px; border-top: 1px solid #e5e5e5; padding-top: 20px;">

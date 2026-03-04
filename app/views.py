@@ -411,8 +411,13 @@ def sell_category_landing(request, category_key):
 
 def _send_claim_email(request, submission):
     """Send the claim/account creation email for a guest submission."""
+    from django.template.loader import render_to_string
+
     site_url = getattr(settings, 'SITE_URL', '').rstrip('/') or f"{request.scheme}://{request.get_host()}"
     claim_url = f"{site_url}/sell/claim/{submission.guest_token}/"
+
+    context = {'submission': submission, 'claim_url': claim_url, 'site_url': site_url}
+    html_content = render_to_string('marketplace/emails/guest_claim.html', context)
 
     try:
         send_mail(
@@ -427,6 +432,7 @@ def _send_claim_email(request, submission):
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[submission.guest_email],
+            html_message=html_content,
             fail_silently=False,
         )
     except Exception:
@@ -492,7 +498,36 @@ def _convert_submission_to_listing(submission, user):
     submission.converted_user = user
     submission.save()
 
+    # Send confirmation email
+    _send_listing_published_email(listing, user)
+
     return listing
+
+
+def _send_listing_published_email(listing, user):
+    """Send confirmation email after a guest submission is converted to a listing."""
+    from django.template.loader import render_to_string
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    context = {'listing': listing, 'user': user, 'site_url': site_url}
+    html_content = render_to_string('marketplace/emails/listing_published.html', context)
+
+    try:
+        send_mail(
+            subject=f'Your listing is ready — {listing.title}',
+            message=(
+                f"Hi {user.first_name or user.username},\n\n"
+                f"Your listing \"{listing.title}\" has been created as a draft on HeroesAndMore.\n"
+                f"Review and publish it here: {site_url}/marketplace/listing/{listing.pk}/edit/\n\n"
+                f"— The HeroesAndMore Team"
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            html_message=html_content,
+            fail_silently=True,
+        )
+    except Exception:
+        app_logger.error(f'Failed to send listing published email to {user.email}', exc_info=True)
 
 
 def trusted_seller_landing(request):

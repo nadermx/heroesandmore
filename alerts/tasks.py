@@ -364,28 +364,30 @@ def send_order_notifications(order_id, event_type):
 
     elif event_type == 'payment_failed':
         # Email to buyer: Payment failed
-        if order.buyer.email:
+        buyer_email = order.buyer_email
+        if buyer_email:
             html_content = render_to_string('marketplace/emails/payment_failed.html', context)
             try:
                 send_mail(
                     subject=f'Payment Issue - Order #{order.id}',
                     message=f'We were unable to process your payment for order #{order.id}. Please try again.',
                     from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[order.buyer.email],
+                    recipient_list=[buyer_email],
                     html_message=html_content,
                     fail_silently=True,
                 )
             except Exception:
                 pass
 
-        # In-app alert
-        Alert.objects.create(
-            user=order.buyer,
-            alert_type='order_update',
-            title=f'Payment Failed - Order #{order.id}',
-            message=f'We were unable to process your payment. Please try again.',
-            link=f'/marketplace/{order.listing.id}/checkout/',
-        )
+        # In-app alert (skip for guest orders)
+        if order.buyer:
+            Alert.objects.create(
+                user=order.buyer,
+                alert_type='order_update',
+                title=f'Payment Failed - Order #{order.id}',
+                message=f'We were unable to process your payment. Please try again.',
+                link=f'/marketplace/{order.listing.id}/checkout/',
+            )
 
 
 @shared_task
@@ -518,28 +520,30 @@ def send_refund_notification(order_id, refund_amount):
     context = {'order': order, 'site_url': site_url, 'refund_amount': refund_amount}
 
     # Email to buyer
-    if order.buyer.email:
+    buyer_email = order.buyer_email
+    if buyer_email:
         html_content = render_to_string('marketplace/emails/refund_issued.html', context)
         try:
             send_mail(
                 subject=f'Refund Issued - Order #{order.id}',
                 message=f'A refund of ${refund_amount} has been issued for order #{order.id}. It may take 5-10 business days to appear on your statement.',
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[order.buyer.email],
+                recipient_list=[buyer_email],
                 html_message=html_content,
                 fail_silently=True,
             )
         except Exception:
             pass
 
-    # In-app alert
-    Alert.objects.create(
-        user=order.buyer,
-        alert_type='order_update',
-        title=f'Refund Issued - Order #{order.id}',
-        message=f'A refund of ${refund_amount} has been issued.',
-        link=f'/marketplace/order/{order.id}/',
-    )
+    # In-app alert (skip for guest orders)
+    if order.buyer:
+        Alert.objects.create(
+            user=order.buyer,
+            alert_type='order_update',
+            title=f'Refund Issued - Order #{order.id}',
+            message=f'A refund of ${refund_amount} has been issued.',
+            link=f'/marketplace/order/{order.id}/',
+        )
 
 
 @shared_task
@@ -705,35 +709,38 @@ def send_cancellation_notification(order_id, cancelled_by):
 
     # Determine who to notify
     if cancelled_by == 'buyer':
+        notify_email = order.seller.email
         notify_user = order.seller
         other_party = 'The buyer'
     else:
-        notify_user = order.buyer
+        notify_email = order.buyer_email
+        notify_user = order.buyer  # may be None for guest
         other_party = 'The seller'
 
     # Email notification
-    if notify_user.email:
+    if notify_email:
         html_content = render_to_string('marketplace/emails/order_cancelled.html', context)
         try:
             send_mail(
                 subject=f'Order Cancelled - #{order.id}',
                 message=f'{other_party} has cancelled order #{order.id} for {order.listing.title if order.listing else "item"}.',
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[notify_user.email],
+                recipient_list=[notify_email],
                 html_message=html_content,
                 fail_silently=True,
             )
         except Exception:
             pass
 
-    # In-app alert
-    Alert.objects.create(
-        user=notify_user,
-        alert_type='order_update',
-        title=f'Order #{order.id} Cancelled',
-        message=f'{other_party} has cancelled this order.',
-        link=f'/marketplace/order/{order.id}/',
-    )
+    # In-app alert (skip for guest orders)
+    if notify_user:
+        Alert.objects.create(
+            user=notify_user,
+            alert_type='order_update',
+            title=f'Order #{order.id} Cancelled',
+            message=f'{other_party} has cancelled this order.',
+            link=f'/marketplace/order/{order.id}/',
+        )
 
 
 @shared_task

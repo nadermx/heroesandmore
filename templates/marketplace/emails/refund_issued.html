@@ -7,7 +7,7 @@
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
     <h2 style="color: #171717;">Refund Issued</h2>
 
-    <p>Hi {{ order.buyer.first_name|default:order.buyer.username }},</p>
+    <p>Hi {{ order.buyer_display_name }},</p>
 
     <p>A refund has been issued for your order.</p>
 
@@ -24,10 +24,17 @@
     <p>The refund has been processed and should appear on your original payment method within <strong>5-10 business days</strong>, depending on your bank.</p>
 
     <p style="text-align: center; margin: 30px 0;">
+        {% if order.guest_order_token %}
+        <a href="{{ site_url }}/marketplace/order/track/{{ order.guest_order_token }}/"
+           style="background-color: #171717; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+            View Order Details
+        </a>
+        {% else %}
         <a href="{{ site_url }}/marketplace/order/{{ order.id }}/"
            style="background-color: #171717; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
             View Order Details
         </a>
+        {% endif %}
     </p>
 
     <p>If you have any questions, please contact the seller or our support team.</p>
