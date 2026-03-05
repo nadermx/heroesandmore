@@ -106,6 +106,85 @@ class OrderModelTests(TestCase):
         self.assertEqual(order.buyer_email, 'buyer@test.com')
 
 
+    def test_guest_order_no_email_no_name(self):
+        """Guest order with no email/name should still work."""
+        order = Order.objects.create(
+            listing=self.listing,
+            seller=self.seller,
+            buyer=None,
+            guest_email='',
+            guest_name='',
+            item_price=self.listing.price,
+            shipping_price=Decimal('5.00'),
+            amount=Decimal('105.00'),
+            platform_fee=Decimal('10.00'),
+            seller_payout=Decimal('90.00'),
+            status='cancelled',
+        )
+        self.assertIsNone(order.buyer)
+        self.assertEqual(order.guest_email, '')
+        self.assertTrue(order.guest_order_token)
+
+
+class OrderDetailGuestTests(TestCase):
+    """Tests for order detail page with guest orders."""
+
+    def setUp(self):
+        self.client = Client()
+        self.seller = User.objects.create_user('seller', 'seller@test.com', 'pass123')
+        self.category = Category.objects.create(name='Items', slug='items')
+        self.listing = Listing.objects.create(
+            seller=self.seller,
+            title='Guest Item',
+            category=self.category,
+            price=Decimal('50.00'),
+            condition='good',
+            status='sold',
+        )
+
+    def test_seller_views_guest_order_with_email(self):
+        """Seller should see order detail for guest order with email."""
+        order = Order.objects.create(
+            listing=self.listing,
+            seller=self.seller,
+            buyer=None,
+            guest_email='guest@example.com',
+            guest_name='Guest Buyer',
+            item_price=Decimal('50.00'),
+            shipping_price=Decimal('5.00'),
+            amount=Decimal('55.00'),
+            platform_fee=Decimal('5.00'),
+            seller_payout=Decimal('45.00'),
+            status='paid',
+        )
+        self.client.login(username='seller', password='pass123')
+        response = self.client.get(f'/marketplace/order/{order.pk}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Guest Buyer')
+        self.assertContains(response, 'Email Buyer')
+
+    def test_seller_views_guest_order_no_email(self):
+        """Seller should see order detail for guest order with no email/name."""
+        order = Order.objects.create(
+            listing=self.listing,
+            seller=self.seller,
+            buyer=None,
+            guest_email='',
+            guest_name='',
+            item_price=Decimal('50.00'),
+            shipping_price=Decimal('5.00'),
+            amount=Decimal('55.00'),
+            platform_fee=Decimal('5.00'),
+            seller_payout=Decimal('45.00'),
+            status='cancelled',
+        )
+        self.client.login(username='seller', password='pass123')
+        response = self.client.get(f'/marketplace/order/{order.pk}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Guest')
+        self.assertNotContains(response, 'Email Buyer')
+
+
 class CheckoutTests(TestCase):
     """Tests for checkout flow."""
 
@@ -247,6 +326,36 @@ class OrderFulfillmentTests(TestCase):
         self.client.login(username='buyer', password='pass123')
         response = self.client.get('/marketplace/my-orders/')
         self.assertIn(response.status_code, [200, 302])
+
+
+class ShippingFormTests(TestCase):
+    """Tests for ShippingForm validation."""
+
+    def test_valid_tracking_number(self):
+        from marketplace.forms import ShippingForm
+        form = ShippingForm(data={
+            'tracking_number': '1Z999AA10123456784',
+            'tracking_carrier': 'ups',
+        })
+        self.assertTrue(form.is_valid())
+
+    def test_rejects_na_tracking(self):
+        from marketplace.forms import ShippingForm
+        for invalid in ['na', 'N/A', 'none', 'tbd', 'pending', '-', 'NA']:
+            form = ShippingForm(data={
+                'tracking_number': invalid,
+                'tracking_carrier': 'usps',
+            })
+            self.assertFalse(form.is_valid(), f'Should reject "{invalid}"')
+            self.assertIn('tracking_number', form.errors)
+
+    def test_rejects_whitespace_only(self):
+        from marketplace.forms import ShippingForm
+        form = ShippingForm(data={
+            'tracking_number': '   ',
+            'tracking_carrier': 'usps',
+        })
+        self.assertFalse(form.is_valid())
 
 
 class ReviewTests(TestCase):
