@@ -274,3 +274,9 @@ class ShippingForm(forms.Form):
         ],
         widget=forms.Select(attrs={'class': 'form-select'})
     )
+
+    def clean_tracking_number(self):
+        value = self.cleaned_data['tracking_number'].strip()
+        if value.lower() in ('na', 'n/a', 'none', 'tbd', 'pending', '-', ''):
+            raise forms.ValidationError('Please enter a valid tracking number.')
+        return value
