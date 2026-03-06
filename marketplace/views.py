@@ -736,6 +736,7 @@ def checkout(request, pk):
         'platform_fee': platform_fee,
         'total': total,
         'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
+        'paypal_client_id': settings.PAYPAL_CLIENT_ID,
         'is_guest': is_guest,
         'use_calculated_shipping': use_calculated_shipping,
     }
@@ -789,16 +790,26 @@ def checkout_complete(request, pk):
         else:
             raise Http404()
 
-    from marketplace.services.stripe_service import StripeService
-
-    # Verify payment status with Stripe
-    if order.stripe_payment_intent and order.status == 'pending':
-        intent = StripeService.retrieve_payment_intent(order.stripe_payment_intent)
-        if intent.status == 'succeeded':
-            order.status = 'paid'
-            order.stripe_payment_status = 'succeeded'
-            order.paid_at = timezone.now()
-            order.save()
+    # Verify payment status
+    if order.status == 'pending':
+        if order.stripe_payment_intent:
+            from marketplace.services.stripe_service import StripeService
+            intent = StripeService.retrieve_payment_intent(order.stripe_payment_intent)
+            if intent.status == 'succeeded':
+                order.status = 'paid'
+                order.stripe_payment_status = 'succeeded'
+                order.paid_at = timezone.now()
+                order.save()
+        elif order.paypal_order_id:
+            from marketplace.services.paypal_service import PayPalService
+            try:
+                pp_order = PayPalService.get_order_details(order.paypal_order_id)
+                if pp_order.get('status') == 'COMPLETED':
+                    order.status = 'paid'
+                    order.paid_at = timezone.now()
+                    order.save()
+            except Exception:
+                pass
 
     # TikTok server-side CompletePayment event
     if order.status in ('paid', 'shipped', 'delivered', 'completed'):
@@ -880,6 +891,10 @@ def process_payment(request, pk):
     payment_method_id = request.POST.get('payment_method_id')
     save_card = request.POST.get('save_card') == 'true' and not is_guest
 
+    # Mark as Stripe payment
+    order.payment_method = 'stripe'
+    order.save(update_fields=['payment_method'])
+
     from marketplace.services.stripe_service import StripeService
 
     try:
@@ -912,6 +927,140 @@ def process_payment(request, pk):
         else:
             return JsonResponse({
                 'error': f'Payment status: {intent.status}'
+            }, status=400)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+def _update_order_address_and_guest(request, order):
+    """Shared helper to update shipping address and guest info on an order.
+    Returns JsonResponse on error, None on success."""
+    from django.http import JsonResponse
+    from shipping.models import Address
+
+    addr_street1 = request.POST.get('addr_street1', '').strip()
+    if addr_street1:
+        addr_data = {
+            'name': request.POST.get('addr_name', '').strip(),
+            'street1': addr_street1,
+            'street2': request.POST.get('addr_street2', '').strip(),
+            'city': request.POST.get('addr_city', '').strip(),
+            'state': request.POST.get('addr_state', '').strip(),
+            'zip_code': request.POST.get('addr_zip', '').strip(),
+            'country': request.POST.get('addr_country', 'US').strip(),
+            'phone': request.POST.get('addr_phone', '').strip(),
+        }
+        if not all([addr_data['name'], addr_data['city'], addr_data['state'], addr_data['zip_code']]):
+            return JsonResponse({'error': 'Please fill in all required address fields'}, status=400)
+
+        addr_obj = Address.objects.create(
+            user=request.user if request.user.is_authenticated else None,
+            **addr_data,
+        )
+        order.shipping_address_obj = addr_obj
+        order.shipping_address = addr_obj.formatted
+        order.save(update_fields=['shipping_address', 'shipping_address_obj'])
+    elif not order.shipping_address:
+        return JsonResponse({'error': 'Shipping address is required'}, status=400)
+
+    is_guest = not request.user.is_authenticated
+    if is_guest:
+        guest_email = request.POST.get('guest_email', '').strip()
+        guest_name = request.POST.get('guest_name', '').strip()
+        if not guest_email:
+            return JsonResponse({'error': 'Email is required'}, status=400)
+        order.guest_email = guest_email
+        order.guest_name = guest_name
+        order.save(update_fields=['guest_email', 'guest_name'])
+
+    return None
+
+
+def paypal_create_order(request, pk):
+    """Create a PayPal order for checkout (AJAX endpoint).
+    Called by PayPal JS SDK's createOrder callback."""
+    from django.http import JsonResponse
+
+    order = _get_order_for_checkout(request, pk)
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    # Update address and guest info
+    error_response = _update_order_address_and_guest(request, order)
+    if error_response:
+        return error_response
+
+    from marketplace.services.paypal_service import PayPalService
+
+    try:
+        paypal_data = PayPalService.create_order(order)
+        return JsonResponse({
+            'id': paypal_data['id'],
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+def paypal_capture_order(request, pk):
+    """Capture a PayPal order after buyer approval (AJAX endpoint).
+    Called by PayPal JS SDK's onApprove callback."""
+    from django.http import JsonResponse
+
+    order = _get_order_for_checkout(request, pk)
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    if not order.paypal_order_id:
+        return JsonResponse({'error': 'No PayPal order to capture'}, status=400)
+
+    from marketplace.services.paypal_service import PayPalService
+
+    try:
+        capture_data = PayPalService.capture_order(order.paypal_order_id)
+
+        if capture_data.get('status') == 'COMPLETED':
+            # Extract capture ID from the response
+            capture_id = ''
+            try:
+                captures = capture_data['purchase_units'][0]['payments']['captures']
+                if captures:
+                    capture_id = captures[0]['id']
+            except (KeyError, IndexError):
+                pass
+
+            order.paypal_capture_id = capture_id
+            order.status = 'paid'
+            order.payment_method = 'paypal'
+            order.paid_at = timezone.now()
+            order.save(update_fields=[
+                'paypal_capture_id', 'status', 'payment_method', 'paid_at', 'updated'
+            ])
+
+            # Send notifications
+            try:
+                from alerts.tasks import send_order_notifications
+                send_order_notifications.delay(order.id, 'paid')
+            except ImportError:
+                pass
+
+            # Trigger PayPal payout to seller if they have PayPal set up
+            try:
+                from marketplace.tasks import send_paypal_payout
+                if order.seller.profile.paypal_email:
+                    send_paypal_payout.delay(order.id)
+            except Exception:
+                pass
+
+            return JsonResponse({
+                'success': True,
+                'redirect': f'/marketplace/order/{order.id}/complete/'
+            })
+        else:
+            return JsonResponse({
+                'error': f"Payment not completed: {capture_data.get('status', 'unknown')}"
             }, status=400)
 
     except Exception as e:
@@ -1103,7 +1252,7 @@ def order_refund(request, pk):
         messages.error(request, 'This order cannot be refunded.')
         return redirect('marketplace:order_detail', pk=pk)
 
-    if not order.stripe_payment_intent:
+    if not order.stripe_payment_intent and not order.paypal_capture_id:
         messages.error(request, 'No payment found to refund.')
         return redirect('marketplace:order_detail', pk=pk)
 
@@ -1119,21 +1268,34 @@ def order_refund(request, pk):
                     messages.error(request, 'Invalid refund amount.')
                     return redirect('marketplace:order_detail', pk=pk)
 
-            # Create refund in Stripe
-            refund = stripe.Refund.create(
-                payment_intent=order.stripe_payment_intent,
-                amount=int(refund_amount * 100),  # Convert to cents
-            )
-
-            # Update order
-            order.refund_amount = refund_amount
-            order.stripe_refund_id = refund.id
-            if refund_amount >= order.amount:
-                order.refund_status = 'full'
-                order.status = 'refunded'
+            if order.payment_method == 'paypal' and order.paypal_capture_id:
+                # PayPal refund
+                from marketplace.services.paypal_service import PayPalService
+                pp_refund = PayPalService.refund_capture(
+                    order.paypal_capture_id,
+                    amount=refund_amount if refund_type != 'full' else None,
+                )
+                order.refund_amount = refund_amount
+                if refund_amount >= order.amount:
+                    order.refund_status = 'full'
+                    order.status = 'refunded'
+                else:
+                    order.refund_status = 'partial'
+                order.save()
             else:
-                order.refund_status = 'partial'
-            order.save()
+                # Stripe refund
+                refund = stripe.Refund.create(
+                    payment_intent=order.stripe_payment_intent,
+                    amount=int(refund_amount * 100),
+                )
+                order.refund_amount = refund_amount
+                order.stripe_refund_id = refund.id
+                if refund_amount >= order.amount:
+                    order.refund_status = 'full'
+                    order.status = 'refunded'
+                else:
+                    order.refund_status = 'partial'
+                order.save()
 
             # Restore listing stock if full refund
             if order.refund_status == 'full' and order.listing:

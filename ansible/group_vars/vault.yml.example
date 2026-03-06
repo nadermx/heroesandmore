@@ -24,6 +24,11 @@ vault_stripe_price_basic: "price_..."  # $9.99/month Basic tier
 vault_stripe_price_featured: "price_..."  # $29.99/month Featured tier
 vault_stripe_price_premium: "price_..."  # $99.99/month Premium tier
 
+# PayPal (from developer.paypal.com)
+vault_paypal_client_id: ""
+vault_paypal_secret: ""
+vault_paypal_webhook_id: ""
+
 # DigitalOcean Spaces (for media storage)
 vault_do_spaces_key: ""
 vault_do_spaces_secret: ""

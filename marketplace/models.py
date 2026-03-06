@@ -483,11 +483,23 @@ class Order(models.Model):
     stripe_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     seller_payout = models.DecimalField(max_digits=10, decimal_places=2)
 
+    # Payment method used
+    PAYMENT_METHOD_CHOICES = [
+        ('stripe', 'Credit/Debit Card'),
+        ('paypal', 'PayPal'),
+    ]
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='stripe')
+
     # Stripe Payment
     stripe_payment_intent = models.CharField(max_length=100, blank=True)
     stripe_payment_status = models.CharField(max_length=30, default='pending')
     stripe_transfer_id = models.CharField(max_length=100, blank=True)
     stripe_transfer_status = models.CharField(max_length=30, blank=True)
+
+    # PayPal Payment
+    paypal_order_id = models.CharField(max_length=100, blank=True)
+    paypal_capture_id = models.CharField(max_length=100, blank=True)
+    paypal_payout_batch_id = models.CharField(max_length=100, blank=True)
 
     # Refund tracking
     refund_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)

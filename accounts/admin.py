@@ -10,7 +10,7 @@ from .models import Profile
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ['user', 'is_seller_verified', 'is_platform_account', 'is_trusted_seller', 'is_founding_member', 'rating', 'is_public', 'created']
     list_filter = ['is_seller_verified', 'is_platform_account', 'is_trusted_seller', 'is_founding_member', 'is_public', 'created']
-    search_fields = ['user__username', 'user__email', 'location']
+    search_fields = ['user__username', 'user__email', 'location', 'paypal_email']
     readonly_fields = ['rating', 'rating_count', 'created', 'updated']
 
 

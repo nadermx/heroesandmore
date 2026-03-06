@@ -23,6 +23,12 @@ STRIPE_PRICE_BASIC = 'price_...'  # $9.99/month Basic tier
 STRIPE_PRICE_FEATURED = 'price_...'  # $29.99/month Featured tier
 STRIPE_PRICE_PREMIUM = 'price_...'  # $99.99/month Premium tier
 
+# PayPal (from developer.paypal.com)
+PAYPAL_CLIENT_ID = ''
+PAYPAL_SECRET = ''
+PAYPAL_WEBHOOK_ID = ''  # Webhook ID from PayPal Dashboard
+PAYPAL_SANDBOX = True  # Set to False for production
+
 # Site URL (for Stripe callbacks)
 SITE_URL = 'http://localhost:8000'
 

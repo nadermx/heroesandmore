@@ -209,25 +209,31 @@ class OfferAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ['id', 'listing', 'buyer', 'seller', 'amount', 'status', 'stripe_payment_status', 'created']
-    list_filter = ['status', 'stripe_payment_status', 'created']
-    search_fields = ['listing__title', 'buyer__username', 'seller__username', 'stripe_payment_intent']
+    list_display = ['id', 'listing', 'buyer', 'seller', 'amount', 'status', 'payment_method', 'created']
+    list_filter = ['status', 'payment_method', 'stripe_payment_status', 'created']
+    search_fields = ['listing__title', 'buyer__username', 'seller__username', 'stripe_payment_intent', 'paypal_order_id']
     readonly_fields = [
+        'payment_method',
         'stripe_payment_intent', 'stripe_payment_status', 'stripe_transfer_id',
         'stripe_transfer_status', 'platform_fee', 'stripe_fee', 'seller_payout',
+        'paypal_order_id', 'paypal_capture_id', 'paypal_payout_batch_id',
         'refund_amount', 'refund_status', 'stripe_refund_id',
         'created', 'updated', 'paid_at'
     ]
     raw_id_fields = ['listing', 'buyer', 'seller']
     fieldsets = (
         (None, {
-            'fields': ('listing', 'buyer', 'seller', 'status')
+            'fields': ('listing', 'buyer', 'seller', 'status', 'payment_method')
         }),
         ('Pricing', {
             'fields': ('item_price', 'shipping_price', 'amount', 'platform_fee', 'stripe_fee', 'seller_payout')
         }),
-        ('Payment', {
+        ('Stripe Payment', {
             'fields': ('stripe_payment_intent', 'stripe_payment_status', 'paid_at'),
+        }),
+        ('PayPal Payment', {
+            'fields': ('paypal_order_id', 'paypal_capture_id', 'paypal_payout_batch_id'),
+            'classes': ('collapse',)
         }),
         ('Transfer', {
             'fields': ('stripe_transfer_id', 'stripe_transfer_status'),

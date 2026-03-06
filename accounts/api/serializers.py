@@ -24,7 +24,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'avatar', 'avatar_url', 'bio',
             'location', 'website', 'is_seller_verified', 'is_trusted_seller',
             'is_founding_member', 'founding_member_since',
-            'stripe_account_complete',
+            'stripe_account_complete', 'paypal_email', 'preferred_payout_method',
             'seller_tier', 'rating', 'rating_count', 'total_sales_count',
             'is_public', 'email_notifications', 'created'
         ]

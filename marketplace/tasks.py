@@ -188,3 +188,55 @@ def cleanup_expired_guest_submissions():
         logger.info("Expired %s guest listing submissions", expired)
 
     return expired
+
+
+@shared_task
+def send_paypal_payout(order_id):
+    """Send PayPal payout to seller for a PayPal-paid order."""
+    from marketplace.models import Order
+    from marketplace.services.paypal_service import PayPalService
+
+    try:
+        order = Order.objects.select_related('seller__profile').get(id=order_id)
+    except Order.DoesNotExist:
+        logger.error("Order %s not found for PayPal payout", order_id)
+        return
+
+    if order.payment_method != 'paypal':
+        logger.info("Order %s not a PayPal payment, skipping payout", order_id)
+        return
+
+    if order.paypal_payout_batch_id:
+        logger.info("Order %s already has PayPal payout batch %s", order_id, order.paypal_payout_batch_id)
+        return
+
+    seller_profile = order.seller.profile
+    paypal_email = seller_profile.paypal_email
+
+    if not paypal_email:
+        logger.warning("Seller %s has no PayPal email, cannot send payout for order %s",
+                       order.seller.id, order_id)
+        return
+
+    payout_amount = order.seller_payout
+    if payout_amount <= 0:
+        logger.warning("Order %s has zero/negative seller payout: %s", order_id, payout_amount)
+        return
+
+    try:
+        result = PayPalService.send_payout(
+            email=paypal_email,
+            amount=payout_amount,
+            order_id=order_id,
+            note=f"Payout for order #{order_id} on HeroesAndMore",
+        )
+
+        batch_id = result.get('batch_header', {}).get('payout_batch_id', '')
+        order.paypal_payout_batch_id = batch_id
+        order.save(update_fields=['paypal_payout_batch_id'])
+
+        logger.info("Sent PayPal payout %s for order %s: $%s to %s",
+                    batch_id, order_id, payout_amount, paypal_email)
+
+    except Exception as e:
+        logger.error("Failed to send PayPal payout for order %s: %s", order_id, e)

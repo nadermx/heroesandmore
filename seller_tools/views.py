@@ -871,25 +871,51 @@ def payout_settings(request):
 
     profile = request.user.profile
 
-    if not profile.stripe_account_id:
-        messages.info(request, 'Please complete your seller account setup first.')
-        return redirect('marketplace:seller_setup')
+    # Handle PayPal email update
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'update_paypal':
+            paypal_email = request.POST.get('paypal_email', '').strip()
+            profile.paypal_email = paypal_email
+            profile.save(update_fields=['paypal_email'])
+            messages.success(request, 'PayPal email updated.')
+            return redirect('seller_tools:payout_settings')
+        elif action == 'set_preferred_payout':
+            method = request.POST.get('preferred_payout_method', 'stripe')
+            if method in ('stripe', 'paypal'):
+                if method == 'paypal' and not profile.paypal_email:
+                    messages.error(request, 'Please add a PayPal email first.')
+                elif method == 'stripe' and not profile.stripe_account_id:
+                    messages.error(request, 'Please set up your Stripe account first.')
+                else:
+                    profile.preferred_payout_method = method
+                    profile.save(update_fields=['preferred_payout_method'])
+                    messages.success(request, f'Preferred payout method set to {method.title()}.')
+            return redirect('seller_tools:payout_settings')
 
-    # Get account details
-    try:
-        account = ConnectService.retrieve_account(profile.stripe_account_id)
-        balance = ConnectService.get_balance(profile.stripe_account_id)
-        transfers = ConnectService.list_transfers(profile.stripe_account_id, limit=20)
-    except Exception as e:
-        messages.error(request, f'Unable to load payout information: {e}')
-        account = None
-        balance = {'available': [], 'pending': []}
-        transfers = []
+    # Stripe account details (if set up)
+    account = None
+    balance = {'available': [], 'pending': []}
+    transfers = []
+
+    if profile.stripe_account_id:
+        try:
+            account = ConnectService.retrieve_account(profile.stripe_account_id)
+            balance = ConnectService.get_balance(profile.stripe_account_id)
+            transfers_result = ConnectService.list_transfers(profile.stripe_account_id, limit=20)
+            transfers = transfers_result.data if hasattr(transfers_result, 'data') else []
+        except Exception as e:
+            messages.error(request, f'Unable to load Stripe payout information: {e}')
+
+    # If no payout method at all, redirect to setup
+    if not profile.stripe_account_id and not profile.paypal_email:
+        messages.info(request, 'Please set up at least one payout method to receive payments.')
 
     return render(request, 'seller_tools/payout_settings.html', {
         'account': account,
         'balance': balance,
-        'transfers': transfers.data if hasattr(transfers, 'data') else [],
+        'transfers': transfers,
+        'profile': profile,
     })
 
 

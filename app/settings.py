@@ -214,6 +214,12 @@ STRIPE_SECRET_KEY = getattr(config, 'STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = getattr(config, 'STRIPE_WEBHOOK_SECRET', '')
 STRIPE_CONNECT_WEBHOOK_SECRET = getattr(config, 'STRIPE_CONNECT_WEBHOOK_SECRET', '')
 
+# PayPal Configuration
+PAYPAL_CLIENT_ID = getattr(config, 'PAYPAL_CLIENT_ID', '')
+PAYPAL_SECRET = getattr(config, 'PAYPAL_SECRET', '')
+PAYPAL_WEBHOOK_ID = getattr(config, 'PAYPAL_WEBHOOK_ID', '')
+PAYPAL_SANDBOX = getattr(config, 'PAYPAL_SANDBOX', True)
+
 # Internal Subscription Billing Settings
 # Subscription billing is handled internally via PaymentIntents (not Stripe Billing)
 SUBSCRIPTION_GRACE_PERIOD_DAYS = 7  # Days before downgrading after failed payment

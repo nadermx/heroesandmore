@@ -1,6 +1,7 @@
 import stripe
 import json
 import logging
+from decimal import Decimal
 from django.conf import settings
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -306,6 +307,147 @@ def stripe_connect_webhook(request):
         stripe_event.save()
 
     return HttpResponse(status=200)
+
+
+@csrf_exempt
+@require_POST
+def paypal_webhook(request):
+    """Handle PayPal webhooks"""
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        logger.error("Invalid PayPal webhook payload")
+        return HttpResponse(status=400)
+
+    # Verify webhook signature
+    from marketplace.services.paypal_service import PayPalService
+    headers = {
+        'PAYPAL-AUTH-ALGO': request.META.get('HTTP_PAYPAL_AUTH_ALGO', ''),
+        'PAYPAL-CERT-URL': request.META.get('HTTP_PAYPAL_CERT_URL', ''),
+        'PAYPAL-TRANSMISSION-ID': request.META.get('HTTP_PAYPAL_TRANSMISSION_ID', ''),
+        'PAYPAL-TRANSMISSION-SIG': request.META.get('HTTP_PAYPAL_TRANSMISSION_SIG', ''),
+        'PAYPAL-TRANSMISSION-TIME': request.META.get('HTTP_PAYPAL_TRANSMISSION_TIME', ''),
+    }
+
+    if not PayPalService.verify_webhook_signature(headers, body):
+        logger.error("PayPal webhook signature verification failed")
+        return HttpResponse(status=400)
+
+    event_type = body.get('event_type', '')
+    resource = body.get('resource', {})
+
+    # Idempotency: use PayPal event ID
+    event_id = body.get('id', '')
+    if event_id:
+        stripe_event, created = StripeEvent.objects.get_or_create(
+            stripe_event_id=f"paypal_{event_id}",
+            defaults={
+                'event_type': f"paypal.{event_type}",
+                'raw_data': body,
+            }
+        )
+        if not created and stripe_event.processed:
+            return HttpResponse(status=200)
+
+    try:
+        if event_type == 'PAYMENT.CAPTURE.COMPLETED':
+            _handle_paypal_capture_completed(resource)
+        elif event_type == 'PAYMENT.CAPTURE.REFUNDED':
+            _handle_paypal_capture_refunded(resource)
+        elif event_type == 'PAYMENT.CAPTURE.DENIED':
+            _handle_paypal_capture_denied(resource)
+
+        if event_id:
+            stripe_event.processed = True
+            stripe_event.processed_at = timezone.now()
+            stripe_event.save()
+
+    except Exception as e:
+        logger.exception(f"Error processing PayPal webhook {event_id}: {e}")
+        if event_id:
+            stripe_event.error_message = str(e)
+            stripe_event.save()
+
+    return HttpResponse(status=200)
+
+
+def _handle_paypal_capture_completed(resource):
+    """Handle PayPal payment capture completed."""
+    capture_id = resource.get('id', '')
+    if not capture_id:
+        return
+
+    try:
+        order = Order.objects.get(paypal_capture_id=capture_id)
+        if order.status != 'paid':
+            order.status = 'paid'
+            order.paid_at = timezone.now()
+            order.save(update_fields=['status', 'paid_at', 'updated'])
+            logger.info(f"PayPal capture confirmed for order {order.id}")
+
+            try:
+                from alerts.tasks import send_order_notifications
+                send_order_notifications.delay(order.id, 'paid')
+            except ImportError:
+                pass
+
+    except Order.DoesNotExist:
+        # Try matching by PayPal order ID from custom_id
+        custom_id = resource.get('custom_id', '')
+        if custom_id:
+            logger.warning(f"No order found for PayPal capture {capture_id}, custom_id={custom_id}")
+
+
+def _handle_paypal_capture_refunded(resource):
+    """Handle PayPal capture refund."""
+    # The resource links back to the original capture
+    links = resource.get('links', [])
+    capture_id = ''
+    for link in links:
+        if link.get('rel') == 'up':
+            # Extract capture ID from URL
+            url = link.get('href', '')
+            if '/captures/' in url:
+                capture_id = url.split('/captures/')[-1].split('/')[0]
+                break
+
+    if not capture_id:
+        return
+
+    try:
+        order = Order.objects.get(paypal_capture_id=capture_id)
+        refund_amount = Decimal(resource.get('amount', {}).get('value', '0'))
+
+        order.refund_amount = (order.refund_amount or 0) + refund_amount
+        if order.refund_amount >= order.amount:
+            order.refund_status = 'full'
+            order.status = 'refunded'
+        else:
+            order.refund_status = 'partial'
+        order.save(update_fields=['refund_amount', 'refund_status', 'status', 'updated'])
+        logger.info(f"PayPal refund processed for order {order.id}: ${refund_amount}")
+
+    except Order.DoesNotExist:
+        logger.warning(f"No order found for PayPal refund on capture {capture_id}")
+
+
+def _handle_paypal_capture_denied(resource):
+    """Handle PayPal payment denied."""
+    capture_id = resource.get('id', '')
+    if not capture_id:
+        return
+
+    try:
+        order = Order.objects.get(paypal_capture_id=capture_id)
+        order.status = 'payment_failed'
+        order.save(update_fields=['status', 'updated'])
+
+        if order.listing:
+            order.listing.reverse_sale(order.quantity)
+
+        logger.info(f"PayPal payment denied for order {order.id}")
+    except Order.DoesNotExist:
+        pass
 
 
 def handle_account_updated(event):

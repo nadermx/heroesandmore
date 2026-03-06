@@ -20,10 +20,70 @@
 <div class="container py-4">
     <div class="row">
         <div class="col-lg-8">
-            <!-- Account Status -->
+            <!-- Preferred Payout Method -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0">Preferred Payout Method</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="set_preferred_payout">
+                        <div class="d-flex gap-3 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="preferred_payout_method" id="pref-stripe" value="stripe"
+                                    {% if profile.preferred_payout_method == 'stripe' %}checked{% endif %}
+                                    {% if not profile.stripe_account_id %}disabled{% endif %}>
+                                <label class="form-check-label" for="pref-stripe">
+                                    <i class="bi bi-credit-card me-1"></i> Stripe
+                                    {% if not profile.stripe_account_id %}<small class="text-muted">(not set up)</small>{% endif %}
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="preferred_payout_method" id="pref-paypal" value="paypal"
+                                    {% if profile.preferred_payout_method == 'paypal' %}checked{% endif %}
+                                    {% if not profile.paypal_email %}disabled{% endif %}>
+                                <label class="form-check-label" for="pref-paypal">
+                                    <i class="bi bi-paypal me-1"></i> PayPal
+                                    {% if not profile.paypal_email %}<small class="text-muted">(no email set)</small>{% endif %}
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-dark btn-sm">Save Preference</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- PayPal Payout Settings -->
             <div class="card mb-4">
                 <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
-                    <h6 class="fw-bold mb-0">Stripe Account Status</h6>
+                    <h6 class="fw-bold mb-0"><i class="bi bi-paypal me-2"></i>PayPal</h6>
+                    {% if profile.paypal_email %}
+                    <span class="badge bg-success">Connected</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_paypal">
+                        <div class="mb-3">
+                            <label for="paypal-email" class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">PayPal Email</label>
+                            <input type="email" class="form-control" id="paypal-email" name="paypal_email"
+                                   value="{{ profile.paypal_email }}" placeholder="your-paypal@email.com">
+                            <div class="form-text">Enter the email associated with your PayPal account to receive payouts.</div>
+                        </div>
+                        <button type="submit" class="btn btn-dark btn-sm">
+                            {% if profile.paypal_email %}Update{% else %}Save{% endif %} PayPal Email
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            {% if account %}
+            <!-- Stripe Account Status -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-credit-card me-2"></i>Stripe Account</h6>
                     <a href="{% url 'marketplace:seller_stripe_dashboard' %}" class="btn btn-sm btn-outline-dark" target="_blank">
                         <i class="bi bi-box-arrow-up-right me-1"></i> Stripe Dashboard
                     </a>
@@ -61,7 +121,7 @@
             <!-- Balance -->
             <div class="card mb-4">
                 <div class="card-header bg-transparent">
-                    <h6 class="fw-bold mb-0">Current Balance</h6>
+                    <h6 class="fw-bold mb-0">Stripe Balance</h6>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -96,7 +156,7 @@
             <!-- Recent Transfers -->
             <div class="card">
                 <div class="card-header bg-transparent">
-                    <h6 class="fw-bold mb-0">Recent Payouts</h6>
+                    <h6 class="fw-bold mb-0">Recent Stripe Payouts</h6>
                 </div>
                 <div class="card-body p-0">
                     {% if transfers %}
@@ -137,11 +197,24 @@
                     {% else %}
                     <div class="text-center py-4">
                         <i class="bi bi-wallet2" style="font-size: 2rem; color: var(--gray-400);"></i>
-                        <p class="text-muted mt-2 mb-0">No payouts yet</p>
+                        <p class="text-muted mt-2 mb-0">No Stripe payouts yet</p>
                     </div>
                     {% endif %}
                 </div>
             </div>
+            {% elif not profile.stripe_account_id %}
+            <!-- No Stripe Account -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-credit-card me-2"></i>Stripe Account</h6>
+                </div>
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-credit-card" style="font-size: 2rem; color: var(--gray-400);"></i>
+                    <p class="text-muted mt-2">Set up Stripe to receive card payments directly to your bank.</p>
+                    <a href="{% url 'marketplace:seller_setup' %}" class="btn btn-dark btn-sm">Set Up Stripe</a>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <div class="col-lg-4">
@@ -149,10 +222,10 @@
                 <div class="card-body">
                     <h6 class="fw-bold mb-3">How Payouts Work</h6>
                     <ul class="text-muted small ps-3 mb-0">
-                        <li class="mb-2">Funds are available immediately after a sale</li>
-                        <li class="mb-2">Stripe transfers to your bank automatically</li>
-                        <li class="mb-2">Bank deposits typically arrive in 2 business days</li>
-                        <li>You can manage payout settings in your Stripe Dashboard</li>
+                        <li class="mb-2"><strong>Stripe:</strong> Funds transfer to your bank automatically in 2 business days</li>
+                        <li class="mb-2"><strong>PayPal:</strong> Payouts sent to your PayPal email after order completes</li>
+                        <li class="mb-2">You can have both methods set up and choose your preferred one</li>
+                        <li>Commission is deducted before payout regardless of method</li>
                     </ul>
                 </div>
             </div>

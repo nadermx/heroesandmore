@@ -428,7 +428,7 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'listing', 'buyer_username', 'seller_username',
             'quantity', 'item_price', 'shipping_price', 'amount', 'platform_fee',
-            'seller_payout', 'status', 'shipping_address', 'shipping_mode',
+            'seller_payout', 'payment_method', 'status', 'shipping_address', 'shipping_mode',
             'selected_carrier', 'selected_service', 'label_cost',
             'tracking_number', 'tracking_carrier',
             'shipped_at', 'delivered_at', 'created'

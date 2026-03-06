@@ -40,6 +40,16 @@
         height: 20px;
         object-fit: contain;
     }
+    .payment-tab {
+        border-radius: 8px;
+        padding: 10px 16px;
+        font-weight: 500;
+    }
+    .payment-tab.active {
+        background: var(--gray-900) !important;
+        color: white !important;
+        border-color: var(--gray-900) !important;
+    }
 </style>
 {% endblock %}
 
@@ -248,60 +258,83 @@
                             <h6 class="fw-bold mb-0">Payment Method</h6>
                         </div>
                         <div class="card-body">
-                            {% if not is_guest and payment_methods %}
-                            <!-- Saved Payment Methods -->
-                            <div class="mb-4">
-                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Saved Cards</label>
-                                {% for pm in payment_methods %}
-                                <div class="card saved-card mb-2 {% if pm.id == user.profile.default_payment_method_id %}selected{% endif %}"
-                                     data-payment-method-id="{{ pm.id }}">
-                                    <div class="card-body py-2 px-3">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-credit-card me-2" style="color: var(--gray-600);"></i>
-                                                <span class="text-capitalize">{{ pm.card.brand }}</span>
-                                                <span class="mx-1 text-muted">****</span>
-                                                <span>{{ pm.card.last4 }}</span>
-                                                <small class="text-muted ms-3">{{ pm.card.exp_month }}/{{ pm.card.exp_year }}</small>
-                                            </div>
-                                            <input type="radio" name="selected_card" value="{{ pm.id }}"
-                                                   class="form-check-input"
-                                                   {% if pm.id == user.profile.default_payment_method_id %}checked{% endif %}>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                                <button type="button" class="btn btn-link ps-0" id="use-new-card">
-                                    <i class="bi bi-plus"></i> Use a different card
+                            <!-- Payment Method Tabs -->
+                            <div class="d-flex gap-2 mb-4">
+                                <button type="button" class="btn btn-outline-dark flex-fill payment-tab active" data-method="card" id="tab-card">
+                                    <i class="bi bi-credit-card me-1"></i> Card
                                 </button>
-                            </div>
-                            {% endif %}
-
-                            <!-- New Card Form -->
-                            <div id="new-card-form" {% if not is_guest and payment_methods %}style="display: none;"{% endif %}>
-                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Card Details</label>
-                                <div id="card-element"></div>
-                                <div id="card-errors" role="alert"></div>
-
-                                {% if not is_guest %}
-                                <div class="form-check mt-3">
-                                    <input type="checkbox" class="form-check-input" id="save-card" checked>
-                                    <label class="form-check-label text-muted" for="save-card">Save card for future purchases</label>
-                                </div>
+                                {% if paypal_client_id %}
+                                <button type="button" class="btn btn-outline-dark flex-fill payment-tab" data-method="paypal" id="tab-paypal">
+                                    <i class="bi bi-paypal me-1"></i> PayPal
+                                </button>
                                 {% endif %}
                             </div>
 
-                            <hr class="my-4" style="border-color: var(--gray-200);">
+                            <!-- Card Payment Section -->
+                            <div id="card-payment-section">
+                                {% if not is_guest and payment_methods %}
+                                <!-- Saved Payment Methods -->
+                                <div class="mb-4">
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Saved Cards</label>
+                                    {% for pm in payment_methods %}
+                                    <div class="card saved-card mb-2 {% if pm.id == user.profile.default_payment_method_id %}selected{% endif %}"
+                                         data-payment-method-id="{{ pm.id }}">
+                                        <div class="card-body py-2 px-3">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="bi bi-credit-card me-2" style="color: var(--gray-600);"></i>
+                                                    <span class="text-capitalize">{{ pm.card.brand }}</span>
+                                                    <span class="mx-1 text-muted">****</span>
+                                                    <span>{{ pm.card.last4 }}</span>
+                                                    <small class="text-muted ms-3">{{ pm.card.exp_month }}/{{ pm.card.exp_year }}</small>
+                                                </div>
+                                                <input type="radio" name="selected_card" value="{{ pm.id }}"
+                                                       class="form-check-input"
+                                                       {% if pm.id == user.profile.default_payment_method_id %}checked{% endif %}>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                    <button type="button" class="btn btn-link ps-0" id="use-new-card">
+                                        <i class="bi bi-plus"></i> Use a different card
+                                    </button>
+                                </div>
+                                {% endif %}
 
-                            <!-- Pay Button -->
-                            <button type="button" id="pay-button" class="btn btn-dark btn-lg w-100">
-                                <span id="button-text">Pay ${{ total|intcomma }}</span>
-                                <span id="spinner" class="spinner-border spinner-border-sm d-none ms-2" role="status"></span>
-                            </button>
+                                <!-- New Card Form -->
+                                <div id="new-card-form" {% if not is_guest and payment_methods %}style="display: none;"{% endif %}>
+                                    <label class="form-label small fw-semibold text-uppercase" style="letter-spacing: 0.05em; color: var(--gray-500);">Card Details</label>
+                                    <div id="card-element"></div>
+                                    <div id="card-errors" role="alert"></div>
+
+                                    {% if not is_guest %}
+                                    <div class="form-check mt-3">
+                                        <input type="checkbox" class="form-check-input" id="save-card" checked>
+                                        <label class="form-check-label text-muted" for="save-card">Save card for future purchases</label>
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                <hr class="my-4" style="border-color: var(--gray-200);">
+
+                                <!-- Pay Button (Card) -->
+                                <button type="button" id="pay-button" class="btn btn-dark btn-lg w-100">
+                                    <span id="button-text">Pay ${{ total|intcomma }}</span>
+                                    <span id="spinner" class="spinner-border spinner-border-sm d-none ms-2" role="status"></span>
+                                </button>
+                            </div>
+
+                            <!-- PayPal Payment Section -->
+                            {% if paypal_client_id %}
+                            <div id="paypal-payment-section" style="display: none;">
+                                <div id="paypal-button-container"></div>
+                                <div id="paypal-error" class="text-danger small mt-2" style="display: none;"></div>
+                            </div>
+                            {% endif %}
 
                             <p class="text-center mt-3 mb-0">
                                 <small class="text-muted">
-                                    <i class="bi bi-lock me-1"></i> Secure checkout powered by Stripe
+                                    <i class="bi bi-lock me-1"></i> Secure checkout
                                 </small>
                             </p>
                         </div>
@@ -327,7 +360,83 @@ if (typeof ttq !== 'undefined') {
 }
 </script>
 <script src="https://js.stripe.com/v3/"></script>
+{% if paypal_client_id %}
+<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD&intent=capture&disable-funding=credit,card"></script>
+{% endif %}
 <script>
+// ============ Shared State ============
+const isGuest = {{ is_guest|yesno:"true,false" }};
+const useCalculatedShipping = {{ use_calculated_shipping|yesno:"true,false" }};
+let selectedRateData = null;
+let activePaymentMethod = 'card';
+
+function getAddressFields() {
+    return {
+        name: document.getElementById('addr-name')?.value.trim() || '',
+        street1: document.getElementById('addr-street1')?.value.trim() || '',
+        street2: document.getElementById('addr-street2')?.value.trim() || '',
+        city: document.getElementById('addr-city')?.value.trim() || '',
+        state: document.getElementById('addr-state')?.value.trim() || '',
+        zip: document.getElementById('addr-zip')?.value.trim() || '',
+        country: document.getElementById('addr-country')?.value.trim() || 'US',
+    };
+}
+
+function getAddressParams() {
+    const addr = getAddressFields();
+    const params = {
+        addr_name: addr.name,
+        addr_street1: addr.street1,
+        addr_street2: addr.street2 || '',
+        addr_city: addr.city,
+        addr_state: addr.state,
+        addr_zip: addr.zip,
+        addr_country: addr.country || 'US',
+        addr_phone: document.getElementById('addr-phone')?.value.trim() || '',
+    };
+    if (isGuest) {
+        params.guest_email = document.getElementById('guest-email')?.value.trim() || '';
+        params.guest_name = document.getElementById('guest-name')?.value.trim() || '';
+    }
+    return params;
+}
+
+function validateCheckoutFields() {
+    const addr = getAddressFields();
+    if (!addr.name || !addr.street1 || !addr.city || !addr.state || !addr.zip) {
+        return 'Please enter your shipping address.';
+    }
+    if (useCalculatedShipping && !selectedRateData) {
+        return 'Please select a shipping option.';
+    }
+    if (isGuest) {
+        const guestEmail = document.getElementById('guest-email')?.value.trim() || '';
+        if (!guestEmail) return 'Please enter your email address.';
+    }
+    return null;
+}
+
+// ============ Payment Method Tab Switching ============
+document.querySelectorAll('.payment-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.payment-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        activePaymentMethod = this.dataset.method;
+
+        const cardSection = document.getElementById('card-payment-section');
+        const paypalSection = document.getElementById('paypal-payment-section');
+
+        if (activePaymentMethod === 'paypal' && paypalSection) {
+            cardSection.style.display = 'none';
+            paypalSection.style.display = 'block';
+        } else {
+            cardSection.style.display = 'block';
+            if (paypalSection) paypalSection.style.display = 'none';
+        }
+    });
+});
+
+// ============ Stripe Card Payment ============
 const stripe = Stripe('{{ stripe_public_key }}');
 const elements = stripe.elements();
 const cardElement = elements.create('card', {
@@ -342,7 +451,6 @@ const cardElement = elements.create('card', {
 });
 cardElement.mount('#card-element');
 
-// Handle card errors
 cardElement.on('change', function(event) {
     const errorEl = document.getElementById('card-errors');
     errorEl.textContent = event.error ? event.error.message : '';
@@ -380,22 +488,7 @@ document.getElementById('saved-address-select')?.addEventListener('change', func
     }
 });
 
-// Calculated shipping: fetch rates when address fields are filled
-const useCalculatedShipping = {{ use_calculated_shipping|yesno:"true,false" }};
-let selectedRateData = null;
-
-function getAddressFields() {
-    return {
-        name: document.getElementById('addr-name')?.value.trim() || '',
-        street1: document.getElementById('addr-street1')?.value.trim() || '',
-        street2: document.getElementById('addr-street2')?.value.trim() || '',
-        city: document.getElementById('addr-city')?.value.trim() || '',
-        state: document.getElementById('addr-state')?.value.trim() || '',
-        zip: document.getElementById('addr-zip')?.value.trim() || '',
-        country: document.getElementById('addr-country')?.value.trim() || 'US',
-    };
-}
-
+// ============ Calculated Shipping ============
 async function fetchShippingRates() {
     if (!useCalculatedShipping) return;
     const addr = getAddressFields();
@@ -458,7 +551,6 @@ async function fetchShippingRates() {
             ratesList.appendChild(div);
         });
 
-        // Auto-select first rate
         if (data.rates.length) selectRate(data.rates[0]);
 
     } catch (e) {
@@ -471,13 +563,11 @@ async function fetchShippingRates() {
 async function selectRate(rate) {
     selectedRateData = rate;
     document.getElementById('shipping-display').textContent = '$' + rate.rate;
-    // Update total
     const itemPrice = {{ order.item_price|floatformat:2 }};
     const newTotal = (parseFloat(itemPrice) + parseFloat(rate.rate)).toFixed(2);
     document.getElementById('total-display').textContent = '$' + newTotal;
     document.getElementById('button-text').textContent = 'Pay $' + newTotal;
 
-    // Save rate selection on server
     await fetch('{% url "marketplace:select_shipping_rate" pk=order.pk %}', {
         method: 'POST',
         headers: {
@@ -494,7 +584,6 @@ async function selectRate(rate) {
     });
 }
 
-// Debounced rate fetching when address changes
 let rateTimer;
 if (useCalculatedShipping) {
     ['addr-street1', 'addr-city', 'addr-state', 'addr-zip', 'addr-country'].forEach(id => {
@@ -505,36 +594,16 @@ if (useCalculatedShipping) {
     });
 }
 
-// Process payment
+// ============ Stripe Card Payment Handler ============
 document.getElementById('pay-button').addEventListener('click', async function() {
     const button = this;
     const spinner = document.getElementById('spinner');
     const buttonText = document.getElementById('button-text');
 
-    // Validate shipping address
-    const addr = getAddressFields();
-    if (!addr.name || !addr.street1 || !addr.city || !addr.state || !addr.zip) {
-        document.getElementById('card-errors').textContent = 'Please enter your shipping address.';
+    const validationError = validateCheckoutFields();
+    if (validationError) {
+        document.getElementById('card-errors').textContent = validationError;
         return;
-    }
-
-    // Validate rate selection for calculated shipping
-    if (useCalculatedShipping && !selectedRateData) {
-        document.getElementById('card-errors').textContent = 'Please select a shipping option.';
-        return;
-    }
-
-    // Guest checkout validation
-    const isGuest = {{ is_guest|yesno:"true,false" }};
-    let guestEmail = '';
-    let guestName = '';
-    if (isGuest) {
-        guestEmail = document.getElementById('guest-email')?.value.trim() || '';
-        guestName = document.getElementById('guest-name')?.value.trim() || '';
-        if (!guestEmail) {
-            document.getElementById('card-errors').textContent = 'Please enter your email address.';
-            return;
-        }
     }
 
     button.disabled = true;
@@ -550,36 +619,21 @@ document.getElementById('pay-button').addEventListener('click', async function()
             paymentMethodId = selectedCard.value;
         } else {
             saveCard = document.getElementById('save-card')?.checked;
+            const addr = getAddressFields();
             const { paymentMethod, error } = await stripe.createPaymentMethod({
                 type: 'card',
                 card: cardElement,
-                billing_details: {
-                    name: addr.name,
-                }
+                billing_details: { name: addr.name }
             });
-
-            if (error) {
-                throw new Error(error.message);
-            }
+            if (error) throw new Error(error.message);
             paymentMethodId = paymentMethod.id;
         }
 
         const bodyParams = {
+            ...getAddressParams(),
             payment_method_id: paymentMethodId,
             save_card: saveCard,
-            addr_name: addr.name,
-            addr_street1: addr.street1,
-            addr_street2: addr.street2 || '',
-            addr_city: addr.city,
-            addr_state: addr.state,
-            addr_zip: addr.zip,
-            addr_country: addr.country || 'US',
-            addr_phone: document.getElementById('addr-phone')?.value.trim() || '',
         };
-        if (isGuest) {
-            bodyParams.guest_email = guestEmail;
-            bodyParams.guest_name = guestName;
-        }
 
         const response = await fetch('{% url "marketplace:process_payment" pk=order.pk %}', {
             method: 'POST',
@@ -596,9 +650,7 @@ document.getElementById('pay-button').addEventListener('click', async function()
             window.location.href = data.redirect;
         } else if (data.requires_action) {
             const { error: actionError, paymentIntent } = await stripe.confirmCardPayment(data.client_secret);
-            if (actionError) {
-                throw new Error(actionError.message);
-            }
+            if (actionError) throw new Error(actionError.message);
             if (paymentIntent && paymentIntent.status === 'succeeded') {
                 window.location.href = '{% url "marketplace:checkout_complete" pk=order.pk %}';
             }
@@ -613,5 +665,86 @@ document.getElementById('pay-button').addEventListener('click', async function()
         buttonText.textContent = 'Pay ${{ total|intcomma }}';
     }
 });
+
+// ============ PayPal Payment Handler ============
+{% if paypal_client_id %}
+if (typeof paypal !== 'undefined') {
+    paypal.Buttons({
+        style: {
+            layout: 'vertical',
+            color: 'gold',
+            shape: 'rect',
+            label: 'paypal',
+            height: 48,
+        },
+
+        // Validate before PayPal popup opens
+        onClick: function(data, actions) {
+            const validationError = validateCheckoutFields();
+            if (validationError) {
+                const errEl = document.getElementById('paypal-error');
+                errEl.textContent = validationError;
+                errEl.style.display = 'block';
+                return actions.reject();
+            }
+            document.getElementById('paypal-error').style.display = 'none';
+            return actions.resolve();
+        },
+
+        // Create PayPal order on our server
+        createOrder: async function() {
+            const resp = await fetch('{% url "marketplace:paypal_create_order" pk=order.pk %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: new URLSearchParams(getAddressParams())
+            });
+            const data = await resp.json();
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            return data.id;
+        },
+
+        // Capture after buyer approves
+        onApprove: async function(data) {
+            const errEl = document.getElementById('paypal-error');
+            try {
+                const resp = await fetch('{% url "marketplace:paypal_capture_order" pk=order.pk %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: new URLSearchParams({ paypal_order_id: data.orderID })
+                });
+                const result = await resp.json();
+                if (result.success) {
+                    window.location.href = result.redirect;
+                } else {
+                    errEl.textContent = result.error || 'Payment failed. Please try again.';
+                    errEl.style.display = 'block';
+                }
+            } catch (error) {
+                errEl.textContent = error.message || 'Something went wrong with PayPal.';
+                errEl.style.display = 'block';
+            }
+        },
+
+        onError: function(err) {
+            const errEl = document.getElementById('paypal-error');
+            errEl.textContent = 'PayPal encountered an error. Please try again or use a card.';
+            errEl.style.display = 'block';
+            console.error('PayPal error:', err);
+        },
+
+        onCancel: function() {
+            // User closed PayPal popup — no action needed
+        }
+    }).render('#paypal-button-container');
+}
+{% endif %}
 </script>
 {% endblock %}

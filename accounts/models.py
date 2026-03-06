@@ -36,6 +36,14 @@ class Profile(models.Model):
     stripe_customer_id = models.CharField(max_length=100, blank=True)
     default_payment_method_id = models.CharField(max_length=100, blank=True)
 
+    # PayPal (seller payout)
+    paypal_email = models.EmailField(blank=True, help_text="PayPal email for receiving payouts")
+    preferred_payout_method = models.CharField(
+        max_length=20, default='stripe',
+        choices=[('stripe', 'Stripe'), ('paypal', 'PayPal')],
+        help_text="Preferred method for receiving sale payouts"
+    )
+
     # Seller subscription tier
     seller_tier = models.CharField(max_length=20, choices=SELLER_TIERS, default='starter')
     subscription_expires = models.DateTimeField(null=True, blank=True)

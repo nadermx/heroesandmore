@@ -33,6 +33,10 @@ urlpatterns = [
     path('order/<int:pk>/complete/', views.checkout_complete, name='checkout_complete'),
     path('checkout/process/<int:pk>/', views.process_payment, name='process_payment'),
 
+    # PayPal checkout
+    path('paypal/create-order/<int:pk>/', views.paypal_create_order, name='paypal_create_order'),
+    path('paypal/capture-order/<int:pk>/', views.paypal_capture_order, name='paypal_capture_order'),
+
     # Payment methods
     path('payment-methods/', views.payment_methods, name='payment_methods'),
     path('payment-methods/add/', views.add_payment_method, name='add_payment_method'),
@@ -69,4 +73,5 @@ urlpatterns = [
     # Webhooks
     path('webhooks/stripe/', webhooks.stripe_webhook, name='stripe_webhook'),
     path('webhooks/stripe-connect/', webhooks.stripe_connect_webhook, name='stripe_connect_webhook'),
+    path('webhooks/paypal/', webhooks.paypal_webhook, name='paypal_webhook'),
 ]

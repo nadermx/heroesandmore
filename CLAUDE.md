@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ## Project Overview
 HeroesAndMore — collectibles marketplace built with Django. Listings (fixed price + auctions), collections, price guide, scanner, seller tools, social features.
 
@@ -87,7 +89,7 @@ SSH: `ssh heroesandmore@174.138.33.140` → `/home/www/heroesandmore`
 **Loggers**: `accounts`, `marketplace`, `pricing`, `alerts`, `scanner`, `api`, `seller_tools`, `frontend`, `shipping`
 
 ## Config
-See `config.py.example`. Required: `SECRET_KEY`, `DATABASE_PASSWORD`, Stripe keys, `DO_SPACES_KEY/SECRET`. Optional: `EASYPOST_API_KEY`, Stripe price IDs. For deploys: `ansible/group_vars/vault.yml`.
+See `config.py.example`. Required: `SECRET_KEY`, `DATABASE_PASSWORD`, Stripe keys, `DO_SPACES_KEY/SECRET`. Optional: `EASYPOST_API_KEY`, Stripe price IDs, PayPal keys. For deploys: `ansible/group_vars/vault.yml`.
 
 ## Seller Subscription Tiers
 Starter (Free): 50 listings, 12.95% | Basic ($9.99): 200, 9.95% | Featured ($29.99): 1000, 7.95% | Premium ($99.99): unlimited, 5.95%. Trusted Sellers get 2% discount (floor 3.95%).
@@ -138,6 +140,20 @@ Seller onboarding: embedded Connect at `/marketplace/seller-setup/` — internat
 Local: `stripe listen --forward-to localhost:8000/marketplace/webhooks/stripe/`
 
 Subscription settings: grace 7 days, max 4 retries at [1,3,5,7] day intervals.
+
+## PayPal Integration
+**Buyers**: PayPal checkout alongside Stripe cards. PayPal JS SDK buttons on checkout page.
+**Sellers**: Can set `paypal_email` on Profile for receiving payouts. `preferred_payout_method` field (stripe/paypal).
+
+**Buyer Flow**: PayPal JS SDK → `POST /marketplace/paypal/create-order/<pk>/` → buyer approves → `POST /marketplace/paypal/capture-order/<pk>/` → order marked paid
+**Seller Payouts**: `send_paypal_payout` Celery task sends PayPal Payouts API to seller's PayPal email after capture
+
+Service: `marketplace/services/paypal_service.py` (REST API v2, `requests`-based, OAuth2 token caching)
+Webhook: `/marketplace/webhooks/paypal/` (CAPTURE.COMPLETED, CAPTURE.REFUNDED, CAPTURE.DENIED)
+Config: `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_SANDBOX` (bool)
+Order fields: `payment_method` (stripe/paypal), `paypal_order_id`, `paypal_capture_id`, `paypal_payout_batch_id`
+Profile fields: `paypal_email`, `preferred_payout_method`
+Payout settings: `/seller/payout-settings/` — sellers can set PayPal email and choose preferred payout method
 
 ## EasyPost Shipping
 Modes: `flat` (default), `calculated` (real-time rates), `free`
