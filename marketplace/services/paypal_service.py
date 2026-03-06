@@ -71,40 +71,64 @@ class PayPalService:
         platform_fee = StripeService.calculate_platform_fee(order.item_price, order.seller)
         platform_fee_str = str(platform_fee.quantize(Decimal('0.01')))
 
+        purchase_unit = {
+            'reference_id': str(order.id),
+            'description': f"Order #{order.id} - {order.listing.title[:100] if order.listing else 'Order'}",
+            'custom_id': str(order.id),
+            'amount': {
+                'currency_code': 'USD',
+                'value': total,
+                'breakdown': {
+                    'item_total': {'currency_code': 'USD', 'value': item_price},
+                    'shipping': {'currency_code': 'USD', 'value': shipping},
+                }
+            },
+            'items': [{
+                'name': order.listing.title[:127] if order.listing else 'Item',
+                'quantity': str(order.quantity),
+                'unit_amount': {
+                    'currency_code': 'USD',
+                    'value': str((order.item_price / order.quantity).quantize(Decimal('0.01'))),
+                },
+                'category': 'PHYSICAL_GOODS',
+            }],
+            # Let PayPal collect shipping address from buyer's account
+            'shipping': {
+                'options': [{
+                    'id': 'default',
+                    'label': 'Shipping',
+                    'selected': True,
+                    'amount': {'currency_code': 'USD', 'value': shipping},
+                }],
+            },
+        }
+
+        # If we already have a shipping address, pass it to PayPal as the default
+        if order.shipping_address_obj:
+            addr = order.shipping_address_obj
+            purchase_unit['shipping']['name'] = {
+                'full_name': addr.name,
+            }
+            purchase_unit['shipping']['address'] = {
+                'address_line_1': addr.street1,
+                'address_line_2': addr.street2 or '',
+                'admin_area_2': addr.city,
+                'admin_area_1': addr.state,
+                'postal_code': addr.zip_code,
+                'country_code': addr.country or 'US',
+            }
+
         payload = {
             'intent': 'CAPTURE',
-            'purchase_units': [{
-                'reference_id': str(order.id),
-                'description': f"Order #{order.id} - {order.listing.title[:100] if order.listing else 'Order'}",
-                'amount': {
-                    'currency_code': 'USD',
-                    'value': total,
-                    'breakdown': {
-                        'item_total': {'currency_code': 'USD', 'value': item_price},
-                        'shipping': {'currency_code': 'USD', 'value': shipping},
-                    }
-                },
-                'items': [{
-                    'name': order.listing.title[:127] if order.listing else 'Item',
-                    'quantity': str(order.quantity),
-                    'unit_amount': {
-                        'currency_code': 'USD',
-                        'value': str((order.item_price / order.quantity).quantize(Decimal('0.01'))),
-                    },
-                    'category': 'PHYSICAL_GOODS',
-                }],
-            }],
-            'payment_source': {
-                'paypal': {
-                    'experience_context': {
-                        'payment_method_preference': 'IMMEDIATE_PAYMENT_REQUIRED',
-                        'brand_name': 'HeroesAndMore',
-                        'landing_page': 'LOGIN',
-                        'user_action': 'PAY_NOW',
-                        'return_url': f"{settings.SITE_URL}/marketplace/order/{order.id}/complete/",
-                        'cancel_url': f"{settings.SITE_URL}/marketplace/{order.listing_id}/checkout/" if order.listing_id else f"{settings.SITE_URL}/marketplace/",
-                    }
-                }
+            'purchase_units': [purchase_unit],
+            # application_context for shipping preference
+            'application_context': {
+                'brand_name': 'HeroesAndMore',
+                'landing_page': 'LOGIN',
+                'user_action': 'PAY_NOW',
+                'shipping_preference': 'GET_FROM_FILE',  # PayPal shows buyer's saved addresses
+                'return_url': f"{settings.SITE_URL}/marketplace/order/{order.id}/complete/",
+                'cancel_url': f"{settings.SITE_URL}/marketplace/{order.listing_id}/checkout/" if order.listing_id else f"{settings.SITE_URL}/marketplace/",
             },
         }
 
@@ -144,6 +168,54 @@ class PayPalService:
         data = resp.json()
         logger.info(f"Captured PayPal order {paypal_order_id}: status={data.get('status')}")
         return data
+
+    @staticmethod
+    def extract_shipping_address(paypal_data):
+        """Extract shipping address from PayPal order/capture response.
+
+        Returns:
+            dict with name, street1, street2, city, state, zip_code, country
+            or None if no address found
+        """
+        try:
+            shipping = paypal_data['purchase_units'][0].get('shipping', {})
+            address = shipping.get('address', {})
+            name_obj = shipping.get('name', {})
+
+            if not address.get('admin_area_2'):  # city is required minimum
+                return None
+
+            return {
+                'name': name_obj.get('full_name', ''),
+                'street1': address.get('address_line_1', ''),
+                'street2': address.get('address_line_2', ''),
+                'city': address.get('admin_area_2', ''),
+                'state': address.get('admin_area_1', ''),
+                'zip_code': address.get('postal_code', ''),
+                'country': address.get('country_code', 'US'),
+            }
+        except (KeyError, IndexError):
+            return None
+
+    @staticmethod
+    def extract_payer_info(paypal_data):
+        """Extract buyer email and name from PayPal response.
+
+        Returns:
+            dict with email, first_name, last_name, full_name
+            or None if not found
+        """
+        try:
+            payer = paypal_data.get('payer', {})
+            name = payer.get('name', {})
+            return {
+                'email': payer.get('email_address', ''),
+                'first_name': name.get('given_name', ''),
+                'last_name': name.get('surname', ''),
+                'full_name': f"{name.get('given_name', '')} {name.get('surname', '')}".strip(),
+            }
+        except (KeyError, AttributeError):
+            return None
 
     @classmethod
     def get_order_details(cls, paypal_order_id):

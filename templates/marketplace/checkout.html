@@ -327,6 +327,10 @@
                             <!-- PayPal Payment Section -->
                             {% if paypal_client_id %}
                             <div id="paypal-payment-section" style="display: none;">
+                                <p class="text-muted small mb-3">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Pay with PayPal, Venmo, or Pay Later. Your shipping address will be pulled from your PayPal account.
+                                </p>
                                 <div id="paypal-button-container"></div>
                                 <div id="paypal-error" class="text-danger small mt-2" style="display: none;"></div>
                             </div>
@@ -361,7 +365,7 @@ if (typeof ttq !== 'undefined') {
 </script>
 <script src="https://js.stripe.com/v3/"></script>
 {% if paypal_client_id %}
-<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD&intent=capture&disable-funding=credit,card"></script>
+<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD&intent=capture&disable-funding=card&enable-funding=venmo,paylater"></script>
 {% endif %}
 <script>
 // ============ Shared State ============
@@ -401,17 +405,32 @@ function getAddressParams() {
     return params;
 }
 
-function validateCheckoutFields() {
-    const addr = getAddressFields();
-    if (!addr.name || !addr.street1 || !addr.city || !addr.state || !addr.zip) {
-        return 'Please enter your shipping address.';
-    }
-    if (useCalculatedShipping && !selectedRateData) {
-        return 'Please select a shipping option.';
-    }
-    if (isGuest) {
-        const guestEmail = document.getElementById('guest-email')?.value.trim() || '';
-        if (!guestEmail) return 'Please enter your email address.';
+function validateCheckoutFields(forPayPal) {
+    if (!forPayPal) {
+        // Card payments require address upfront
+        const addr = getAddressFields();
+        if (!addr.name || !addr.street1 || !addr.city || !addr.state || !addr.zip) {
+            return 'Please enter your shipping address.';
+        }
+        if (useCalculatedShipping && !selectedRateData) {
+            return 'Please select a shipping option.';
+        }
+        if (isGuest) {
+            const guestEmail = document.getElementById('guest-email')?.value.trim() || '';
+            if (!guestEmail) return 'Please enter your email address.';
+        }
+    } else {
+        // PayPal handles address collection — only validate calculated shipping
+        if (useCalculatedShipping && !selectedRateData) {
+            return 'Please select a shipping option before continuing.';
+        }
+        // For calculated shipping, we need address to get rates first
+        if (useCalculatedShipping) {
+            const addr = getAddressFields();
+            if (!addr.street1 || !addr.city || !addr.state || !addr.zip) {
+                return 'Please enter your shipping address for rate calculation.';
+            }
+        }
     }
     return null;
 }
@@ -600,7 +619,7 @@ document.getElementById('pay-button').addEventListener('click', async function()
     const spinner = document.getElementById('spinner');
     const buttonText = document.getElementById('button-text');
 
-    const validationError = validateCheckoutFields();
+    const validationError = validateCheckoutFields(false);
     if (validationError) {
         document.getElementById('card-errors').textContent = validationError;
         return;
@@ -675,12 +694,13 @@ if (typeof paypal !== 'undefined') {
             color: 'gold',
             shape: 'rect',
             label: 'paypal',
+            tagline: false,
             height: 48,
         },
 
-        // Validate before PayPal popup opens
+        // Validate before PayPal popup opens (relaxed — PayPal handles address)
         onClick: function(data, actions) {
-            const validationError = validateCheckoutFields();
+            const validationError = validateCheckoutFields(true);
             if (validationError) {
                 const errEl = document.getElementById('paypal-error');
                 errEl.textContent = validationError;

@@ -979,7 +979,8 @@ def _update_order_address_and_guest(request, order):
 
 def paypal_create_order(request, pk):
     """Create a PayPal order for checkout (AJAX endpoint).
-    Called by PayPal JS SDK's createOrder callback."""
+    Called by PayPal JS SDK's createOrder callback.
+    Address is NOT required — PayPal collects it from the buyer's account."""
     from django.http import JsonResponse
 
     order = _get_order_for_checkout(request, pk)
@@ -987,10 +988,40 @@ def paypal_create_order(request, pk):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
 
-    # Update address and guest info
-    error_response = _update_order_address_and_guest(request, order)
-    if error_response:
-        return error_response
+    # Save address fields if provided (optional — PayPal will collect if not)
+    addr_street1 = request.POST.get('addr_street1', '').strip()
+    if addr_street1:
+        from shipping.models import Address
+        addr_data = {
+            'name': request.POST.get('addr_name', '').strip(),
+            'street1': addr_street1,
+            'street2': request.POST.get('addr_street2', '').strip(),
+            'city': request.POST.get('addr_city', '').strip(),
+            'state': request.POST.get('addr_state', '').strip(),
+            'zip_code': request.POST.get('addr_zip', '').strip(),
+            'country': request.POST.get('addr_country', 'US').strip(),
+            'phone': request.POST.get('addr_phone', '').strip(),
+        }
+        if addr_data['name'] and addr_data['city'] and addr_data['state'] and addr_data['zip_code']:
+            addr_obj = Address.objects.create(
+                user=request.user if request.user.is_authenticated else None,
+                **addr_data,
+            )
+            order.shipping_address_obj = addr_obj
+            order.shipping_address = addr_obj.formatted
+            order.save(update_fields=['shipping_address', 'shipping_address_obj'])
+
+    # Save guest info if provided (PayPal also provides buyer email/name)
+    is_guest = not request.user.is_authenticated
+    if is_guest:
+        guest_email = request.POST.get('guest_email', '').strip()
+        guest_name = request.POST.get('guest_name', '').strip()
+        if guest_email:
+            order.guest_email = guest_email
+        if guest_name:
+            order.guest_name = guest_name
+        if guest_email or guest_name:
+            order.save(update_fields=['guest_email', 'guest_name'])
 
     from marketplace.services.paypal_service import PayPalService
 
@@ -1005,7 +1036,8 @@ def paypal_create_order(request, pk):
 
 def paypal_capture_order(request, pk):
     """Capture a PayPal order after buyer approval (AJAX endpoint).
-    Called by PayPal JS SDK's onApprove callback."""
+    Called by PayPal JS SDK's onApprove callback.
+    Extracts shipping address and payer info from PayPal response."""
     from django.http import JsonResponse
 
     order = _get_order_for_checkout(request, pk)
@@ -1022,7 +1054,7 @@ def paypal_capture_order(request, pk):
         capture_data = PayPalService.capture_order(order.paypal_order_id)
 
         if capture_data.get('status') == 'COMPLETED':
-            # Extract capture ID from the response
+            # Extract capture ID
             capture_id = ''
             try:
                 captures = capture_data['purchase_units'][0]['payments']['captures']
@@ -1031,13 +1063,37 @@ def paypal_capture_order(request, pk):
             except (KeyError, IndexError):
                 pass
 
+            # Extract shipping address from PayPal
+            shipping_info = PayPalService.extract_shipping_address(capture_data)
+            if shipping_info and not order.shipping_address:
+                from shipping.models import Address
+                addr_obj = Address.objects.create(
+                    user=request.user if request.user.is_authenticated else None,
+                    name=shipping_info['name'],
+                    street1=shipping_info['street1'],
+                    street2=shipping_info.get('street2', ''),
+                    city=shipping_info['city'],
+                    state=shipping_info['state'],
+                    zip_code=shipping_info['zip_code'],
+                    country=shipping_info.get('country', 'US'),
+                )
+                order.shipping_address_obj = addr_obj
+                order.shipping_address = addr_obj.formatted
+
+            # Extract payer info (email/name) for guest checkouts
+            payer_info = PayPalService.extract_payer_info(capture_data)
+            is_guest = not request.user.is_authenticated
+            if is_guest and payer_info:
+                if not order.guest_email and payer_info.get('email'):
+                    order.guest_email = payer_info['email']
+                if not order.guest_name and payer_info.get('full_name'):
+                    order.guest_name = payer_info['full_name']
+
             order.paypal_capture_id = capture_id
             order.status = 'paid'
             order.payment_method = 'paypal'
             order.paid_at = timezone.now()
-            order.save(update_fields=[
-                'paypal_capture_id', 'status', 'payment_method', 'paid_at', 'updated'
-            ])
+            order.save()
 
             # Send notifications
             try:
