@@ -73,9 +73,15 @@ class AffiliateCommission(models.Model):
         ('reversed', 'Reversed'),
     ]
 
+    TYPE_CHOICES = [
+        ('buyer', 'Buyer Referral'),
+        ('seller', 'Seller Referral'),
+    ]
+
     affiliate = models.ForeignKey(Affiliate, on_delete=models.CASCADE, related_name='commissions')
-    order = models.OneToOneField('marketplace.Order', on_delete=models.CASCADE, related_name='affiliate_commission')
+    order = models.ForeignKey('marketplace.Order', on_delete=models.CASCADE, related_name='affiliate_commissions')
     referral = models.ForeignKey(Referral, on_delete=models.CASCADE, related_name='commissions')
+    commission_type = models.CharField(max_length=10, choices=TYPE_CHOICES, default='buyer')
     order_item_price = models.DecimalField(max_digits=10, decimal_places=2)
     commission_rate = models.DecimalField(max_digits=5, decimal_places=4, default=Affiliate.COMMISSION_RATE)
     commission_amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -83,5 +89,8 @@ class AffiliateCommission(models.Model):
     payout = models.ForeignKey(AffiliatePayout, on_delete=models.SET_NULL, null=True, blank=True, related_name='commissions')
     created = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = [('order', 'commission_type')]
+
     def __str__(self):
-        return f"${self.commission_amount} on order #{self.order_id}"
+        return f"${self.commission_amount} ({self.get_commission_type_display()}) on order #{self.order_id}"

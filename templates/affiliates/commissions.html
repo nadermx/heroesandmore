@@ -35,6 +35,7 @@
                     <tr>
                         <th>Date</th>
                         <th>Order</th>
+                        <th>Type</th>
                         <th>Item Price</th>
                         <th>Rate</th>
                         <th>Commission</th>
@@ -46,6 +47,7 @@
                     <tr>
                         <td>{{ c.created|date:"M d, Y" }}</td>
                         <td>#{{ c.order_id }}</td>
+                        <td><span class="badge bg-{% if c.commission_type == 'buyer' %}info{% else %}secondary{% endif %}">{{ c.get_commission_type_display }}</span></td>
                         <td>${{ c.order_item_price|floatformat:2 }}</td>
                         <td>{{ c.commission_rate|floatformat:2 }}%</td>
                         <td>${{ c.commission_amount|floatformat:2 }}</td>

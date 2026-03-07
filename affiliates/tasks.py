@@ -15,21 +15,32 @@ def create_affiliate_commission(order_id):
     from affiliates.models import Affiliate, Referral, AffiliateCommission
 
     try:
-        order = Order.objects.select_related('buyer', 'listing__seller').get(id=order_id)
+        order = Order.objects.select_related('buyer', 'seller').get(id=order_id)
     except Order.DoesNotExist:
         return
 
-    # Skip guest orders (no user = no attribution)
-    if not order.buyer:
+    item_price = order.item_price if hasattr(order, 'item_price') and order.item_price else order.amount
+    if item_price <= 0:
         return
 
-    # Skip if commission already exists
-    if AffiliateCommission.objects.filter(order=order).exists():
+    # Buyer referral commission
+    if order.buyer:
+        _create_commission_for_side(order, item_price, order.buyer, order.seller, 'buyer')
+
+    # Seller referral commission
+    _create_commission_for_side(order, item_price, order.seller, order.buyer, 'seller')
+
+
+def _create_commission_for_side(order, item_price, referred_user, other_party, commission_type):
+    from affiliates.models import Affiliate, Referral, AffiliateCommission
+
+    # Skip if commission already exists for this side
+    if AffiliateCommission.objects.filter(order=order, commission_type=commission_type).exists():
         return
 
-    # Check if buyer was referred
+    # Check if this user was referred
     try:
-        referral = Referral.objects.select_related('affiliate').get(referred_user=order.buyer)
+        referral = Referral.objects.select_related('affiliate').get(referred_user=referred_user)
     except Referral.DoesNotExist:
         return
 
@@ -37,13 +48,11 @@ def create_affiliate_commission(order_id):
     if not affiliate.is_active:
         return
 
-    # Skip self-dealing (affiliate is the seller)
-    if order.seller == affiliate.user:
+    # Skip self-dealing (affiliate is the other party on this order)
+    if other_party and affiliate.user == other_party:
         return
 
-    item_price = order.item_price if hasattr(order, 'item_price') and order.item_price else order.amount
     commission_amount = (item_price * Affiliate.COMMISSION_RATE).quantize(Decimal('0.01'))
-
     if commission_amount <= 0:
         return
 
@@ -52,6 +61,7 @@ def create_affiliate_commission(order_id):
             affiliate=affiliate,
             order=order,
             referral=referral,
+            commission_type=commission_type,
             order_item_price=item_price,
             commission_rate=Affiliate.COMMISSION_RATE,
             commission_amount=commission_amount,
@@ -62,31 +72,29 @@ def create_affiliate_commission(order_id):
             total_earnings=F('total_earnings') + commission_amount,
         )
 
-    logger.info(f"Affiliate commission ${commission_amount} created for order {order_id}, affiliate {affiliate.user.username}")
+    logger.info(f"Affiliate {commission_type} commission ${commission_amount} created for order {order.id}, affiliate {affiliate.user.username}")
 
 
 @shared_task
 def reverse_affiliate_commission(order_id):
     from affiliates.models import AffiliateCommission, Affiliate
 
-    try:
-        commission = AffiliateCommission.objects.select_related('affiliate').get(
-            order_id=order_id,
-            status__in=['pending', 'approved'],
-        )
-    except AffiliateCommission.DoesNotExist:
-        return
+    commissions = AffiliateCommission.objects.select_related('affiliate').filter(
+        order_id=order_id,
+        status__in=['pending', 'approved'],
+    )
 
-    with transaction.atomic():
-        commission.status = 'reversed'
-        commission.save(update_fields=['status'])
+    for commission in commissions:
+        with transaction.atomic():
+            commission.status = 'reversed'
+            commission.save(update_fields=['status'])
 
-        Affiliate.objects.filter(pk=commission.affiliate_id).update(
-            pending_balance=F('pending_balance') - commission.commission_amount,
-            total_earnings=F('total_earnings') - commission.commission_amount,
-        )
+            Affiliate.objects.filter(pk=commission.affiliate_id).update(
+                pending_balance=F('pending_balance') - commission.commission_amount,
+                total_earnings=F('total_earnings') - commission.commission_amount,
+            )
 
-    logger.info(f"Affiliate commission reversed for order {order_id}")
+        logger.info(f"Affiliate {commission.commission_type} commission reversed for order {order_id}")
 
 
 @shared_task

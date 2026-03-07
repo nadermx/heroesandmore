@@ -27,11 +27,11 @@ class CommissionTaskTests(TestCase):
             status='paid',
         )
 
-    def test_create_commission(self):
+    def test_buyer_commission(self):
         order = self._create_order()
         create_affiliate_commission(order.id)
 
-        commission = AffiliateCommission.objects.get(order=order)
+        commission = AffiliateCommission.objects.get(order=order, commission_type='buyer')
         self.assertEqual(commission.commission_amount, Decimal('2.00'))
         self.assertEqual(commission.status, 'pending')
 
@@ -39,7 +39,48 @@ class CommissionTaskTests(TestCase):
         self.assertEqual(self.affiliate.pending_balance, Decimal('2.00'))
         self.assertEqual(self.affiliate.total_earnings, Decimal('2.00'))
 
-    def test_no_commission_for_guest(self):
+    def test_seller_commission(self):
+        # Refer the seller instead of the buyer
+        self.referral.delete()
+        Referral.objects.create(affiliate=self.affiliate, referred_user=self.seller)
+
+        order = self._create_order()
+        create_affiliate_commission(order.id)
+
+        commission = AffiliateCommission.objects.get(order=order, commission_type='seller')
+        self.assertEqual(commission.commission_amount, Decimal('2.00'))
+
+    def test_both_buyer_and_seller_commissions(self):
+        # Different affiliates referred buyer and seller
+        aff_user2 = User.objects.create_user('affiliate2', 'aff2@example.com', 'pass123')
+        affiliate2 = Affiliate.objects.create(user=aff_user2, paypal_email='aff2@paypal.com')
+        Referral.objects.create(affiliate=affiliate2, referred_user=self.seller)
+
+        order = self._create_order()
+        create_affiliate_commission(order.id)
+
+        self.assertEqual(AffiliateCommission.objects.filter(order=order).count(), 2)
+        self.assertTrue(AffiliateCommission.objects.filter(order=order, commission_type='buyer', affiliate=self.affiliate).exists())
+        self.assertTrue(AffiliateCommission.objects.filter(order=order, commission_type='seller', affiliate=affiliate2).exists())
+
+        self.affiliate.refresh_from_db()
+        self.assertEqual(self.affiliate.pending_balance, Decimal('2.00'))
+        affiliate2.refresh_from_db()
+        self.assertEqual(affiliate2.pending_balance, Decimal('2.00'))
+
+    def test_same_affiliate_referred_both(self):
+        # Same affiliate referred both buyer and seller
+        Referral.objects.create(affiliate=self.affiliate, referred_user=self.seller)
+
+        order = self._create_order()
+        create_affiliate_commission(order.id)
+
+        self.assertEqual(AffiliateCommission.objects.filter(order=order).count(), 2)
+        self.affiliate.refresh_from_db()
+        self.assertEqual(self.affiliate.pending_balance, Decimal('4.00'))
+        self.assertEqual(self.affiliate.total_earnings, Decimal('4.00'))
+
+    def test_no_buyer_commission_for_guest(self):
         order = Order.objects.create(
             buyer=None,
             seller=self.seller,
@@ -54,7 +95,28 @@ class CommissionTaskTests(TestCase):
             status='paid',
         )
         create_affiliate_commission(order.id)
-        self.assertFalse(AffiliateCommission.objects.filter(order=order).exists())
+        self.assertFalse(AffiliateCommission.objects.filter(order=order, commission_type='buyer').exists())
+
+    def test_seller_commission_on_guest_order(self):
+        # Seller was referred, buyer is guest - should still earn seller commission
+        Referral.objects.create(affiliate=self.affiliate, referred_user=self.seller)
+        self.referral.delete()  # Remove buyer referral
+
+        order = Order.objects.create(
+            buyer=None,
+            seller=self.seller,
+            item_price=Decimal('100.00'),
+            shipping_price=Decimal('5.00'),
+            amount=Decimal('105.00'),
+            platform_fee=Decimal('10.00'),
+            seller_payout=Decimal('95.00'),
+            shipping_address='123 Test St',
+            guest_email='guest@example.com',
+            guest_name='Guest',
+            status='paid',
+        )
+        create_affiliate_commission(order.id)
+        self.assertTrue(AffiliateCommission.objects.filter(order=order, commission_type='seller').exists())
 
     def test_no_commission_if_no_referral(self):
         unreferred = User.objects.create_user('unreferred', 'unref@example.com', 'pass123')
@@ -62,16 +124,25 @@ class CommissionTaskTests(TestCase):
         create_affiliate_commission(order.id)
         self.assertFalse(AffiliateCommission.objects.filter(order=order).exists())
 
-    def test_no_self_dealing(self):
+    def test_no_self_dealing_buyer(self):
+        # Affiliate is the seller, buyer was referred by affiliate
         order = self._create_order(seller=self.aff_user)
         create_affiliate_commission(order.id)
-        self.assertFalse(AffiliateCommission.objects.filter(order=order).exists())
+        self.assertFalse(AffiliateCommission.objects.filter(order=order, commission_type='buyer').exists())
+
+    def test_no_self_dealing_seller(self):
+        # Affiliate is the buyer, seller was referred by affiliate
+        Referral.objects.create(affiliate=self.affiliate, referred_user=self.seller)
+        self.referral.delete()
+        order = self._create_order(buyer=self.aff_user)
+        create_affiliate_commission(order.id)
+        self.assertFalse(AffiliateCommission.objects.filter(order=order, commission_type='seller').exists())
 
     def test_no_duplicate_commission(self):
         order = self._create_order()
         create_affiliate_commission(order.id)
         create_affiliate_commission(order.id)
-        self.assertEqual(AffiliateCommission.objects.filter(order=order).count(), 1)
+        self.assertEqual(AffiliateCommission.objects.filter(order=order, commission_type='buyer').count(), 1)
 
     def test_inactive_affiliate_no_commission(self):
         self.affiliate.is_active = False
@@ -80,15 +151,15 @@ class CommissionTaskTests(TestCase):
         create_affiliate_commission(order.id)
         self.assertFalse(AffiliateCommission.objects.filter(order=order).exists())
 
-    def test_reverse_commission(self):
+    def test_reverse_commissions(self):
+        Referral.objects.create(affiliate=self.affiliate, referred_user=self.seller)
         order = self._create_order()
         create_affiliate_commission(order.id)
+        self.assertEqual(AffiliateCommission.objects.filter(order=order).count(), 2)
 
         reverse_affiliate_commission(order.id)
 
-        commission = AffiliateCommission.objects.get(order=order)
-        self.assertEqual(commission.status, 'reversed')
-
+        self.assertEqual(AffiliateCommission.objects.filter(order=order, status='reversed').count(), 2)
         self.affiliate.refresh_from_db()
         self.assertEqual(self.affiliate.pending_balance, Decimal('0.00'))
         self.assertEqual(self.affiliate.total_earnings, Decimal('0.00'))

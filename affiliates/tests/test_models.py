@@ -1,4 +1,5 @@
 from decimal import Decimal
+from django.db import transaction
 from django.test import TestCase
 from django.contrib.auth.models import User
 from affiliates.models import Affiliate, Referral, AffiliateCommission, AffiliatePayout, generate_referral_code
@@ -75,22 +76,36 @@ class AffiliateCommissionTests(TestCase):
         self.assertEqual(commission.commission_amount, Decimal('2.00'))
         self.assertEqual(commission.status, 'pending')
 
-    def test_one_commission_per_order(self):
+    def test_one_commission_per_order_per_type(self):
         order = self._create_order()
         AffiliateCommission.objects.create(
             affiliate=self.affiliate,
             order=order,
             referral=self.referral,
+            commission_type='buyer',
             order_item_price=order.item_price,
             commission_rate=Affiliate.COMMISSION_RATE,
             commission_amount=Decimal('2.00'),
         )
+        # Same type should fail
         with self.assertRaises(Exception):
-            AffiliateCommission.objects.create(
-                affiliate=self.affiliate,
-                order=order,
-                referral=self.referral,
-                order_item_price=order.item_price,
-                commission_rate=Affiliate.COMMISSION_RATE,
-                commission_amount=Decimal('2.00'),
-            )
+            with transaction.atomic():
+                AffiliateCommission.objects.create(
+                    affiliate=self.affiliate,
+                    order=order,
+                    referral=self.referral,
+                    commission_type='buyer',
+                    order_item_price=order.item_price,
+                    commission_rate=Affiliate.COMMISSION_RATE,
+                    commission_amount=Decimal('2.00'),
+                )
+        # Different type should succeed
+        AffiliateCommission.objects.create(
+            affiliate=self.affiliate,
+            order=order,
+            referral=self.referral,
+            commission_type='seller',
+            order_item_price=order.item_price,
+            commission_rate=Affiliate.COMMISSION_RATE,
+            commission_amount=Decimal('2.00'),
+        )

@@ -21,8 +21,8 @@ class ReferralAdmin(admin.ModelAdmin):
 
 @admin.register(AffiliateCommission)
 class AffiliateCommissionAdmin(admin.ModelAdmin):
-    list_display = ['affiliate', 'order', 'order_item_price', 'commission_amount', 'status', 'created']
-    list_filter = ['status', 'created']
+    list_display = ['affiliate', 'order', 'commission_type', 'order_item_price', 'commission_amount', 'status', 'created']
+    list_filter = ['status', 'commission_type', 'created']
     search_fields = ['affiliate__user__username', 'affiliate__user__email']
     raw_id_fields = ['affiliate', 'order', 'referral', 'payout']
 
