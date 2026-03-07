@@ -250,9 +250,9 @@ curl -X POST <span class="url">https://heroesandmore.com/api/v1/auth/token/refre
 <!-- Quick Example -->
 <div class="api-section">
     <div class="container">
-        <h2>Quick Example: Create a Listing</h2>
+        <h2>Quick Example: Create & Publish a Listing</h2>
         <div class="code-block">
-<span class="comment"># Create a fixed-price listing</span>
+<span class="comment"># Step 1: Create a draft listing</span>
 curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/listings/</span> \
   -H <span class="string">"Authorization: Bearer YOUR_TOKEN"</span> \
   -H <span class="string">"Content-Type: application/json"</span> \
@@ -267,6 +267,18 @@ curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/list
     "shipping_mode": "flat",
     "shipping_price": "4.99"
   }'</span>
+
+<span class="comment"># Response includes the listing ID:</span>
+{ <span class="string">"id"</span>: 1234, <span class="string">"status"</span>: <span class="string">"draft"</span>, ... }
+
+<span class="comment"># Step 2: Upload images</span>
+curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/listings/1234/images/</span> \
+  -H <span class="string">"Authorization: Bearer YOUR_TOKEN"</span> \
+  -F <span class="string">"image=@card_front.jpg"</span>
+
+<span class="comment"># Step 3: Publish the listing</span>
+curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/listings/1234/publish/</span> \
+  -H <span class="string">"Authorization: Bearer YOUR_TOKEN"</span>
         </div>
     </div>
 </div>
@@ -309,6 +321,11 @@ curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/list
             <table class="endpoint-table">
                 <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
                 <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/accounts/register/</td>
+                    <td>Register a new user</td>
+                </tr>
+                <tr>
                     <td><span class="method-badge method-get">GET</span></td>
                     <td class="endpoint-path">/accounts/me/</td>
                     <td>Get your profile</td>
@@ -318,22 +335,42 @@ curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/list
                     <td class="endpoint-path">/accounts/me/</td>
                     <td>Update your profile</td>
                 </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/accounts/me/avatar/</td>
+                    <td>Upload avatar image</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/accounts/profiles/{username}/</td>
+                    <td>Get a public user profile</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/accounts/profiles/{username}/listings/</td>
+                    <td>Get a user's active listings</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/accounts/profiles/{username}/reviews/</td>
+                    <td>Get a user's reviews</td>
+                </tr>
             </table>
         </div>
 
         <div class="endpoint-group">
-            <h4>Marketplace</h4>
+            <h4>Marketplace &mdash; Listings</h4>
             <table class="endpoint-table">
                 <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
                     <td class="endpoint-path">/marketplace/listings/</td>
-                    <td>Browse listings (paginated, filterable)</td>
+                    <td>Browse listings (paginated, filterable by category, type, price, condition)</td>
                 </tr>
                 <tr>
                     <td><span class="method-badge method-post">POST</span></td>
                     <td class="endpoint-path">/marketplace/listings/</td>
-                    <td>Create a new listing</td>
+                    <td>Create a new draft listing</td>
                 </tr>
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
@@ -352,23 +389,164 @@ curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/list
                 </tr>
                 <tr>
                     <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/publish/</td>
+                    <td>Publish a draft listing (makes it active)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/relist/</td>
+                    <td>Relist an expired or cancelled listing</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/images/</td>
+                    <td>Upload an image (multipart form-data)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-delete">DELETE</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/images/{image_id}/</td>
+                    <td>Delete an image</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/videos/</td>
+                    <td>Upload a video (multipart form-data)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-delete">DELETE</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/videos/{video_id}/</td>
+                    <td>Delete a video</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="endpoint-group">
+            <h4>Marketplace &mdash; Bidding, Offers & Orders</h4>
+            <table class="endpoint-table">
+                <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
                     <td class="endpoint-path">/marketplace/listings/{id}/bid/</td>
-                    <td>Place a bid on an auction</td>
+                    <td>Place a bid on an auction (proxy bidding supported)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/bids/</td>
+                    <td>Get bid history for a listing</td>
                 </tr>
                 <tr>
                     <td><span class="method-badge method-post">POST</span></td>
                     <td class="endpoint-path">/marketplace/listings/{id}/offer/</td>
-                    <td>Make an offer on a listing</td>
+                    <td>Make an offer on a fixed-price listing</td>
                 </tr>
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
-                    <td class="endpoint-path">/marketplace/orders/</td>
-                    <td>List your orders</td>
+                    <td class="endpoint-path">/marketplace/offers/</td>
+                    <td>List your offers (sent and received)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/offers/{id}/accept/</td>
+                    <td>Accept an offer (seller only)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/offers/{id}/decline/</td>
+                    <td>Decline an offer (seller only)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/save/</td>
+                    <td>Save a listing</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-delete">DELETE</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/save/</td>
+                    <td>Unsave a listing</td>
                 </tr>
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
                     <td class="endpoint-path">/marketplace/saved/</td>
                     <td>List your saved listings</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/orders/</td>
+                    <td>List your orders (as buyer or seller)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/orders/{id}/</td>
+                    <td>Get order details</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/orders/{id}/ship/</td>
+                    <td>Mark order as shipped (seller only)</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="endpoint-group">
+            <h4>Marketplace &mdash; Checkout & Payment</h4>
+            <table class="endpoint-table">
+                <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/checkout/{listing_id}/</td>
+                    <td>Initiate checkout for a listing</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/payment/intent/</td>
+                    <td>Create a Stripe payment intent</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/payment/confirm/</td>
+                    <td>Confirm payment and create the order</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="endpoint-group">
+            <h4>Marketplace &mdash; Auctions</h4>
+            <table class="endpoint-table">
+                <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/auctions/ending-soon/</td>
+                    <td>Auctions ending soon</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/auctions/events/</td>
+                    <td>List auction events</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/auctions/events/{slug}/</td>
+                    <td>Get auction event details</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/auctions/events/{slug}/lots/</td>
+                    <td>Get lots in an auction event</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/auctions/platform/</td>
+                    <td>List official platform auctions</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/auctions/autobid/</td>
+                    <td>List your auto-bids</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-delete">DELETE</span></td>
+                    <td class="endpoint-path">/marketplace/auctions/autobid/{id}/</td>
+                    <td>Cancel an auto-bid</td>
                 </tr>
             </table>
         </div>
@@ -379,13 +557,18 @@ curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/list
                 <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
-                    <td class="endpoint-path">/collections/mine/</td>
-                    <td>List your collections</td>
+                    <td class="endpoint-path">/collections/</td>
+                    <td>List collections (your own + public when authenticated)</td>
                 </tr>
                 <tr>
                     <td><span class="method-badge method-post">POST</span></td>
-                    <td class="endpoint-path">/collections/mine/</td>
+                    <td class="endpoint-path">/collections/</td>
                     <td>Create a new collection</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/collections/public/</td>
+                    <td>Browse all public collections</td>
                 </tr>
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
@@ -393,14 +576,44 @@ curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/list
                     <td>Get collection details</td>
                 </tr>
                 <tr>
+                    <td><span class="method-badge method-patch">PATCH</span></td>
+                    <td class="endpoint-path">/collections/{id}/</td>
+                    <td>Update a collection</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-delete">DELETE</span></td>
+                    <td class="endpoint-path">/collections/{id}/</td>
+                    <td>Delete a collection</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/collections/{id}/items/</td>
+                    <td>List items in a collection</td>
+                </tr>
+                <tr>
                     <td><span class="method-badge method-post">POST</span></td>
                     <td class="endpoint-path">/collections/{id}/items/</td>
                     <td>Add item to collection</td>
                 </tr>
                 <tr>
+                    <td><span class="method-badge method-delete">DELETE</span></td>
+                    <td class="endpoint-path">/collections/{id}/items/{item_id}/</td>
+                    <td>Remove item from collection</td>
+                </tr>
+                <tr>
                     <td><span class="method-badge method-get">GET</span></td>
                     <td class="endpoint-path">/collections/{id}/value/</td>
-                    <td>Get collection valuation</td>
+                    <td>Get collection valuation summary</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/collections/{id}/value_history/</td>
+                    <td>Get collection value history (for charts)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/collections/import/</td>
+                    <td>Import collection from CSV (multipart)</td>
                 </tr>
             </table>
         </div>
@@ -416,8 +629,13 @@ curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/list
                 </tr>
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/pricing/items/{id}/</td>
+                    <td>Get price guide item details</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
                     <td class="endpoint-path">/pricing/items/{id}/grades/</td>
-                    <td>Get grade-level pricing</td>
+                    <td>Get grade-level pricing breakdown</td>
                 </tr>
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
@@ -426,8 +644,18 @@ curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/list
                 </tr>
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/pricing/items/{id}/history/</td>
+                    <td>Get price history (monthly data for charts)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
                     <td class="endpoint-path">/pricing/trending/</td>
                     <td>Get trending items</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/pricing/categories/</td>
+                    <td>Get price guide categories</td>
                 </tr>
             </table>
         </div>
@@ -443,18 +671,63 @@ curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/list
                 </tr>
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/seller/analytics/</td>
+                    <td>Get detailed seller analytics</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/seller/subscription/</td>
+                    <td>Get current subscription details</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/seller/subscription/upgrade/</td>
+                    <td>Upgrade subscription tier</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
                     <td class="endpoint-path">/seller/inventory/</td>
                     <td>List inventory items</td>
                 </tr>
                 <tr>
                     <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/seller/inventory/</td>
+                    <td>Add inventory item</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-patch">PATCH</span></td>
+                    <td class="endpoint-path">/seller/inventory/{id}/</td>
+                    <td>Update inventory item</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-delete">DELETE</span></td>
+                    <td class="endpoint-path">/seller/inventory/{id}/</td>
+                    <td>Delete inventory item</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
                     <td class="endpoint-path">/seller/imports/</td>
-                    <td>Bulk import listings (CSV)</td>
+                    <td>List bulk imports</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/seller/imports/</td>
+                    <td>Create bulk import (CSV upload)</td>
                 </tr>
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
                     <td class="endpoint-path">/seller/orders/</td>
                     <td>List seller orders</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/seller/sales/</td>
+                    <td>Get sales history</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/seller/billing-history/</td>
+                    <td>Get billing/payment history</td>
                 </tr>
             </table>
         </div>
@@ -466,12 +739,69 @@ curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/list
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
                     <td class="endpoint-path">/items/categories/</td>
-                    <td>List all categories</td>
+                    <td>Get category tree (hierarchical)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/items/categories/list/</td>
+                    <td>Get flat category list</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/items/categories/{slug}/</td>
+                    <td>Get category details</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/items/categories/{slug}/listings/</td>
+                    <td>Get listings in a category</td>
                 </tr>
                 <tr>
                     <td><span class="method-badge method-get">GET</span></td>
                     <td class="endpoint-path">/items/search/</td>
-                    <td>Search items database</td>
+                    <td>Global search (items + listings)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/items/autocomplete/</td>
+                    <td>Autocomplete search suggestions</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="endpoint-group">
+            <h4>Shipping</h4>
+            <table class="endpoint-table">
+                <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/shipping/addresses/</td>
+                    <td>List your saved addresses</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/shipping/addresses/</td>
+                    <td>Add a new address</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/shipping/addresses/validate/</td>
+                    <td>Validate an address via EasyPost</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/shipping/rates/</td>
+                    <td>Get shipping rates for a listing</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/shipping/labels/{order_id}/buy/</td>
+                    <td>Purchase a shipping label</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/shipping/tracking/{order_id}/</td>
+                    <td>Get tracking information</td>
                 </tr>
             </table>
         </div>
@@ -491,9 +821,24 @@ curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/list
                     <td>Get affiliate stats & referral link</td>
                 </tr>
                 <tr>
+                    <td><span class="method-badge method-put">PUT</span></td>
+                    <td class="endpoint-path">/affiliates/settings/</td>
+                    <td>Update affiliate PayPal email</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/affiliates/referrals/</td>
+                    <td>List your referrals</td>
+                </tr>
+                <tr>
                     <td><span class="method-badge method-get">GET</span></td>
                     <td class="endpoint-path">/affiliates/commissions/</td>
-                    <td>List your commissions</td>
+                    <td>List your commissions (filterable by status)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/affiliates/payouts/</td>
+                    <td>List your payout history</td>
                 </tr>
             </table>
         </div>
