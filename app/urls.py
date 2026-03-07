@@ -70,6 +70,7 @@ urlpatterns = [
     path('newsletter/unsubscribe/<str:token>/', newsletter_unsubscribe, name='newsletter_unsubscribe'),
 
     # Static pages
+    path('welcome/', TemplateView.as_view(template_name='pages/welcome.html'), name='welcome'),
     path('about/', about, name='about'),
     path('help/', TemplateView.as_view(template_name='pages/help.html'), name='help'),
     path('seller-guide/', TemplateView.as_view(template_name='pages/seller_guide.html'), name='seller_guide'),

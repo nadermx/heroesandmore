@@ -1712,11 +1712,19 @@ def seller_setup_return(request):
         ConnectService.update_account_status(request.user)
 
     if profile.stripe_account_complete:
-        messages.success(request, 'Your seller account setup is complete! You can now receive payments.')
+        return redirect('marketplace:seller_setup_complete')
     else:
         messages.warning(request, 'Please complete all required information to start selling.')
+        return redirect('marketplace:seller_setup')
 
-    return redirect('seller_tools:dashboard')
+
+@login_required
+def seller_setup_complete(request):
+    """Thank you page after completing seller onboarding"""
+    profile = request.user.profile
+    if not profile.stripe_account_complete:
+        return redirect('marketplace:seller_setup')
+    return render(request, 'marketplace/seller_setup_complete.html')
 
 
 @login_required

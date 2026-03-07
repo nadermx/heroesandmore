@@ -1,4 +1,5 @@
 import logging
+from django.urls import reverse
 from allauth.account.adapter import DefaultAccountAdapter
 
 logger = logging.getLogger('accounts')
@@ -15,3 +16,7 @@ class AccountAdapter(DefaultAccountAdapter):
                 "Failed to send email to %s (template: %s): %s",
                 email, template_prefix, e
             )
+
+    def get_email_confirmation_redirect_url(self, request):
+        """Redirect to welcome page after email confirmation."""
+        return reverse('welcome')

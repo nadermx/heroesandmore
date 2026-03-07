@@ -181,7 +181,7 @@ class SellerSetupReturnViewTests(TestCase):
         mock_account.requirements.currently_due = []
         mock_retrieve.return_value = mock_account
 
-        response = self.client.get(self.url, follow=True)
+        response = self.client.get(self.url)
 
-        messages = list(response.context['messages'])
-        self.assertTrue(any('complete' in str(m).lower() for m in messages))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('seller-setup/complete', response.url)

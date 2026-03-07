@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Welcome to HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 text-center">
+            <div class="mb-4">
+                <div class="rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; background: rgba(34, 197, 94, 0.1);">
+                    <i class="bi bi-check-lg" style="font-size: 2.5rem; color: var(--accent-success);"></i>
+                </div>
+            </div>
+
+            <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">Welcome to HeroesAndMore!</h1>
+            <p class="text-muted mb-4">Your account is verified and ready to go.</p>
+
+            <!-- What you can do -->
+            <div class="card text-start mb-4">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Start Exploring</h6>
+                    <div class="d-flex align-items-start mb-3">
+                        <i class="bi bi-search text-primary me-3 mt-1"></i>
+                        <div>
+                            <strong>Browse & Buy</strong>
+                            <div class="text-muted small">Find cards, comics, figures, and more from trusted sellers</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start mb-3">
+                        <i class="bi bi-hammer text-primary me-3 mt-1"></i>
+                        <div>
+                            <strong>Bid on Auctions</strong>
+                            <div class="text-muted small">Anti-sniping protection so you never lose in the last second</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start mb-3">
+                        <i class="bi bi-tag text-primary me-3 mt-1"></i>
+                        <div>
+                            <strong>Sell Your Collection</strong>
+                            <div class="text-muted small">List items for free with the lowest fees in the hobby</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start">
+                        <i class="bi bi-collection text-primary me-3 mt-1"></i>
+                        <div>
+                            <strong>Track Your Collection</strong>
+                            <div class="text-muted small">Organize and track the value of what you own</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <a href="{% url 'marketplace:listing_list' %}" class="btn btn-dark btn-lg">
+                    <i class="bi bi-compass me-2"></i>Browse Listings
+                </a>
+                <a href="{% url 'marketplace:listing_create' %}" class="btn btn-outline-dark">
+                    <i class="bi bi-plus-lg me-2"></i>Create a Listing
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Google Ads conversion tracking
+if (typeof gtag !== 'undefined') {
+    gtag('event', 'conversion', {
+        'send_to': window.__gaSignupConversionId || '',
+        'event_category': 'signup',
+        'event_label': 'email_confirmed'
+    });
+}
+// TikTok Pixel
+if (typeof ttq !== 'undefined') {
+    ttq.track('CompleteRegistration', {
+        content_name: 'signup',
+        status: 'email_confirmed'
+    });
+}
+// Meta Pixel
+if (typeof fbq !== 'undefined') {
+    fbq('track', 'CompleteRegistration');
+}
+</script>
+{% endblock %}

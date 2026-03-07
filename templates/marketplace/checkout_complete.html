@@ -179,6 +179,25 @@ if (typeof ttq !== 'undefined') {
         currency: 'USD'
     });
 }
+// Google Ads conversion tracking
+if (typeof gtag !== 'undefined') {
+    gtag('event', 'conversion', {
+        'send_to': window.__gaPurchaseConversionId || '',
+        'event_category': 'purchase',
+        'transaction_id': '{{ order.id }}',
+        'value': {{ order.amount|floatformat:2 }},
+        'currency': 'USD'
+    });
+}
+// Meta Pixel
+if (typeof fbq !== 'undefined') {
+    fbq('track', 'Purchase', {
+        content_ids: ['{{ order.listing.pk }}'],
+        content_type: 'product',
+        value: {{ order.amount|floatformat:2 }},
+        currency: 'USD'
+    });
+}
 </script>
 {% endif %}
 {% endblock %}

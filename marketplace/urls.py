@@ -68,6 +68,7 @@ urlpatterns = [
     path('seller-setup/', views.seller_setup, name='seller_setup'),
     path('seller-setup/session/', views.seller_setup_session, name='seller_setup_session'),
     path('seller-setup/return/', views.seller_setup_return, name='seller_setup_return'),
+    path('seller-setup/complete/', views.seller_setup_complete, name='seller_setup_complete'),
     path('seller/stripe-dashboard/', views.seller_stripe_dashboard, name='seller_stripe_dashboard'),
 
     # Webhooks
