@@ -615,6 +615,16 @@ def checkout(request, pk):
                 status__in=['pending', 'payment_failed']
             ).first()
         if not order:
+            # If user already has a completed order, redirect to it
+            if not is_guest:
+                completed_order = Order.objects.filter(
+                    listing=listing,
+                    buyer=request.user,
+                    status__in=['paid', 'shipped', 'delivered', 'completed']
+                ).first()
+                if completed_order:
+                    messages.info(request, 'You have already completed this purchase.')
+                    return redirect('marketplace:order_detail', pk=completed_order.pk)
             raise Http404("Listing is no longer available")
 
     # Calculate fees based on seller tier

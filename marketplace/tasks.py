@@ -40,6 +40,16 @@ def end_auctions():
             ).order_by('-amount').first()
 
             if winning_bid:
+                # Skip if an order already exists for this listing (prevents duplicates)
+                existing_order = Order.objects.filter(
+                    listing=listing,
+                    buyer=winning_bid.bidder,
+                ).exclude(status='cancelled').first()
+                if existing_order:
+                    logger.info(f"Auction {listing.id}: order {existing_order.id} already exists, skipping")
+                    processed += 1
+                    continue
+
                 # Create order for the winner
                 is_platform = hasattr(listing.seller, 'profile') and listing.seller.profile.is_platform_account
                 platform_fee = StripeService.calculate_platform_fee(winning_bid.amount, listing.seller)

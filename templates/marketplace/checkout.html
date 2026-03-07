@@ -456,9 +456,15 @@ document.querySelectorAll('.payment-tab').forEach(tab => {
 });
 
 // ============ Stripe Card Payment ============
-const stripe = Stripe('{{ stripe_public_key }}');
-const elements = stripe.elements();
-const cardElement = elements.create('card', {
+if (typeof Stripe === 'undefined') {
+    const cardSection = document.getElementById('card-payment-section');
+    if (cardSection) {
+        cardSection.innerHTML = '<div class="alert alert-warning">Card payments could not load. Please disable any ad blockers and refresh the page, or use PayPal instead.</div>';
+    }
+}
+const stripe = typeof Stripe !== 'undefined' ? Stripe('{{ stripe_public_key }}') : null;
+const elements = stripe ? stripe.elements() : null;
+const cardElement = elements ? elements.create('card', {
     style: {
         base: {
             fontSize: '16px',
@@ -467,13 +473,15 @@ const cardElement = elements.create('card', {
             '::placeholder': { color: '#aab7c4' }
         }
     }
-});
-cardElement.mount('#card-element');
+}) : null;
+if (cardElement) {
+    cardElement.mount('#card-element');
 
-cardElement.on('change', function(event) {
-    const errorEl = document.getElementById('card-errors');
-    errorEl.textContent = event.error ? event.error.message : '';
-});
+    cardElement.on('change', function(event) {
+        const errorEl = document.getElementById('card-errors');
+        errorEl.textContent = event.error ? event.error.message : '';
+    });
+}
 
 // Toggle new card form
 document.getElementById('use-new-card')?.addEventListener('click', function() {
@@ -615,6 +623,10 @@ if (useCalculatedShipping) {
 
 // ============ Stripe Card Payment Handler ============
 document.getElementById('pay-button').addEventListener('click', async function() {
+    if (!stripe || !cardElement) {
+        document.getElementById('card-errors').textContent = 'Card payments are unavailable. Please disable ad blockers and refresh, or use PayPal.';
+        return;
+    }
     const button = this;
     const spinner = document.getElementById('spinner');
     const buttonText = document.getElementById('button-text');
