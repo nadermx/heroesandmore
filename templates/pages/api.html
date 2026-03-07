@@ -1,0 +1,544 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Developer API - HeroesAndMore{% endblock %}
+
+{% block extra_css %}
+<style>
+    .api-hero {
+        background: linear-gradient(135deg, var(--brand-navy) 0%, #1a1a2e 100%);
+        padding: 4rem 0 3rem;
+        color: white;
+        text-align: center;
+    }
+    .api-hero h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+    }
+    .api-hero .lead {
+        font-size: 1.15rem;
+        opacity: 0.85;
+        max-width: 600px;
+        margin: 0 auto 2rem;
+    }
+    .api-hero .btn-docs {
+        background: var(--brand-cyan);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1.05rem;
+        text-decoration: none;
+        display: inline-block;
+        margin: 0 0.5rem;
+    }
+    .api-hero .btn-docs:hover {
+        background: #00b8d4;
+        color: white;
+    }
+    .api-hero .btn-docs-outline {
+        background: transparent;
+        color: white;
+        border: 2px solid rgba(255,255,255,0.4);
+        padding: 0.7rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1.05rem;
+        text-decoration: none;
+        display: inline-block;
+        margin: 0 0.5rem;
+    }
+    .api-hero .btn-docs-outline:hover {
+        border-color: white;
+        color: white;
+    }
+    .api-base-url {
+        background: rgba(0,0,0,0.3);
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        display: inline-block;
+        font-family: monospace;
+        font-size: 1rem;
+        margin-top: 1.5rem;
+        color: var(--brand-cyan);
+    }
+    .api-section {
+        padding: 3rem 0;
+    }
+    .api-section h2 {
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+    }
+    .api-section h3 {
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    .code-block {
+        background: #1a1a2e;
+        color: #e0e0e0;
+        border-radius: 8px;
+        padding: 1.25rem;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 0.85rem;
+        overflow-x: auto;
+        margin-bottom: 1.5rem;
+    }
+    .code-block .comment { color: #6a9955; }
+    .code-block .string { color: #ce9178; }
+    .code-block .keyword { color: #569cd6; }
+    .code-block .url { color: var(--brand-cyan); }
+    .endpoint-group {
+        margin-bottom: 2rem;
+    }
+    .endpoint-group h4 {
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--brand-cyan);
+        display: inline-block;
+    }
+    .endpoint-table {
+        width: 100%;
+        margin-bottom: 1.5rem;
+    }
+    .endpoint-table th {
+        background: #f8f9fa;
+        padding: 0.6rem 0.75rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #dee2e6;
+    }
+    .endpoint-table td {
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid #eee;
+        font-size: 0.9rem;
+        vertical-align: top;
+    }
+    .method-badge {
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        font-family: monospace;
+        min-width: 55px;
+        text-align: center;
+    }
+    .method-get { background: #e8f5e9; color: #2e7d32; }
+    .method-post { background: #e3f2fd; color: #1565c0; }
+    .method-put { background: #fff3e0; color: #e65100; }
+    .method-patch { background: #f3e5f5; color: #7b1fa2; }
+    .method-delete { background: #ffebee; color: #c62828; }
+    .endpoint-path {
+        font-family: monospace;
+        font-size: 0.85rem;
+        color: #333;
+    }
+    .feature-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        height: 100%;
+        border: 1px solid #eee;
+    }
+    .feature-card i {
+        font-size: 1.5rem;
+        color: var(--brand-cyan);
+        margin-bottom: 0.75rem;
+        display: block;
+    }
+    .feature-card h5 {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .rate-limit-table td, .rate-limit-table th {
+        padding: 0.5rem 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="api-hero">
+    <div class="container">
+        <h1>HeroesAndMore API</h1>
+        <p class="lead">Build integrations, automate your store, and access marketplace data programmatically with our REST API.</p>
+        <div>
+            <a href="/api/docs/" class="btn-docs">Interactive Docs</a>
+            <a href="/api/redoc/" class="btn-docs-outline">API Reference</a>
+        </div>
+        <div class="api-base-url">https://heroesandmore.com/api/v1/</div>
+    </div>
+</div>
+
+<!-- What you can do -->
+<div class="api-section">
+    <div class="container">
+        <h2 class="text-center mb-4">What You Can Build</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <i class="bi bi-shop"></i>
+                    <h5>Automate Your Store</h5>
+                    <p class="text-muted mb-0">Create and manage listings, update prices, import inventory in bulk, and handle orders programmatically.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <i class="bi bi-graph-up"></i>
+                    <h5>Market Data & Pricing</h5>
+                    <p class="text-muted mb-0">Access price guide data, historical sales, and market trends to build analytics tools and pricing engines.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <i class="bi bi-collection"></i>
+                    <h5>Collection Management</h5>
+                    <p class="text-muted mb-0">Build custom collection trackers, value portfolios, import/export tools, and integrate with other platforms.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Authentication -->
+<div class="api-section bg-light">
+    <div class="container">
+        <h2>Authentication</h2>
+        <p>The API uses <strong>JWT (JSON Web Tokens)</strong> for authentication. Obtain a token pair, then include the access token in the <code>Authorization</code> header.</p>
+
+        <h3>1. Get your tokens</h3>
+        <div class="code-block">
+<span class="comment"># POST /api/v1/auth/token/</span>
+curl -X POST <span class="url">https://heroesandmore.com/api/v1/auth/token/</span> \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"username": "your_username", "password": "your_password"}'</span>
+
+<span class="comment"># Response:</span>
+{
+  <span class="string">"access"</span>: <span class="string">"eyJ0eXAiOiJKV1Qi..."</span>,
+  <span class="string">"refresh"</span>: <span class="string">"eyJ0eXAiOiJKV1Qi..."</span>
+}
+        </div>
+
+        <h3>2. Use the access token</h3>
+        <div class="code-block">
+curl <span class="url">https://heroesandmore.com/api/v1/marketplace/listings/</span> \
+  -H <span class="string">"Authorization: Bearer eyJ0eXAiOiJKV1Qi..."</span>
+        </div>
+
+        <h3>3. Refresh when expired</h3>
+        <div class="code-block">
+<span class="comment"># POST /api/v1/auth/token/refresh/</span>
+curl -X POST <span class="url">https://heroesandmore.com/api/v1/auth/token/refresh/</span> \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{"refresh": "eyJ0eXAiOiJKV1Qi..."}'</span>
+        </div>
+
+        <p class="text-muted mt-3"><small>Access tokens expire after 60 minutes. Refresh tokens expire after 7 days. Some endpoints (browsing listings, price guide) are available without authentication.</small></p>
+    </div>
+</div>
+
+<!-- Quick Example -->
+<div class="api-section">
+    <div class="container">
+        <h2>Quick Example: Create a Listing</h2>
+        <div class="code-block">
+<span class="comment"># Create a fixed-price listing</span>
+curl -X POST <span class="url">https://heroesandmore.com/api/v1/marketplace/listings/</span> \
+  -H <span class="string">"Authorization: Bearer YOUR_TOKEN"</span> \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -d <span class="string">'{
+    "title": "1993 Upper Deck Derek Jeter RC #449 PSA 10",
+    "description": "Gem Mint condition, fresh from PSA.",
+    "category": 5,
+    "listing_type": "fixed_price",
+    "price": "499.99",
+    "condition": "graded",
+    "quantity": 1,
+    "shipping_mode": "flat",
+    "shipping_price": "4.99"
+  }'</span>
+        </div>
+    </div>
+</div>
+
+<!-- Endpoints -->
+<div class="api-section bg-light">
+    <div class="container">
+        <h2>API Endpoints</h2>
+        <p class="mb-4">All endpoints are relative to <code>https://heroesandmore.com/api/v1/</code>. See the <a href="/api/docs/">interactive docs</a> for full request/response schemas.</p>
+
+        <div class="endpoint-group">
+            <h4>Authentication</h4>
+            <table class="endpoint-table">
+                <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/auth/token/</td>
+                    <td>Obtain JWT token pair</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/auth/token/refresh/</td>
+                    <td>Refresh access token</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/auth/google/</td>
+                    <td>Login with Google OAuth</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/auth/apple/</td>
+                    <td>Login with Apple Sign In</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="endpoint-group">
+            <h4>Account</h4>
+            <table class="endpoint-table">
+                <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/accounts/me/</td>
+                    <td>Get your profile</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-patch">PATCH</span></td>
+                    <td class="endpoint-path">/accounts/me/</td>
+                    <td>Update your profile</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="endpoint-group">
+            <h4>Marketplace</h4>
+            <table class="endpoint-table">
+                <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/listings/</td>
+                    <td>Browse listings (paginated, filterable)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/listings/</td>
+                    <td>Create a new listing</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/</td>
+                    <td>Get listing details</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-patch">PATCH</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/</td>
+                    <td>Update your listing</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-delete">DELETE</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/</td>
+                    <td>Delete your listing</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/bid/</td>
+                    <td>Place a bid on an auction</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/marketplace/listings/{id}/offer/</td>
+                    <td>Make an offer on a listing</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/orders/</td>
+                    <td>List your orders</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/marketplace/saved/</td>
+                    <td>List your saved listings</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="endpoint-group">
+            <h4>Collections</h4>
+            <table class="endpoint-table">
+                <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/collections/mine/</td>
+                    <td>List your collections</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/collections/mine/</td>
+                    <td>Create a new collection</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/collections/{id}/</td>
+                    <td>Get collection details</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/collections/{id}/items/</td>
+                    <td>Add item to collection</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/collections/{id}/value/</td>
+                    <td>Get collection valuation</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="endpoint-group">
+            <h4>Price Guide</h4>
+            <table class="endpoint-table">
+                <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/pricing/items/</td>
+                    <td>Search price guide items</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/pricing/items/{id}/grades/</td>
+                    <td>Get grade-level pricing</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/pricing/items/{id}/sales/</td>
+                    <td>Get recent sale records</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/pricing/trending/</td>
+                    <td>Get trending items</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="endpoint-group">
+            <h4>Seller Tools</h4>
+            <table class="endpoint-table">
+                <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/seller/dashboard/</td>
+                    <td>Get seller dashboard stats</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/seller/inventory/</td>
+                    <td>List inventory items</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/seller/imports/</td>
+                    <td>Bulk import listings (CSV)</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/seller/orders/</td>
+                    <td>List seller orders</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="endpoint-group">
+            <h4>Items & Categories</h4>
+            <table class="endpoint-table">
+                <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/items/categories/</td>
+                    <td>List all categories</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/items/search/</td>
+                    <td>Search items database</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="endpoint-group">
+            <h4>Affiliates</h4>
+            <table class="endpoint-table">
+                <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+                <tr>
+                    <td><span class="method-badge method-post">POST</span></td>
+                    <td class="endpoint-path">/affiliates/join/</td>
+                    <td>Join the affiliate program</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/affiliates/dashboard/</td>
+                    <td>Get affiliate stats & referral link</td>
+                </tr>
+                <tr>
+                    <td><span class="method-badge method-get">GET</span></td>
+                    <td class="endpoint-path">/affiliates/commissions/</td>
+                    <td>List your commissions</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="/api/docs/" class="btn btn-primary btn-lg px-4 me-2">Explore All Endpoints</a>
+            <a href="/api/redoc/" class="btn btn-outline-secondary btn-lg px-4">Full Reference</a>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination & Rate Limits -->
+<div class="api-section">
+    <div class="container">
+        <div class="row g-5">
+            <div class="col-md-6">
+                <h2>Pagination</h2>
+                <p>List endpoints return paginated results with <code>count</code>, <code>next</code>, <code>previous</code>, and <code>results</code>.</p>
+                <div class="code-block">
+{
+  <span class="string">"count"</span>: 142,
+  <span class="string">"next"</span>: <span class="string">"https://heroesandmore.com/api/v1/marketplace/listings/?page=2"</span>,
+  <span class="string">"previous"</span>: null,
+  <span class="string">"results"</span>: [...]
+}
+                </div>
+                <p class="text-muted"><small>Use <code>?page=N</code> to navigate pages. Default page size is 20.</small></p>
+            </div>
+            <div class="col-md-6">
+                <h2>Rate Limits</h2>
+                <p>Requests are rate-limited to ensure fair usage for all developers.</p>
+                <table class="table rate-limit-table">
+                    <tr><th>Type</th><th>Limit</th></tr>
+                    <tr><td>Anonymous</td><td>100 requests/hour</td></tr>
+                    <tr><td>Authenticated</td><td>1,000 requests/hour</td></tr>
+                </table>
+                <p class="text-muted"><small>Rate limit headers are included in every response. Contact us if you need higher limits.</small></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Support -->
+<div class="api-section bg-light">
+    <div class="container text-center">
+        <h2>Need Help?</h2>
+        <p class="mb-4">Have questions about the API or need higher rate limits? We're here to help.</p>
+        <a href="{% url 'contact' %}" class="btn btn-outline-primary btn-lg px-4">Contact Developer Support</a>
+    </div>
+</div>
+{% endblock %}

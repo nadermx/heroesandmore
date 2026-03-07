@@ -39,6 +39,7 @@ urlpatterns = [
     path('api/v1/auth/password/change/', ChangePasswordView.as_view(), name='password_change'),
 
     # API Documentation
+    path('api/', TemplateView.as_view(template_name='pages/api.html'), name='api_landing'),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
