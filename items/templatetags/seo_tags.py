@@ -29,7 +29,10 @@ def absolute_media(path):
     """Build absolute URL for a media file."""
     if path and str(path).startswith(('http://', 'https://')):
         return str(path)
-    return f"{_site_url()}{settings.MEDIA_URL}{path}"
+    media_url = settings.MEDIA_URL
+    if media_url.startswith(('http://', 'https://')):
+        return f"{media_url}{path}"
+    return f"{_site_url()}{media_url}{path}"
 
 
 @register.filter
