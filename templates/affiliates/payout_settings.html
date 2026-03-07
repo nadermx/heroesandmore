@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Payout Settings - Affiliate Program - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Payout Settings</h1>
+                <p class="text-muted mb-0">Configure how you receive affiliate payouts</p>
+            </div>
+            <a href="{% url 'affiliates:dashboard' %}" class="btn btn-outline-dark">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-3">PayPal Email</h5>
+                    <p class="text-muted small">This is where your monthly affiliate payouts will be sent. Make sure this email matches your PayPal account.</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="paypal_email" class="form-label">PayPal Email Address</label>
+                            <input type="email" class="form-control" id="paypal_email" name="paypal_email" value="{{ affiliate.paypal_email }}" required>
+                        </div>
+                        <button type="submit" class="btn btn-dark">
+                            <i class="bi bi-check-lg me-1"></i> Save
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-3">Your Referral Code</h5>
+                    <p class="text-muted small mb-2">This code is permanent and cannot be changed.</p>
+                    <code class="fs-5">{{ affiliate.referral_code }}</code>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

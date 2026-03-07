@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Join the Affiliate Program - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Affiliate Program</h1>
+        <p class="text-muted mb-0">Earn money by referring collectors to HeroesAndMore</p>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <h2 class="h4 mb-3">How It Works</h2>
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-4 text-center">
+                            <div class="rounded-circle bg-dark text-white d-inline-flex align-items-center justify-content-center mb-2" style="width: 48px; height: 48px;">
+                                <i class="bi bi-link-45deg fs-5"></i>
+                            </div>
+                            <h6>1. Share Your Link</h6>
+                            <p class="text-muted small mb-0">Get a unique referral link to share with your audience</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="rounded-circle bg-dark text-white d-inline-flex align-items-center justify-content-center mb-2" style="width: 48px; height: 48px;">
+                                <i class="bi bi-people fs-5"></i>
+                            </div>
+                            <h6>2. Refer Collectors</h6>
+                            <p class="text-muted small mb-0">When someone signs up through your link, they're linked to you for life</p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="rounded-circle bg-dark text-white d-inline-flex align-items-center justify-content-center mb-2" style="width: 48px; height: 48px;">
+                                <i class="bi bi-cash-stack fs-5"></i>
+                            </div>
+                            <h6>3. Earn 2%</h6>
+                            <p class="text-muted small mb-0">Earn 2% of the item price on every purchase your referrals make</p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h5 class="mb-3">Program Details</h5>
+                    <ul class="mb-4">
+                        <li><strong>Commission rate:</strong> 2% of item price on every sale</li>
+                        <li><strong>Lifetime attribution:</strong> Once someone signs up with your link, you earn on all their purchases</li>
+                        <li><strong>Cookie duration:</strong> 30 days (if they sign up within 30 days of clicking your link)</li>
+                        <li><strong>Minimum payout:</strong> $25.00</li>
+                        <li><strong>Payout schedule:</strong> Monthly via PayPal</li>
+                        <li><strong>Commission hold:</strong> 30 days before approval (for refund protection)</li>
+                    </ul>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-dark btn-lg w-100">
+                            <i class="bi bi-rocket-takeoff me-2"></i> Join the Affiliate Program
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

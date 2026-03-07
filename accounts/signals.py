@@ -1,4 +1,5 @@
 import logging
+from django.db import models
 from allauth.account.signals import user_signed_up
 from django.dispatch import receiver
 
@@ -13,6 +14,30 @@ def on_user_signed_up(request, user, **kwargs):
         send_welcome_email.delay(user.id)
     except Exception:
         logger.error(f"Failed to queue welcome email for user {user.id}", exc_info=True)
+
+    # Affiliate referral attribution
+    try:
+        ref_code = None
+        if request:
+            ref_code = request.COOKIES.get('ham_ref') or request.session.get('ham_ref')
+        if ref_code:
+            from affiliates.models import Affiliate, Referral
+            affiliate = Affiliate.objects.filter(referral_code=ref_code, is_active=True).first()
+            if affiliate and affiliate.user != user:
+                if not Referral.objects.filter(referred_user=user).exists():
+                    Referral.objects.create(
+                        affiliate=affiliate,
+                        referred_user=user,
+                        ip_address=request.META.get('REMOTE_ADDR') if request else None,
+                        user_agent=request.META.get('HTTP_USER_AGENT', '') if request else '',
+                        landing_url=request.build_absolute_uri() if request else '',
+                    )
+                    Affiliate.objects.filter(pk=affiliate.pk).update(
+                        total_referrals=models.F('total_referrals') + 1
+                    )
+                    logger.info(f"Affiliate referral created: {user.username} referred by {affiliate.user.username}")
+    except Exception:
+        logger.error(f"Failed to create affiliate referral for user {user.id}", exc_info=True)
 
     # TikTok server-side CompleteRegistration event
     try:

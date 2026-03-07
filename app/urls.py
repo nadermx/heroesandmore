@@ -53,6 +53,7 @@ urlpatterns = [
     path('scanner/', include('scanner.urls')),
     path('seller/', include('seller_tools.urls')),
     path('shipping/', include('shipping.urls')),
+    path('affiliates/', include('affiliates.urls')),
 
     # Ad landing pages (media buy destinations)
     path('sell/', sell_landing, name='sell'),

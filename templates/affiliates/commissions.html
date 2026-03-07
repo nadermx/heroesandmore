@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Commissions - Affiliate Program - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Commissions</h1>
+                <p class="text-muted mb-0">Track your earnings from referred purchases</p>
+            </div>
+            <a href="{% url 'affiliates:dashboard' %}" class="btn btn-outline-dark">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    <!-- Status Filter -->
+    <div class="mb-3">
+        <a href="{% url 'affiliates:commissions' %}" class="btn btn-sm {% if not current_status %}btn-dark{% else %}btn-outline-dark{% endif %}">All</a>
+        <a href="?status=pending" class="btn btn-sm {% if current_status == 'pending' %}btn-dark{% else %}btn-outline-dark{% endif %}">Pending</a>
+        <a href="?status=approved" class="btn btn-sm {% if current_status == 'approved' %}btn-dark{% else %}btn-outline-dark{% endif %}">Approved</a>
+        <a href="?status=paid" class="btn btn-sm {% if current_status == 'paid' %}btn-dark{% else %}btn-outline-dark{% endif %}">Paid</a>
+        <a href="?status=reversed" class="btn btn-sm {% if current_status == 'reversed' %}btn-dark{% else %}btn-outline-dark{% endif %}">Reversed</a>
+    </div>
+
+    {% if page_obj %}
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Order</th>
+                        <th>Item Price</th>
+                        <th>Rate</th>
+                        <th>Commission</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in page_obj %}
+                    <tr>
+                        <td>{{ c.created|date:"M d, Y" }}</td>
+                        <td>#{{ c.order_id }}</td>
+                        <td>${{ c.order_item_price|floatformat:2 }}</td>
+                        <td>{{ c.commission_rate|floatformat:2 }}%</td>
+                        <td>${{ c.commission_amount|floatformat:2 }}</td>
+                        <td>
+                            {% if c.status == 'pending' %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                            {% elif c.status == 'approved' %}
+                            <span class="badge bg-success">Approved</span>
+                            {% elif c.status == 'paid' %}
+                            <span class="badge bg-dark">Paid</span>
+                            {% elif c.status == 'reversed' %}
+                            <span class="badge bg-danger">Reversed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}">Previous</a></li>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}{% if current_status %}&status={{ current_status }}{% endif %}">{{ num }}</a>
+            </li>
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}">Next</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-cash-stack text-muted" style="font-size: 3rem;"></i>
+        <p class="text-muted mt-3">No commissions{% if current_status %} with status "{{ current_status }}"{% endif %} yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

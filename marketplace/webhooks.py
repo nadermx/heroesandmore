@@ -107,6 +107,13 @@ def handle_payment_intent_succeeded(event):
         except ImportError:
             pass
 
+        # Create affiliate commission
+        try:
+            from affiliates.tasks import create_affiliate_commission
+            create_affiliate_commission.delay(order.id)
+        except Exception:
+            pass
+
     except Order.DoesNotExist:
         logger.error(f"Order {order_id} not found for PaymentIntent {payment_intent.id}")
 
@@ -198,6 +205,13 @@ def handle_charge_refunded(event):
 
         order.save(update_fields=['refund_amount', 'refund_status', 'status', 'updated'])
         logger.info(f"Order {order.id} refund processed: ${total_refunded}")
+
+        # Reverse affiliate commission
+        try:
+            from affiliates.tasks import reverse_affiliate_commission
+            reverse_affiliate_commission.delay(order.id)
+        except Exception:
+            pass
 
     except Order.DoesNotExist:
         logger.warning(f"No order found for payment_intent {payment_intent_id}")
@@ -426,6 +440,13 @@ def _handle_paypal_capture_refunded(resource):
             order.refund_status = 'partial'
         order.save(update_fields=['refund_amount', 'refund_status', 'status', 'updated'])
         logger.info(f"PayPal refund processed for order {order.id}: ${refund_amount}")
+
+        # Reverse affiliate commission
+        try:
+            from affiliates.tasks import reverse_affiliate_commission
+            reverse_affiliate_commission.delay(order.id)
+        except Exception:
+            pass
 
     except Order.DoesNotExist:
         logger.warning(f"No order found for PayPal refund on capture {capture_id}")

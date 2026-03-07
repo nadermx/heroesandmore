@@ -822,6 +822,14 @@ def checkout_complete(request, pk):
             except Exception:
                 pass
 
+    # Create affiliate commission (fallback for orders verified here)
+    if order.status in ('paid', 'shipped', 'delivered', 'completed'):
+        try:
+            from affiliates.tasks import create_affiliate_commission
+            create_affiliate_commission.delay(order.id)
+        except Exception:
+            pass
+
     # TikTok server-side CompletePayment event
     if order.status in ('paid', 'shipped', 'delivered', 'completed'):
         try:
@@ -1118,6 +1126,13 @@ def paypal_capture_order(request, pk):
                 from marketplace.tasks import send_paypal_payout
                 if order.seller.profile.paypal_email:
                     send_paypal_payout.delay(order.id)
+            except Exception:
+                pass
+
+            # Create affiliate commission
+            try:
+                from affiliates.tasks import create_affiliate_commission
+                create_affiliate_commission.delay(order.id)
             except Exception:
                 pass
 

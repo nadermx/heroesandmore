@@ -116,4 +116,14 @@ app.conf.beat_schedule = {
         'task': 'marketplace.tasks.cleanup_expired_guest_submissions',
         'schedule': crontab(hour=2, minute=30),
     },
+    # Approve affiliate commissions older than 30 days (daily at 5 AM)
+    'approve-affiliate-commissions': {
+        'task': 'affiliates.tasks.approve_pending_commissions',
+        'schedule': crontab(hour=5, minute=0),
+    },
+    # Process affiliate payouts (1st of month at 5:30 AM)
+    'process-affiliate-payouts': {
+        'task': 'affiliates.tasks.process_affiliate_payouts',
+        'schedule': crontab(hour=5, minute=30, day_of_month=1),
+    },
 }

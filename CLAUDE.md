@@ -17,7 +17,8 @@ accounts/         # Auth, profiles          social/           # Forums, messagin
 user_collections/ # Collections (URL ns: 'collections')  alerts/  # Wishlists, notifications
 items/            # Item DB & categories    pricing/          # Price guide, market data
 scanner/          # Image recognition       seller_tools/     # Bulk import, inventory, subscriptions
-shipping/         # EasyPost integration    templates/        # HTML templates
+shipping/         # EasyPost integration    affiliates/       # Affiliate referral program
+templates/        # HTML templates
 static/           # CSS, JS, images         ansible/          # Deployment
 config.py         # Local config (gitignored)
 ```
@@ -109,10 +110,11 @@ API: `GET .../platform/`, `POST .../platform/<slug>/submit/`, `GET .../submissio
 - **Every 5 min**: `marketplace.tasks.end_auctions`, `activate_platform_events`, `expire_unpaid_orders`
 - **Every 30 min**: `alerts.tasks.send_watched_auction_final_24h`
 - **Hourly**: `pricing.tasks.check_price_alerts`, `seller_tools.tasks.retry_failed_payments` (:30)
-- **Daily**: `process_subscription_renewals` (2AM), `expire_grace_periods` (3:30AM), `update_trusted_seller_status` (4AM), `import_all_market_data` (6AM/6PM), `send_renewal_reminders` (10AM), `send_relist_reminders` (11AM), `shipping.tasks.cleanup_expired_rates` (1AM)
+- **Daily**: `process_subscription_renewals` (2AM), `expire_grace_periods` (3:30AM), `update_trusted_seller_status` (4AM), `approve_pending_commissions` (5AM), `import_all_market_data` (6AM/6PM), `send_renewal_reminders` (10AM), `send_relist_reminders` (11AM), `shipping.tasks.cleanup_expired_rates` (1AM)
 - **Weekly**: `send_weekly_auction_digest` (Fri 10AM), `send_weekly_results_recap` (Mon 10AM)
+- **Monthly**: `affiliates.tasks.process_affiliate_payouts` (1st at 5:30AM)
 - **Signal-triggered**: `send_welcome_email` (allauth `user_signed_up` via `accounts/signals.py`)
-- **On-demand**: `pricing.tasks.update_price_guide_stats`, `record_sale_from_order`, `user_collections.tasks.update_collection_values`, `create_daily_snapshots`
+- **On-demand**: `pricing.tasks.update_price_guide_stats`, `record_sale_from_order`, `user_collections.tasks.update_collection_values`, `create_daily_snapshots`, `affiliates.tasks.create_affiliate_commission`, `reverse_affiliate_commission`
 
 ## Market Data
 Scrapers in `pricing/services/market_data.py`: `EbayMarketData`, `HeritageAuctionsData`, `GoCollectData`. Uses `_make_proxied_request()` with rotating proxies. eBay handles both `.s-item` and `.s-card` layouts.
@@ -182,6 +184,11 @@ Fixed-price only (auctions redirect to signup). `Order.buyer` nullable, `guest_e
 
 ## Category Sell Landing Pages
 Media buy destinations at `/sell/<category>/` — MTG, Pokemon, Yu-Gi-Oh, Comics, Vintage Baseball. Guests can submit listings without an account via `GuestListingSubmission` model (honeypot-protected). Claim flow at `/sell/claim/<token>/` converts submission to draft Listing on signup/login. Auth users create draft Listings directly. Index hub at `/sell/`. Templates in `templates/pages/sell/`. Config dict `CATEGORY_LANDING_CONFIG` in `app/views.py`. Celery cleanup expires pending submissions after 7 days.
+
+## Affiliate Program
+Users join at `/affiliates/join/`, get a unique referral code. Referral link: `?ref=CODE` sets `ham_ref` cookie (30 days) via `AffiliateMiddleware`. On signup, `accounts/signals.py` creates `Referral` (lifetime attribution). On payment success, `create_affiliate_commission` task creates 2% commission on `item_price`. Commissions: pending (30 days) → approved → paid. Monthly PayPal payouts ($25 min) on 1st of month. The 2% comes from platform cut — seller payout unchanged.
+
+Models: `Affiliate` (user, referral_code, balances), `Referral` (affiliate → referred_user, OneToOne), `AffiliateCommission` (order OneToOne, status), `AffiliatePayout` (PayPal batch). Commission hooks in `marketplace/webhooks.py` (Stripe + PayPal success/refund) and `marketplace/views.py` (PayPal capture + checkout fallback).
 
 ## Founding Collector Program
 `Profile.is_founding_member` auto-set at signup before `FOUNDING_MEMBER_CUTOFF` (2026-06-01).

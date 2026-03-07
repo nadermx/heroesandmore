@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Payout History - Affiliate Program - HeroesAndMore{% endblock %}
+
+{% block content %}
+<div class="section-alt border-bottom" style="padding: 1.5rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 style="font-size: 1.75rem; margin-bottom: 0.25rem;">Payout History</h1>
+                <p class="text-muted mb-0">${{ affiliate.paid_balance|floatformat:2 }} total paid</p>
+            </div>
+            <a href="{% url 'affiliates:dashboard' %}" class="btn btn-outline-dark">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4">
+    {% if page_obj %}
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Period</th>
+                        <th>Amount</th>
+                        <th>PayPal</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in page_obj %}
+                    <tr>
+                        <td>{{ p.created|date:"M d, Y" }}</td>
+                        <td>{{ p.period_start|date:"M d" }} - {{ p.period_end|date:"M d, Y" }}</td>
+                        <td>${{ p.amount|floatformat:2 }}</td>
+                        <td>{{ p.paypal_email }}</td>
+                        <td>
+                            {% if p.status == 'pending' %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                            {% elif p.status == 'processing' %}
+                            <span class="badge bg-info">Processing</span>
+                            {% elif p.status == 'completed' %}
+                            <span class="badge bg-success">Completed</span>
+                            {% elif p.status == 'failed' %}
+                            <span class="badge bg-danger">Failed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-wallet2 text-muted" style="font-size: 3rem;"></i>
+        <p class="text-muted mt-3">No payouts yet. Payouts are processed monthly when your approved balance reaches $25.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

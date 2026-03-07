@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'scanner',
     'seller_tools',
     'shipping',
+    'affiliates',
 ]
 
 MIDDLEWARE = [
@@ -69,6 +70,7 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
     'app.middleware.SignupHoneypotMiddleware',
+    'affiliates.middleware.AffiliateMiddleware',
 ]
 
 ROOT_URLCONF = 'app.urls'
