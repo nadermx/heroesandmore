@@ -8,6 +8,7 @@
 {% block og_description %}{{ listing.title }}{% if listing.is_graded %} — {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %} — ${{ listing.price }} on HeroesAndMore.{% endblock %}
 {% block og_type %}product{% endblock %}
 {% block og_image %}{% if listing.image1 %}{% absolute_media listing.image1 %}{% else %}{{ default_og_image }}{% endif %}{% endblock %}
+{% block twitter_image %}{% if listing.image1 %}{% absolute_media listing.image1 %}{% else %}{{ default_og_image }}{% endif %}{% endblock %}
 
 {% block structured_data %}
 <script type="application/ld+json">
