@@ -351,7 +351,8 @@ def listing_publish(request, pk):
     listing.status = 'active'
     listing.save()
     messages.success(request, 'Your listing is now live!')
-    return redirect('marketplace:listing_detail', pk=pk)
+    from django.urls import reverse
+    return redirect(reverse('marketplace:listing_detail', kwargs={'pk': pk}) + '?published=1')
 
 
 @login_required

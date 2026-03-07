@@ -336,6 +336,30 @@
 {% endblock %}
 
 {% block content %}
+{% if request.GET.published %}
+<!-- Just Published: Share CTA -->
+<div style="background: linear-gradient(135deg, var(--gray-900), #1a1a2e); color: white; padding: 1.25rem 0;">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h6 class="fw-bold mb-1" style="color: white;"><i class="bi bi-check-circle-fill text-success me-2"></i>Your listing is live!</h6>
+                <p class="mb-0 small" style="color: rgba(255,255,255,0.8);">Share it to get more eyes on your item.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="https://twitter.com/intent/tweet?text=Check%20out%20my%20listing%20on%20HeroesAndMore!&url=https://heroesandmore.com/marketplace/{{ listing.pk }}/" target="_blank" rel="noopener" class="btn btn-sm" style="background: #1DA1F2; color: white;">
+                    <i class="bi bi-twitter-x me-1"></i>Post
+                </a>
+                <a href="https://www.facebook.com/sharer/sharer.php?u=https://heroesandmore.com/marketplace/{{ listing.pk }}/" target="_blank" rel="noopener" class="btn btn-sm" style="background: #1877F2; color: white;">
+                    <i class="bi bi-facebook me-1"></i>Share
+                </a>
+                <button class="btn btn-sm btn-outline-light" onclick="navigator.clipboard.writeText('https://heroesandmore.com/marketplace/{{ listing.pk }}/').then(()=>{this.innerHTML='<i class=\'bi bi-check me-1\'></i>Copied!'})">
+                    <i class="bi bi-link-45deg me-1"></i>Copy Link
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 <!-- Breadcrumb -->
 <div class="section-alt border-bottom" style="padding: 1rem 0;">
     <div class="container">

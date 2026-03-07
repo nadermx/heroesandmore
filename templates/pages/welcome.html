@@ -51,6 +51,25 @@
                 </div>
             </div>
 
+            <!-- Share CTA -->
+            <div class="card text-start mb-4" style="background: linear-gradient(135deg, var(--gray-900), #1a1a2e); border: none; color: white;">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-2" style="color: white;"><i class="bi bi-megaphone me-2"></i>Tell Your Collector Friends</h6>
+                    <p class="mb-3" style="font-size: 0.9rem; color: rgba(255,255,255,0.8);">Know someone who buys, sells, or collects? Share HeroesAndMore with them!</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="https://twitter.com/intent/tweet?text=Just%20joined%20HeroesAndMore%20%E2%80%94%20a%20new%20marketplace%20for%20collectibles%20with%20the%20lowest%20fees!&url=https://heroesandmore.com" target="_blank" rel="noopener" class="btn btn-sm" style="background: #1DA1F2; color: white;">
+                            <i class="bi bi-twitter-x me-1"></i>Post
+                        </a>
+                        <a href="https://www.facebook.com/sharer/sharer.php?u=https://heroesandmore.com" target="_blank" rel="noopener" class="btn btn-sm" style="background: #1877F2; color: white;">
+                            <i class="bi bi-facebook me-1"></i>Share
+                        </a>
+                        <button class="btn btn-sm btn-outline-light" onclick="navigator.clipboard.writeText('https://heroesandmore.com').then(()=>{this.innerHTML='<i class=\'bi bi-check me-1\'></i>Copied!'})">
+                            <i class="bi bi-link-45deg me-1"></i>Copy Link
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div class="d-grid gap-2">
                 <a href="{% url 'marketplace:listing_list' %}" class="btn btn-dark btn-lg">
                     <i class="bi bi-compass me-2"></i>Browse Listings
