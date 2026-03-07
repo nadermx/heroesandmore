@@ -499,6 +499,11 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': False,
         },
+        'affiliates': {
+            'handlers': ['console', 'app_file', 'celery_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
         'api': {
             'handlers': ['console', 'api_file', 'error_file'],
             'level': 'INFO',

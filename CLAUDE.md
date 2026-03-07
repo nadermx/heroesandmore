@@ -17,7 +17,7 @@ accounts/         # Auth, profiles          social/           # Forums, messagin
 user_collections/ # Collections (URL ns: 'collections')  alerts/  # Wishlists, notifications
 items/            # Item DB & categories    pricing/          # Price guide, market data
 scanner/          # Image recognition       seller_tools/     # Bulk import, inventory, subscriptions
-shipping/         # EasyPost integration    affiliates/       # Affiliate referral program
+shipping/         # USPS/EasyPost shipping   affiliates/       # Affiliate referral program
 templates/        # HTML templates
 static/           # CSS, JS, images         ansible/          # Deployment
 config.py         # Local config (gitignored)
@@ -87,7 +87,7 @@ SSH: `ssh heroesandmore@174.138.33.140` → `/home/www/heroesandmore`
 ### Log Files
 **App logs** (`/home/www/heroesandmore/logs/`): `errors.log`, `stripe.log`, `frontend.log`, `app.log`, `security.log`, `celery_tasks.log`, `api.log`, `db.log`
 **System logs** (`/var/log/heroesandmore/`): `heroesandmore.{out,err}.log`, `celery.{out,err}.log`, `celerybeat.{out,err}.log`
-**Loggers**: `accounts`, `marketplace`, `pricing`, `alerts`, `scanner`, `api`, `seller_tools`, `frontend`, `shipping`
+**Loggers**: `accounts`, `marketplace`, `pricing`, `alerts`, `scanner`, `api`, `seller_tools`, `frontend`, `shipping`, `affiliates`
 
 ## Config
 See `config.py.example`. Required: `SECRET_KEY`, `DATABASE_PASSWORD`, Stripe keys, `DO_SPACES_KEY/SECRET`. Optional: `EASYPOST_API_KEY`, Stripe price IDs, PayPal keys. For deploys: `ansible/group_vars/vault.yml`.
@@ -108,9 +108,11 @@ API: `GET .../platform/`, `POST .../platform/<slug>/submit/`, `GET .../submissio
 
 ## Celery Tasks
 - **Every 5 min**: `marketplace.tasks.end_auctions`, `activate_platform_events`, `expire_unpaid_orders`
-- **Every 30 min**: `alerts.tasks.send_watched_auction_final_24h`
+- **Every 15 min**: `alerts.tasks.send_alert_emails`
+- **Every 30 min**: `alerts.tasks.send_watched_auction_final_24h`, `check_ending_auctions`
 - **Hourly**: `pricing.tasks.check_price_alerts`, `seller_tools.tasks.retry_failed_payments` (:30)
-- **Daily**: `process_subscription_renewals` (2AM), `expire_grace_periods` (3:30AM), `update_trusted_seller_status` (4AM), `approve_pending_commissions` (5AM), `import_all_market_data` (6AM/6PM), `send_renewal_reminders` (10AM), `send_relist_reminders` (11AM), `shipping.tasks.cleanup_expired_rates` (1AM)
+- **Every 2 hours**: `shipping.tasks.poll_usps_tracking`
+- **Daily**: `shipping.tasks.cleanup_expired_rates` (1AM), `process_subscription_renewals` (2AM), `cleanup_expired_guest_submissions` (2:30AM), `expire_grace_periods` (3:30AM), `update_trusted_seller_status` (4AM), `approve_pending_commissions` (5AM), `import_all_market_data` (6AM/6PM), `check_wishlist_matches` (8AM), `send_renewal_reminders` (10AM), `send_relist_reminders` (11AM)
 - **Weekly**: `send_weekly_auction_digest` (Fri 10AM), `send_weekly_results_recap` (Mon 10AM)
 - **Monthly**: `affiliates.tasks.process_affiliate_payouts` (1st at 5:30AM)
 - **Signal-triggered**: `send_welcome_email` (allauth `user_signed_up` via `accounts/signals.py`)
@@ -157,9 +159,9 @@ Order fields: `payment_method` (stripe/paypal), `paypal_order_id`, `paypal_captu
 Profile fields: `paypal_email`, `preferred_payout_method`
 Payout settings: `/seller/payout-settings/` — sellers can set PayPal email and choose preferred payout method
 
-## EasyPost Shipping
-Modes: `flat` (default), `calculated` (real-time rates), `free`
-Service: `marketplace/services/easypost_service.py` — `verify_address()`, `get_rates()`, `buy_label()`, `refund_label()`
+## Shipping (USPS / EasyPost)
+Provider: `SHIPPING_PROVIDER` setting (`usps` default, or `easypost`). Modes: `flat` (default), `calculated` (real-time rates), `free`.
+Services: `marketplace/services/easypost_service.py`, USPS REST API v3 (`USPS_CLIENT_ID`, `USPS_CLIENT_SECRET`, `USPS_EPS_ACCOUNT_NUMBER`)
 Profiles: `standard-card` (2oz), `graded-slab` (8oz), `multiple-cards` (16oz), `figure-toy` (32oz), `custom`
 Fee: $0.29 (Stripe) + $0.05 (label) + commission%. Webhook: `/shipping/webhooks/easypost/` (HMAC verified)
 Checkout: address validated → rates fetched → rate selected → payment. Seller: "Buy Label" on order detail.
@@ -208,7 +210,7 @@ John (john@nader.mx, owner) | Tony (tmgormond@gmail.com) | Jim (jim@sickboys.com
 - Context processor: `app/context_processors.seo()` → `site_url`, `default_og_image`
 - Frontend errors: POST `/api/log-error/` → `frontend` logger
 - Landing pages in `app/views.py`: `sell_landing`, `bid_landing`, `trusted_seller_landing`, `contact`
-- Dashboard: `/dashboard/` (user) | `/seller/` (seller tools) | `accounts/seller_dashboard.html` is dead code
+- Dashboard: `/dashboard/` (user) | `/seller/` (seller tools)
 
 ## Testing Notes
 - Rate limiting disabled via `TESTING` flag. Mock Stripe calls. API uses `APIClient` + JWT.
