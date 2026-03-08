@@ -264,16 +264,18 @@
             </div>
 
             <!-- Reviews -->
-            {% if reviews %}
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h5 class="fw-bold mb-0">Reviews</h5>
+                        {% if reviews %}
                         <a href="{% url 'accounts:seller_reviews' username=profile_user.username %}" class="text-decoration-none small">
                             View all {{ profile.rating_count|default:0 }} <i class="bi bi-arrow-right"></i>
                         </a>
+                        {% endif %}
                     </div>
 
+                    {% if reviews %}
                     <div class="reviews-list">
                         {% for review in reviews %}
                         <div class="d-flex gap-3 {% if not forloop.last %}mb-4 pb-4 border-bottom{% endif %}">
@@ -309,9 +311,14 @@
                         </div>
                         {% endfor %}
                     </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-chat-square display-4 text-muted"></i>
+                        <p class="text-muted mt-2 mb-0">No reviews yet</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
-            {% endif %}
         </div>
 
         <!-- Sidebar -->
