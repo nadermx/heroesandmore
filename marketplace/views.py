@@ -1090,7 +1090,7 @@ def paypal_capture_order(request, pk):
                     user=request.user if request.user.is_authenticated else None,
                     name=shipping_info['name'],
                     street1=shipping_info['street1'],
-                    street2=shipping_info.get('street2', ''),
+                    street2=shipping_info.get('street2', '') if shipping_info.get('street2', '') != shipping_info['street1'] else '',
                     city=shipping_info['city'],
                     state=shipping_info['state'],
                     zip_code=shipping_info['zip_code'],

@@ -353,7 +353,32 @@ def send_order_notifications(order_id, event_type):
             except Exception:
                 pass
 
-        # In-app alert
+        # Email to buyer: Review reminder + more from seller
+        buyer_email = order.buyer_email
+        if buyer_email:
+            from marketplace.models import Listing
+            seller_listings = Listing.objects.filter(
+                seller=order.seller, status='active'
+            ).exclude(pk=order.listing_id).order_by('-created')[:4]
+            buyer_context = {
+                'order': order,
+                'site_url': site_url,
+                'seller_listings': seller_listings,
+            }
+            html_content = render_to_string('marketplace/emails/delivery_review_reminder.html', buyer_context)
+            try:
+                send_mail(
+                    subject=f'Your order has been delivered! Leave a review',
+                    message=f'Your order #{order.id} for {order.listing.title} has been delivered. Leave a review for {order.seller.username}!',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[buyer_email],
+                    html_message=html_content,
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+
+        # In-app alerts
         Alert.objects.create(
             user=order.seller,
             alert_type='order_update',
@@ -361,6 +386,14 @@ def send_order_notifications(order_id, event_type):
             message=f'The buyer confirmed receipt. Your payout: ${order.seller_payout}',
             link=f'/marketplace/order/{order.id}/',
         )
+        if order.buyer:
+            Alert.objects.create(
+                user=order.buyer,
+                alert_type='order_update',
+                title=f'Order #{order.id} Delivered',
+                message=f'Your order for {order.listing.title} has been delivered. Leave a review!',
+                link=f'/marketplace/order/{order.id}/',
+            )
 
     elif event_type == 'payment_failed':
         # Email to buyer: Payment failed

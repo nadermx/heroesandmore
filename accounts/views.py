@@ -145,12 +145,12 @@ def seller_dashboard(request):
         'draft_listings': listings.filter(status='draft').count(),
         'sold_listings': listings.filter(status='sold').count(),
         'total_revenue': orders.filter(status='completed').aggregate(Sum('amount'))['amount__sum'] or 0,
-        'pending_orders': orders.filter(status='pending').count(),
+        'pending_orders': orders.filter(status__in=['pending', 'paid']).count(),
         'completed_orders': orders.filter(status='completed').count(),
     }
 
-    # Recent orders needing attention
-    pending_orders = orders.filter(status='pending').order_by('-created')[:10]
+    # Recent orders needing attention (pending payment + paid awaiting shipment)
+    pending_orders = orders.filter(status__in=['pending', 'paid']).order_by('-created')[:10]
 
     # Pending offers (waiting for seller response)
     pending_offers = Offer.objects.filter(
