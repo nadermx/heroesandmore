@@ -16,6 +16,7 @@ from datetime import timedelta
 
 from items.models import Category
 from items.views import _get_site_stats
+from marketplace.models import Review
 
 logger = logging.getLogger('frontend')
 app_logger = logging.getLogger('app')
@@ -658,6 +659,45 @@ def contact(request):
             messages.error(request, 'Sorry, there was a problem sending your message. Please email us directly at support@heroesandmore.com.')
 
     return render(request, 'pages/contact.html')
+
+
+def _get_rating_breakdown(reviews_qs):
+    """Return 5-star to 1-star breakdown with counts and percentages."""
+    from django.db.models import Count as C
+    counts = dict(
+        reviews_qs.values_list('rating').annotate(c=C('id')).values_list('rating', 'c')
+    )
+    total = sum(counts.values()) or 1
+    return [
+        {'stars': i, 'count': counts.get(i, 0), 'pct': round(counts.get(i, 0) / total * 100)}
+        for i in range(5, 0, -1)
+    ]
+
+
+def reviews_page(request):
+    """Public reviews page for the business — all verified purchase reviews."""
+    from django.core.paginator import Paginator
+    from django.db.models import Avg
+
+    all_reviews = Review.objects.select_related(
+        'reviewer__profile', 'seller'
+    ).order_by('-created')
+
+    avg_rating = all_reviews.aggregate(avg=Avg('rating'))['avg']
+    total_reviews = all_reviews.count()
+    rating_breakdown = _get_rating_breakdown(all_reviews)
+
+    paginator = Paginator(all_reviews, 20)
+    page = request.GET.get('page')
+    reviews = paginator.get_page(page)
+
+    context = {
+        'reviews': reviews,
+        'avg_rating': round(avg_rating, 1) if avg_rating else None,
+        'total_reviews': total_reviews,
+        'rating_breakdown': rating_breakdown,
+    }
+    return render(request, 'pages/reviews.html', context)
 
 
 @csrf_exempt

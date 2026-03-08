@@ -27,7 +27,14 @@
     "itemCondition": "https://schema.org/{% if listing.condition == 'new' %}NewCondition{% else %}UsedCondition{% endif %}"{% if listing.seller %},
     "seller": {
       "@type": "Person",
-      "name": "{{ listing.seller.username|json_ld_escape }}"
+      "name": "{{ listing.seller.username|json_ld_escape }}"{% if listing.seller.profile.rating %},
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "{{ listing.seller.profile.rating|floatformat:1 }}",
+        "reviewCount": "{{ listing.seller.profile.rating_count }}",
+        "bestRating": "5",
+        "worstRating": "1"
+      }{% endif %}
     }{% endif %}
   }
 }

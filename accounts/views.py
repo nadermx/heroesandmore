@@ -9,6 +9,7 @@ from .models import Profile
 from .forms import ProfileForm, UserForm
 from marketplace.models import Listing, Order, Review
 from social.models import Follow
+from app.views import _get_rating_breakdown
 
 
 def profile_view(request, username):
@@ -47,6 +48,32 @@ def profile_view(request, username):
         'reviews': reviews,
     }
     return render(request, 'accounts/profile.html', context)
+
+
+def seller_reviews_view(request, username):
+    """All reviews for a seller, paginated."""
+    from django.core.paginator import Paginator
+
+    user = get_object_or_404(User, username=username)
+    profile = user.profile
+
+    all_reviews = Review.objects.filter(seller=user).select_related(
+        'reviewer__profile'
+    ).order_by('-created')
+
+    rating_breakdown = _get_rating_breakdown(all_reviews)
+
+    paginator = Paginator(all_reviews, 20)
+    page = request.GET.get('page')
+    reviews = paginator.get_page(page)
+
+    context = {
+        'profile_user': user,
+        'profile': profile,
+        'reviews': reviews,
+        'rating_breakdown': rating_breakdown,
+    }
+    return render(request, 'accounts/seller_reviews.html', context)
 
 
 @login_required

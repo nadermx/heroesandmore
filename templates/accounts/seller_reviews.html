@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% load seo_tags humanize %}
+
+{% block title %}{{ profile_user.username }}'s Reviews - HeroesAndMore{% endblock %}
+{% block meta_description %}{{ profile_user.username }}'s seller reviews on HeroesAndMore.{% if profile.rating %} Rated {{ profile.rating|floatformat:1 }}/5 from {{ profile.rating_count }} reviews.{% endif %}{% endblock %}
+{% block og_title %}{{ profile_user.username }}'s Reviews - HeroesAndMore{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ProfilePage",
+  "mainEntity": {
+    "@type": "Person",
+    "name": "{{ profile_user.username|json_ld_escape }}"{% if profile.avatar %},
+    "image": "{% absolute_media profile.avatar %}"{% endif %}{% if profile.rating %},
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "{{ profile.rating|floatformat:1 }}",
+      "reviewCount": "{{ profile.rating_count }}",
+      "bestRating": "5",
+      "worstRating": "1"
+    }{% endif %}{% if reviews %},
+    "review": [
+      {% for review in reviews %}
+      {
+        "@type": "Review",
+        "author": {
+          "@type": "Person",
+          "name": "{{ review.reviewer.username|json_ld_escape }}"
+        },
+        "datePublished": "{{ review.created|date:'c' }}",
+        "reviewRating": {
+          "@type": "Rating",
+          "ratingValue": "{{ review.rating }}",
+          "bestRating": "5",
+          "worstRating": "1"
+        }{% if review.text %},
+        "reviewBody": "{{ review.text|json_ld_escape }}"{% endif %}
+      }{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ]{% endif %}
+  }
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .reviews-header {
+        background: linear-gradient(180deg, var(--gray-100) 0%, var(--gray-50) 100%);
+        padding: 3rem 0;
+    }
+    .rating-stars { color: #FBBF24; }
+    .rating-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    .rating-bar .label {
+        width: 3rem;
+        text-align: right;
+        font-size: 0.85rem;
+        color: var(--gray-600);
+    }
+    .rating-bar .bar {
+        flex: 1;
+        height: 8px;
+        background: var(--gray-200);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .rating-bar .bar-fill {
+        height: 100%;
+        background: #FBBF24;
+        border-radius: 4px;
+    }
+    .rating-bar .count {
+        width: 2.5rem;
+        font-size: 0.85rem;
+        color: var(--gray-500);
+    }
+    .review-item {
+        border-bottom: 1px solid var(--gray-200);
+        padding: 1.5rem 0;
+    }
+    .review-item:last-child { border-bottom: none; }
+    .verified-purchase {
+        background: #ecfdf5;
+        color: #059669;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.2em 0.6em;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reviews-header">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'accounts:profile' username=profile_user.username %}" class="text-decoration-none">{{ profile_user.username }}</a></li>
+                <li class="breadcrumb-item active">Reviews</li>
+            </ol>
+        </nav>
+        <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">Reviews for {{ profile_user.username }}</h1>
+        {% if profile.rating %}
+        <div class="d-flex align-items-center gap-2">
+            <div class="rating-stars">
+                {% for i in "12345" %}
+                    {% if forloop.counter <= profile.rating %}
+                    <i class="bi bi-star-fill"></i>
+                    {% else %}
+                    <i class="bi bi-star"></i>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <span class="text-muted">{{ profile.rating|floatformat:1 }} out of 5 ({{ profile.rating_count }} review{{ profile.rating_count|pluralize }})</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <!-- Rating Breakdown -->
+        <div class="col-lg-4 mb-4">
+            <div class="card" style="position: sticky; top: 2rem;">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3">Rating Breakdown</h6>
+                    {% for bar in rating_breakdown %}
+                    <div class="rating-bar">
+                        <div class="label">{{ bar.stars }} <i class="bi bi-star-fill" style="color: #FBBF24; font-size: 0.7rem;"></i></div>
+                        <div class="bar">
+                            <div class="bar-fill" style="width: {{ bar.pct }}%;"></div>
+                        </div>
+                        <div class="count">{{ bar.count }}</div>
+                    </div>
+                    {% endfor %}
+
+                    <hr class="my-3">
+                    <a href="{% url 'accounts:profile' username=profile_user.username %}" class="btn btn-outline-dark btn-sm w-100">
+                        <i class="bi bi-arrow-left me-1"></i> Back to Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reviews -->
+        <div class="col-lg-8">
+            {% if reviews %}
+            {% for review in reviews %}
+            <div class="review-item">
+                <div class="d-flex gap-3">
+                    {% if review.reviewer.profile.avatar %}
+                    <img src="{{ review.reviewer.profile.avatar.url }}" class="rounded-circle flex-shrink-0" width="48" height="48" style="object-fit: cover;">
+                    {% else %}
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; background: var(--gray-200);">
+                        <span style="font-weight: 600; color: var(--gray-600);">{{ review.reviewer.username|slice:":1"|upper }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="flex-grow-1">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                            <div>
+                                <a href="{% url 'accounts:profile' username=review.reviewer.username %}" class="fw-semibold text-decoration-none">{{ review.reviewer.username }}</a>
+                                <span class="verified-purchase ms-2">Verified Purchase</span>
+                                <div class="rating-stars small mt-1">
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= review.rating %}
+                                        <i class="bi bi-star-fill"></i>
+                                        {% else %}
+                                        <i class="bi bi-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <small class="text-muted">{{ review.created|timesince }} ago</small>
+                        </div>
+                        {% if review.text %}
+                        <p class="mb-0 mt-2" style="color: var(--gray-700); line-height: 1.6;">{{ review.text }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if reviews.has_other_pages %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if reviews.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ reviews.previous_page_number }}">Previous</a></li>
+                    {% endif %}
+                    {% for num in reviews.paginator.page_range %}
+                        {% if reviews.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > reviews.number|add:"-3" and num < reviews.number|add:"3" %}
+                        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if reviews.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ reviews.next_page_number }}">Next</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-chat-square display-4 text-muted"></i>
+                <p class="text-muted mt-3">No reviews yet for this seller.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

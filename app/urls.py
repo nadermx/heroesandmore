@@ -12,8 +12,9 @@ from accounts.api.views import (
     ChangePasswordView
 )
 from app.views import (
-    bid_landing, contact, log_frontend_error, sell_landing, sell_category_landing,
-    sell_claim_submission, trusted_seller_landing, robots_txt, sitemap_xml
+    bid_landing, contact, log_frontend_error, reviews_page, sell_landing,
+    sell_category_landing, sell_claim_submission, trusted_seller_landing,
+    robots_txt, sitemap_xml
 )
 from alerts.views import newsletter_subscribe, newsletter_verify, newsletter_preferences, newsletter_unsubscribe
 
@@ -74,6 +75,7 @@ urlpatterns = [
     # Static pages
     path('welcome/', TemplateView.as_view(template_name='pages/welcome.html'), name='welcome'),
     path('about/', about, name='about'),
+    path('reviews/', reviews_page, name='reviews'),
     path('help/', TemplateView.as_view(template_name='pages/help.html'), name='help'),
     path('seller-guide/', TemplateView.as_view(template_name='pages/seller_guide.html'), name='seller_guide'),
     path('safety/', TemplateView.as_view(template_name='pages/safety.html'), name='safety'),
