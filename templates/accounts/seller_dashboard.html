@@ -197,7 +197,7 @@
                                     <br>
                                     <small class="text-muted">{{ order.listing.title|truncatechars:30 }}</small>
                                 </td>
-                                <td>{{ order.buyer.username }}</td>
+                                <td>{% if order.buyer %}{{ order.buyer.username }}{% else %}<span class="text-muted">{{ order.guest_name|default:"Guest" }}</span>{% endif %}</td>
                                 <td class="fw-semibold">${{ order.amount }}</td>
                                 <td><span class="badge" style="background: var(--gray-200); color: var(--gray-700);">{{ order.get_status_display }}</span></td>
                                 <td class="text-muted">{{ order.created|date:"M d" }}</td>

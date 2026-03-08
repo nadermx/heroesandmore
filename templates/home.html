@@ -437,7 +437,8 @@
             var diff = end - now;
             if (diff <= 0) {
                 el.textContent = 'Ended';
-                el.closest('.time-remaining')?.classList.add('text-muted');
+                var tr = el.closest('.time-remaining');
+                if (tr) tr.classList.add('text-muted');
                 return;
             }
             var d = Math.floor(diff / 86400000);

@@ -116,7 +116,7 @@
                             <div>
                                 <strong style="color: var(--gray-900);">{{ order.listing.title|truncatechars:40 }}</strong>
                                 <br>
-                                <small class="text-muted">To {{ order.buyer.username }}</small>
+                                <small class="text-muted">To {% if order.buyer %}{{ order.buyer.username }}{% else %}{{ order.guest_name|default:"Guest" }}{% endif %}</small>
                             </div>
                             <div class="text-end">
                                 <span class="badge" style="background: var(--gray-100); color: var(--gray-700);">{{ order.get_status_display }}</span>

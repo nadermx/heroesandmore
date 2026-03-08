@@ -191,9 +191,13 @@
                                         </a>
                                     </td>
                                     <td>
+                                        {% if order.buyer %}
                                         <a href="{% url 'accounts:profile' username=order.buyer.username %}" class="text-decoration-none">
                                             {{ order.buyer.username }}
                                         </a>
+                                        {% else %}
+                                        <span class="text-muted">{{ order.guest_name|default:"Guest" }}</span>
+                                        {% endif %}
                                     </td>
                                     <td class="fw-semibold">${{ order.item_price }}</td>
                                     <td>

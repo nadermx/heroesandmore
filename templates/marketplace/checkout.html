@@ -374,15 +374,20 @@ const useCalculatedShipping = {{ use_calculated_shipping|yesno:"true,false" }};
 let selectedRateData = null;
 let activePaymentMethod = 'card';
 
+function getVal(id, fallback) {
+    var el = document.getElementById(id);
+    return el ? el.value.trim() : (fallback || '');
+}
+
 function getAddressFields() {
     return {
-        name: document.getElementById('addr-name')?.value.trim() || '',
-        street1: document.getElementById('addr-street1')?.value.trim() || '',
-        street2: document.getElementById('addr-street2')?.value.trim() || '',
-        city: document.getElementById('addr-city')?.value.trim() || '',
-        state: document.getElementById('addr-state')?.value.trim() || '',
-        zip: document.getElementById('addr-zip')?.value.trim() || '',
-        country: document.getElementById('addr-country')?.value.trim() || 'US',
+        name: getVal('addr-name'),
+        street1: getVal('addr-street1'),
+        street2: getVal('addr-street2'),
+        city: getVal('addr-city'),
+        state: getVal('addr-state'),
+        zip: getVal('addr-zip'),
+        country: getVal('addr-country', 'US'),
     };
 }
 
@@ -396,11 +401,11 @@ function getAddressParams() {
         addr_state: addr.state,
         addr_zip: addr.zip,
         addr_country: addr.country || 'US',
-        addr_phone: document.getElementById('addr-phone')?.value.trim() || '',
+        addr_phone: getVal('addr-phone'),
     };
     if (isGuest) {
-        params.guest_email = document.getElementById('guest-email')?.value.trim() || '';
-        params.guest_name = document.getElementById('guest-name')?.value.trim() || '';
+        params.guest_email = getVal('guest-email');
+        params.guest_name = getVal('guest-name');
     }
     return params;
 }
@@ -416,7 +421,7 @@ function validateCheckoutFields(forPayPal) {
             return 'Please select a shipping option.';
         }
         if (isGuest) {
-            const guestEmail = document.getElementById('guest-email')?.value.trim() || '';
+            const guestEmail = getVal('guest-email');
             if (!guestEmail) return 'Please enter your email address.';
         }
     } else {
@@ -484,7 +489,8 @@ if (cardElement) {
 }
 
 // Toggle new card form
-document.getElementById('use-new-card')?.addEventListener('click', function() {
+var useNewCardBtn = document.getElementById('use-new-card');
+if (useNewCardBtn) useNewCardBtn.addEventListener('click', function() {
     document.getElementById('new-card-form').style.display = 'block';
     document.querySelectorAll('input[name="selected_card"]').forEach(r => r.checked = false);
     document.querySelectorAll('.saved-card').forEach(c => c.classList.remove('selected'));
@@ -501,7 +507,8 @@ document.querySelectorAll('.saved-card').forEach(card => {
 });
 
 // Saved address selector
-document.getElementById('saved-address-select')?.addEventListener('change', function() {
+var savedAddrSelect = document.getElementById('saved-address-select');
+if (savedAddrSelect) savedAddrSelect.addEventListener('change', function() {
     const opt = this.options[this.selectedIndex];
     if (opt.value) {
         document.getElementById('addr-name').value = opt.dataset.name || '';
@@ -614,7 +621,8 @@ async function selectRate(rate) {
 let rateTimer;
 if (useCalculatedShipping) {
     ['addr-street1', 'addr-city', 'addr-state', 'addr-zip', 'addr-country'].forEach(id => {
-        document.getElementById(id)?.addEventListener('change', () => {
+        var rateEl = document.getElementById(id);
+        if (rateEl) rateEl.addEventListener('change', function() {
             clearTimeout(rateTimer);
             rateTimer = setTimeout(fetchShippingRates, 500);
         });
@@ -649,7 +657,8 @@ document.getElementById('pay-button').addEventListener('click', async function()
         if (selectedCard) {
             paymentMethodId = selectedCard.value;
         } else {
-            saveCard = document.getElementById('save-card')?.checked;
+            var saveCardEl = document.getElementById('save-card');
+            saveCard = saveCardEl ? saveCardEl.checked : false;
             const addr = getAddressFields();
             const { paymentMethod, error } = await stripe.createPaymentMethod({
                 type: 'card',
