@@ -26,8 +26,13 @@
   "name": "{{ listing.title|json_ld_escape }}",
   "description": "{{ listing.description|truncatewords:50|json_ld_escape }}",
   "sku": "HAM-{{ listing.pk }}",
-  {% if listing.category %}"category": "{{ listing.category.name|json_ld_escape }}",{% endif %}
-  {% if listing.is_graded %}"additionalProperty": [
+  {% if listing.category %}"category": "{{ listing.category.name|json_ld_escape }}",
+  "brand": {
+    "@type": "Brand",
+    "name": "{{ listing.category.name|json_ld_escape }}"
+  },{% endif %}
+  {% if listing.is_graded %}"mpn": "{{ listing.grading_service|upper }}-{{ listing.grade }}",
+  "additionalProperty": [
     {"@type": "PropertyValue", "name": "Grading Service", "value": "{{ listing.grading_service|upper }}"},
     {"@type": "PropertyValue", "name": "Grade", "value": "{{ listing.grade }}"}
   ],{% endif %}
@@ -37,7 +42,7 @@
     "url": "{{ request.build_absolute_uri }}",
     "priceCurrency": "USD",
     "price": "{% if listing.listing_type == 'auction' %}{{ listing.get_current_price }}{% else %}{{ listing.price }}{% endif %}",
-    "priceValidUntil": "{% if listing.listing_type == 'auction' and listing.end_date %}{{ listing.end_date|date:'Y-m-d' }}{% else %}{{ listing.created|date:'Y' }}-12-31{% endif %}",
+    "priceValidUntil": "{% if listing.listing_type == 'auction' and listing.auction_end %}{{ listing.auction_end|date:'Y-m-d' }}{% else %}{{ listing.created|date:'Y' }}-12-31{% endif %}",
     "availability": "https://schema.org/{% if listing.status == 'active' %}InStock{% else %}SoldOut{% endif %}",
     "itemCondition": "https://schema.org/{% if listing.condition == 'new' %}NewCondition{% else %}UsedCondition{% endif %}"{% if listing.seller %},
     "seller": {
