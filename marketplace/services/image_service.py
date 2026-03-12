@@ -263,7 +263,8 @@ def get_thumbnail_url(image_field):
     """
     Return the URL for the thumbnail version of an image field.
     Constructs the thumbnail path by adding '_thumb' suffix and
-    changing the extension to .webp.
+    changing the extension to .webp. Falls back to the original
+    image URL if the thumbnail doesn't exist yet.
 
     Args:
         image_field: A Django FieldFile (e.g., listing.image1)
@@ -277,7 +278,11 @@ def get_thumbnail_url(image_field):
     thumb_name = _webp_path(image_field.name, '_thumb')
 
     try:
-        return default_storage.url(thumb_name)
+        if default_storage.exists(thumb_name):
+            return default_storage.url(thumb_name)
     except Exception:
-        logger.debug('Could not generate thumbnail URL for %s', image_field.name)
-        return None
+        logger.debug('Could not check thumbnail existence for %s', image_field.name)
+
+    # Thumbnail doesn't exist yet (pre-optimization or task pending)
+    # Fall back to original image
+    return None
