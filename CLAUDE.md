@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 HeroesAndMore — collectibles marketplace built with Django. Listings (fixed price + auctions), collections, price guide, scanner, seller tools, social features.
 
 ## Tech Stack
-- **Backend**: Django 5.x, Python 3.12, PostgreSQL (SQLite local), Redis, Celery
+- **Backend**: Django 5.x, Python 3.12 (server) / 3.13 (local), PostgreSQL (SQLite local), Redis, Celery
 - **Frontend**: Bootstrap 5, HTMX (global in base.html with auto CSRF)
 - **Payments**: Stripe Connect, PayPal | **Shipping**: USPS/EasyPost | **Deploy**: Ansible, Nginx, Supervisor, DigitalOcean
 - **Analytics**: TikTok Events API (server-side), Clicky
@@ -61,6 +61,7 @@ Each app has `tests/` with `test_models.py`, `test_views.py`. API tests in `api/
 - `is_auction_ended()` / `time_remaining` / `time_remaining_parts`
 - `quantity_available` — `quantity - quantity_sold`
 - `record_sale(qty)` / `reverse_sale(qty)` — atomic stock management via `select_for_update()` + `F()`
+- `previous_price` — set automatically when seller lowers price (triggers `send_price_drop_notifications`)
 - `bid_count` is NOT a model property — use `listing.bids.count` or annotate `Count('bids')`
 
 ### Image Optimization
@@ -73,10 +74,11 @@ On listing create/edit, images are processed async via Celery (`process_listing_
 - Already-WebP images are skipped (won't double-process)
 
 ### CDN
-Media served via `cdn.heroesandmore.com` (nginx reverse proxy → DO Spaces with 30-day disk cache).
-- Config: `ansible/files/cdn.heroesandmore.nginx.conf` | Setup: `ansible-playbook -i servers cdn_setup.yml`
+Media served via `cdn.heroesandmore.com` (nginx vhost serving local filesystem with long cache headers).
+- Config: `ansible/files/cdn.heroesandmore.nginx.conf` | Cert: Let's Encrypt auto-renew
 - Django setting: `CDN_DOMAIN` in config.py → `MEDIA_URL = https://cdn.heroesandmore.com/media/`
-- Benefits: cookie-free domain, parallel browser connections, local caching, can move to own box later
+- Works independently of `USE_SPACES` — currently local filesystem, swap to DO Spaces later by changing nginx `alias` to `proxy_pass`
+- Benefits: cookie-free domain, parallel browser connections, immutable cache headers
 
 ### Checkout Urgency (No Stock Reservation)
 Stock is NOT reserved when entering checkout — only at payment confirmation. This allows multiple buyers to checkout simultaneously. Instead, an urgency indicator shows: "X people have this in checkout right now"
@@ -108,7 +110,8 @@ cd /home/john/heroesandmore/ansible
 /home/john/heroesandmore/venv/bin/ansible-playbook -i servers backup.yml     # Backup DB
 ```
 Debug: `cd ansible && ./debug.sh help` (errors, stripe, all, tail, grep, status, restart)
-SSH: `ssh heroesandmore@174.138.33.140` → `/home/www/heroesandmore`
+SSH: `sshpass -p '<password>' ssh -o PubkeyAuthentication=no heroesandmore@174.138.33.140` → `/home/www/heroesandmore`
+Ansible with password auth: `ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i servers gitpull.yml -e "ansible_password=<password>" -e "ansible_ssh_common_args='-o PubkeyAuthentication=no'"`
 
 ### Log Files
 **App logs** (`/home/www/heroesandmore/logs/`): `errors.log`, `stripe.log`, `frontend.log`, `app.log`, `security.log`, `celery_tasks.log`, `api.log`, `db.log`
@@ -116,7 +119,7 @@ SSH: `ssh heroesandmore@174.138.33.140` → `/home/www/heroesandmore`
 **Loggers**: `accounts`, `marketplace`, `pricing`, `alerts`, `scanner`, `api`, `seller_tools`, `frontend`, `shipping`, `affiliates`
 
 ## Config
-See `config.py.example`. Required: `SECRET_KEY`, `DATABASE_PASSWORD`, Stripe keys, `DO_SPACES_KEY/SECRET`. Optional: `EASYPOST_API_KEY`, Stripe price IDs, PayPal keys, `TIKTOK_ACCESS_TOKEN`, `USPS_CLIENT_ID/SECRET/EPS_ACCOUNT_NUMBER`. For deploys: `ansible/group_vars/vault.yml`.
+See `config.py.example`. Required: `SECRET_KEY`, `DATABASE_PASSWORD`, Stripe keys. Optional: `CDN_DOMAIN`, `USE_SPACES`, `DO_SPACES_KEY/SECRET`, `EASYPOST_API_KEY`, Stripe price IDs, PayPal keys, `TIKTOK_ACCESS_TOKEN`, `USPS_CLIENT_ID/SECRET/EPS_ACCOUNT_NUMBER`. For deploys: `ansible/group_vars/vault.yml`.
 
 ## Seller Subscription Tiers
 Starter (Free): 50 listings, 12.95% | Basic ($9.99): 200, 9.95% | Featured ($29.99): 1000, 7.95% | Premium ($99.99): unlimited, 5.95%. Trusted Sellers get 2% discount (floor 3.95%).
@@ -138,11 +141,11 @@ API: `GET .../platform/`, `POST .../platform/<slug>/submit/`, `GET .../submissio
 - **Every 30 min**: `alerts.tasks.send_watched_auction_final_24h`, `check_ending_auctions`
 - **Hourly**: `pricing.tasks.check_price_alerts`, `seller_tools.tasks.retry_failed_payments` (:30)
 - **Every 2 hours**: `shipping.tasks.poll_usps_tracking`
-- **Daily**: `shipping.tasks.cleanup_expired_rates` (1AM), `process_subscription_renewals` (2AM), `cleanup_expired_guest_submissions` (2:30AM), `expire_grace_periods` (3:30AM), `update_trusted_seller_status` (4AM), `approve_pending_commissions` (5AM), `import_all_market_data` (6AM/6PM), `check_wishlist_matches` (8AM), `send_renewal_reminders` (10AM), `send_relist_reminders` (11AM)
-- **Weekly**: `send_weekly_auction_digest` (Fri 10AM), `send_weekly_results_recap` (Mon 10AM)
+- **Daily**: `shipping.tasks.cleanup_expired_rates` (1AM), `process_subscription_renewals` (2AM), `cleanup_expired_guest_submissions` (2:30AM), `expire_grace_periods` (3:30AM), `update_trusted_seller_status` (4AM), `approve_pending_commissions` (5AM), `import_all_market_data` (6AM/6PM), `check_wishlist_matches` (8AM), `send_review_followup_reminders` (9AM), `send_seller_delivery_followup` (9:30AM), `send_renewal_reminders` (10AM), `send_post_purchase_followup` (10:30AM), `send_relist_reminders` (11AM)
+- **Weekly**: `send_new_listings_digest` (Wed 10AM), `send_weekly_auction_digest` (Fri 10AM), `send_weekly_results_recap` (Mon 10AM)
 - **Monthly**: `affiliates.tasks.process_affiliate_payouts` (1st at 5:30AM)
 - **Signal-triggered**: `send_welcome_email` (allauth `user_signed_up` via `accounts/signals.py`)
-- **On-demand**: `pricing.tasks.update_price_guide_stats`, `record_sale_from_order`, `user_collections.tasks.update_collection_values`, `create_daily_snapshots`, `affiliates.tasks.create_affiliate_commission`, `reverse_affiliate_commission`
+- **On-demand**: `pricing.tasks.update_price_guide_stats`, `record_sale_from_order`, `user_collections.tasks.update_collection_values`, `create_daily_snapshots`, `affiliates.tasks.create_affiliate_commission`, `reverse_affiliate_commission`, `alerts.tasks.send_price_drop_notifications` (triggered on listing price decrease)
 
 ## Market Data
 Scrapers in `pricing/services/market_data.py`: `EbayMarketData`, `HeritageAuctionsData`, `GoCollectData`. Uses `_make_proxied_request()` with rotating proxies. eBay handles both `.s-item` and `.s-card` layouts.
@@ -197,7 +200,7 @@ Postfix + OpenDKIM + PostSRSd. Send from `mail.heroesandmore.com`, receive on `h
 **Critical**: `SRS_EXCLUDE_DOMAINS=mail.heroesandmore.com,heroesandmore.com` in `/etc/default/postsrsd`
 
 ## Email Preferences
-Master `email_notifications` + per-category: `email_bidding`, `email_offers`, `email_marketing`, `email_reminders`, `email_listings`. All default True. Settings page: `/settings/`.
+Master `email_notifications` + per-category: `email_bidding`, `email_offers`, `email_marketing`, `email_reminders`, `email_listings`, `email_price_drops`, `email_post_purchase`. All default True. Settings page: `/settings/`.
 
 Use `_should_email(user, category)` from `alerts/tasks.py` for optional emails. Transactional emails (orders, payments, welcome, subscription failures) always send.
 
