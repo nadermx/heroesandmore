@@ -278,11 +278,16 @@ if USE_SPACES:
     AWS_SECRET_ACCESS_KEY = config.DO_SPACES_SECRET
     AWS_STORAGE_BUCKET_NAME = config.DO_SPACES_BUCKET
     AWS_S3_ENDPOINT_URL = config.DO_SPACES_ENDPOINT
-    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=2592000'}  # 30 days
     AWS_DEFAULT_ACL = 'public-read'
     AWS_LOCATION = 'media'
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    MEDIA_URL = f'{config.DO_SPACES_ENDPOINT}/{config.DO_SPACES_BUCKET}/media/'
+    # Use CDN domain for media URLs (nginx reverse proxy to DO Spaces)
+    CDN_DOMAIN = getattr(config, 'CDN_DOMAIN', '')
+    if CDN_DOMAIN:
+        MEDIA_URL = f'https://{CDN_DOMAIN}/media/'
+    else:
+        MEDIA_URL = f'{config.DO_SPACES_ENDPOINT}/{config.DO_SPACES_BUCKET}/media/'
 
 # Email
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

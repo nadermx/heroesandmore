@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize socialaccount %}
+{% load humanize socialaccount image_tags %}
 
 {% block title %}Checkout - HeroesAndMore{% endblock %}
 
@@ -68,6 +68,15 @@
     </div>
 </div>
 
+{% if checkout_count > 0 %}
+<div class="container mt-3">
+    <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background: linear-gradient(135deg, #fff3cd, #ffeeba); border: 1px solid #ffc107; font-size: 0.875rem;">
+        <i class="bi bi-fire" style="color: #dc3545;"></i>
+        <span class="fw-semibold">{{ checkout_count }} other {{ checkout_count|pluralize:"person,people" }} {{ checkout_count|pluralize:"has,have" }} this in checkout — complete your purchase to secure it!</span>
+    </div>
+</div>
+{% endif %}
+
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-lg-10">
@@ -81,7 +90,8 @@
                         <div class="card-body">
                             <div class="d-flex mb-3">
                                 {% if listing.image1 %}
-                                <img src="{{ listing.image1.url }}" class="me-3" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;">
+                                {% thumbnail listing.image1 as checkout_thumb %}
+                                <img src="{{ checkout_thumb|default:listing.image1.url }}" class="me-3" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;">
                                 {% else %}
                                 <div class="me-3 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; background: var(--gray-100); border-radius: 8px;">
                                     <i class="bi bi-image" style="font-size: 1.5rem; color: var(--gray-400);"></i>

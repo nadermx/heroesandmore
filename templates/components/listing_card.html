@@ -1,9 +1,11 @@
+{% load image_tags %}
 <div class="listing-card h-100">
     <!-- Image Container -->
     <div class="card-img-container">
         <a href="{{ listing.get_absolute_url }}">
             {% if listing.image1 %}
-            <img src="{{ listing.image1.url }}" class="card-img-top" alt="{{ listing.title }}" loading="lazy">
+            {% thumbnail listing.image1 as thumb_url %}
+            <img src="{{ thumb_url|default:listing.image1.url }}" class="card-img-top" alt="{{ listing.title }}" loading="lazy" decoding="async">
             {% else %}
             <div class="card-img-top d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, var(--gray-100), rgba(0,180,216,0.06));">
                 <i class="bi bi-image" style="font-size: 3rem; color: var(--brand-cyan); opacity: 0.5;"></i>

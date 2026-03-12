@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load humanize %}
 {% load seo_tags %}
+{% load image_tags %}
 
 {% block title %}{{ listing.title }} - HeroesAndMore{% endblock %}
 {% block meta_description %}{{ listing.title }}{% if listing.is_graded %} — {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %}{% if listing.condition %} ({{ listing.get_condition_display }}){% endif %} — ${{ listing.price }} on HeroesAndMore.{% endblock %}
@@ -392,6 +393,12 @@
                 <div class="product-image-main" id="mainImageContainer">
                     {% if listing.image1 %}
                     <img src="{{ listing.image1.url }}" alt="{{ listing.title }}" id="mainImage">
+                    {% original_image listing.image1 as full_res_url %}
+                    {% if full_res_url != listing.image1.url %}
+                    <a href="{{ full_res_url }}" target="_blank" id="fullResLink" class="position-absolute" style="bottom: 10px; right: 10px; background: rgba(0,0,0,0.6); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; text-decoration: none; z-index: 2;">
+                        <i class="bi bi-arrows-fullscreen"></i> Full Res
+                    </a>
+                    {% endif %}
                     {% else %}
                     <i class="bi bi-image" style="font-size: 5rem; color: var(--gray-300);"></i>
                     {% endif %}
@@ -401,8 +408,10 @@
                 {% if listing.get_images|length > 1 or listing.has_video %}
                 <div class="thumbnail-list">
                     {% for image in listing.get_images %}
-                    <div class="thumbnail-item {% if forloop.first %}active{% endif %}" onclick="switchImage(this, '{{ image.url }}')">
-                        <img src="{{ image.url }}" alt="Thumbnail {{ forloop.counter }}">
+                    {% thumbnail image as thumb_src %}
+                    {% original_image image as orig_src %}
+                    <div class="thumbnail-item {% if forloop.first %}active{% endif %}" onclick="switchImage(this, '{{ image.url }}', '{{ orig_src }}')" data-original="{{ orig_src }}">
+                        <img src="{{ thumb_src|default:image.url }}" alt="Thumbnail {{ forloop.counter }}" loading="lazy">
                     </div>
                     {% endfor %}
                     {% if listing.has_video %}
@@ -691,6 +700,12 @@
                     <input type="number" id="buy-qty" class="form-control" style="max-width: 100px;"
                            value="1" min="1" max="{{ listing.quantity_available }}">
                     <span class="text-muted text-nowrap small">of {{ listing.quantity_available }} available</span>
+                </div>
+                {% endif %}
+                {% if checkout_count > 0 %}
+                <div class="d-flex align-items-center gap-2 mb-2 px-3 py-2 rounded" style="background: linear-gradient(135deg, #fff3cd, #ffeeba); border: 1px solid #ffc107; font-size: 0.875rem;">
+                    <i class="bi bi-fire" style="color: #dc3545;"></i>
+                    <span class="fw-semibold">{{ checkout_count }} {{ checkout_count|pluralize:"person,people" }} {{ checkout_count|pluralize:"has,have" }} this in checkout right now</span>
                 </div>
                 {% endif %}
                 <a href="{% url 'marketplace:checkout' pk=listing.pk %}" id="buy-now-btn" class="btn btn-dark action-button">
@@ -1142,10 +1157,18 @@ document.addEventListener('htmx:afterRequest', function(e) {
 });
 </script>
 <script>
-function switchImage(thumb, imageUrl) {
+function switchImage(thumb, imageUrl, originalUrl) {
     document.getElementById('mainImage').src = imageUrl;
     document.querySelectorAll('.thumbnail-item').forEach(t => t.classList.remove('active'));
     thumb.classList.add('active');
+    // Update full-res link if it exists
+    var fullResLink = document.getElementById('fullResLink');
+    if (fullResLink && originalUrl && originalUrl !== imageUrl) {
+        fullResLink.href = originalUrl;
+        fullResLink.style.display = '';
+    } else if (fullResLink) {
+        fullResLink.style.display = 'none';
+    }
 }
 
 // Multi-quantity Buy Now

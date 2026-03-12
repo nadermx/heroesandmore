@@ -93,10 +93,18 @@ def handle_payment_intent_succeeded(event):
 
     try:
         order = Order.objects.get(id=order_id)
+
+        # Reserve stock at payment time (not at checkout entry)
+        if order.listing and not order.stock_reserved:
+            if order.listing.record_sale(order.quantity):
+                order.stock_reserved = True
+            else:
+                logger.error(f"Order {order_id}: stock unavailable at payment time")
+
         order.stripe_payment_status = 'succeeded'
         order.status = 'paid'
         order.paid_at = timezone.now()
-        order.save(update_fields=['stripe_payment_status', 'status', 'paid_at', 'updated'])
+        order.save(update_fields=['stripe_payment_status', 'status', 'paid_at', 'stock_reserved', 'updated'])
 
         logger.info(f"Order {order_id} marked as paid")
 
@@ -394,9 +402,14 @@ def _handle_paypal_capture_completed(resource):
     try:
         order = Order.objects.get(paypal_capture_id=capture_id)
         if order.status != 'paid':
+            # Reserve stock at payment time (not at checkout entry)
+            if order.listing and not order.stock_reserved:
+                if order.listing.record_sale(order.quantity):
+                    order.stock_reserved = True
+
             order.status = 'paid'
             order.paid_at = timezone.now()
-            order.save(update_fields=['status', 'paid_at', 'updated'])
+            order.save(update_fields=['status', 'paid_at', 'stock_reserved', 'updated'])
             logger.info(f"PayPal capture confirmed for order {order.id}")
 
             try:

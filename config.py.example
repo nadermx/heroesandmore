@@ -39,6 +39,9 @@ DO_SPACES_BUCKET = 'heroesandmore'
 DO_SPACES_REGION = 'nyc3'
 DO_SPACES_ENDPOINT = 'https://nyc3.digitaloceanspaces.com'
 
+# CDN domain (optional - nginx reverse proxy for media, separate domain for parallel loading)
+# CDN_DOMAIN = 'cdn.heroesandmore.com'
+
 # Email Configuration
 # For local dev, you can use console backend in settings.py
 # For production with self-hosted SMTP:

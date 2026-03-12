@@ -1,0 +1,58 @@
+---
+# CDN Setup Playbook
+# Sets up cdn.heroesandmore.com as a caching reverse proxy to DO Spaces
+# Usage: /home/john/heroesandmore/venv/bin/ansible-playbook -i servers cdn_setup.yml
+
+- hosts: web
+  become: yes
+  vars:
+    cdn_domain: "cdn.heroesandmore.com"
+
+  tasks:
+    - name: Create nginx cache directory
+      file:
+        path: /var/cache/nginx/cdn
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Copy CDN nginx config
+      copy:
+        src: files/cdn.heroesandmore.nginx.conf
+        dest: /etc/nginx/sites-available/cdn.heroesandmore
+      notify: reload nginx
+
+    - name: Enable CDN nginx site
+      file:
+        src: /etc/nginx/sites-available/cdn.heroesandmore
+        dest: /etc/nginx/sites-enabled/cdn.heroesandmore
+        state: link
+      notify: reload nginx
+
+    - name: Check if SSL cert exists for CDN
+      stat:
+        path: "/etc/letsencrypt/live/{{ cdn_domain }}/fullchain.pem"
+      register: cdn_ssl_cert
+
+    - name: Get SSL certificate for CDN domain (if not exists)
+      shell: >
+        certbot certonly --nginx
+        -d {{ cdn_domain }}
+        --non-interactive --agree-tos
+        --email john@nader.mx
+      when: not cdn_ssl_cert.stat.exists
+
+    - name: Test nginx config
+      shell: nginx -t
+      register: nginx_test
+
+    - name: Show nginx test result
+      debug:
+        var: nginx_test.stderr
+
+  handlers:
+    - name: reload nginx
+      service:
+        name: nginx
+        state: reloaded

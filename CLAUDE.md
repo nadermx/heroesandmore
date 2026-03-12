@@ -8,7 +8,8 @@ HeroesAndMore — collectibles marketplace built with Django. Listings (fixed pr
 ## Tech Stack
 - **Backend**: Django 5.x, Python 3.12, PostgreSQL (SQLite local), Redis, Celery
 - **Frontend**: Bootstrap 5, HTMX (global in base.html with auto CSRF)
-- **Payments**: Stripe Connect | **Shipping**: EasyPost | **Deploy**: Ansible, Nginx, Supervisor, DigitalOcean
+- **Payments**: Stripe Connect, PayPal | **Shipping**: USPS/EasyPost | **Deploy**: Ansible, Nginx, Supervisor, DigitalOcean
+- **Analytics**: TikTok Events API (server-side), Clicky
 
 ## Project Structure
 ```
@@ -48,7 +49,9 @@ Each app has `tests/` with `test_models.py`, `test_views.py`. API tests in `api/
 
 **Shipping:** `shipping.Address` (EasyPost verified) | `shipping.ShippingProfile` (pre-seeded packages) | `shipping.ShippingLabel` (tracking, void) | `shipping.ShippingRate` (30-min cache)
 
-**Other:** `user_collections.Collection` (value tracking) | `pricing.PriceGuideItem` / `GradePrice` / `SaleRecord` | `seller_tools.SellerSubscription` / `BulkImport` / `BulkImportRow` / `InventoryItem` | `alerts.Wishlist` / `SavedSearch` / `PriceAlert` | `social.Follow` / `ForumThread`
+**Payments:** `marketplace.Review` (seller ratings) | `marketplace.PaymentMethod` | `marketplace.StripeEvent` (webhook dedup) | `marketplace.Refund`
+
+**Other:** `user_collections.Collection` (value tracking) | `pricing.PriceGuideItem` / `GradePrice` / `SaleRecord` | `seller_tools.SellerSubscription` / `BulkImport` / `BulkImportRow` / `InventoryItem` | `alerts.Wishlist` / `SavedSearch` / `PriceAlert` / `NewsletterSubscriber` | `social.Follow` / `ForumThread` / `ForumCategory` / `ForumPost` / `Comment` / `Activity` | `accounts.RecentlyViewed` (last 50 viewed, auto-cleanup via `record_view()`)
 
 ### Important Listing Methods
 - `get_current_price()` — auction: highest bid or starting price; fixed: `self.price`
@@ -60,6 +63,29 @@ Each app has `tests/` with `test_models.py`, `test_views.py`. API tests in `api/
 - `record_sale(qty)` / `reverse_sale(qty)` — atomic stock management via `select_for_update()` + `F()`
 - `bid_count` is NOT a model property — use `listing.bids.count` or annotate `Count('bids')`
 
+### Image Optimization
+On listing create/edit, images are processed async via Celery (`process_listing_images_task`):
+- **Display version**: Max 1200px, WebP quality=82 (replaces field value)
+- **Thumbnail**: 400px wide, WebP quality=75 (saved with `_thumb` suffix)
+- **Full-res original**: Preserved with `_original` suffix (for zoom viewing)
+- Service: `marketplace/services/image_service.py` | Template tags: `{% load image_tags %}` → `{% thumbnail image %}`, `{% original_image image %}`
+- Backfill existing: `python manage.py optimize_images` (supports `--batch=N`, `--listing=ID`)
+- Already-WebP images are skipped (won't double-process)
+
+### CDN
+Media served via `cdn.heroesandmore.com` (nginx reverse proxy → DO Spaces with 30-day disk cache).
+- Config: `ansible/files/cdn.heroesandmore.nginx.conf` | Setup: `ansible-playbook -i servers cdn_setup.yml`
+- Django setting: `CDN_DOMAIN` in config.py → `MEDIA_URL = https://cdn.heroesandmore.com/media/`
+- Benefits: cookie-free domain, parallel browser connections, local caching, can move to own box later
+
+### Checkout Urgency (No Stock Reservation)
+Stock is NOT reserved when entering checkout — only at payment confirmation. This allows multiple buyers to checkout simultaneously. Instead, an urgency indicator shows: "X people have this in checkout right now"
+- `Order.stock_reserved` (BooleanField) tracks whether `record_sale()` was called
+- `Listing.active_checkout_count` property counts pending orders
+- `record_sale()` called at: `process_payment`, PayPal capture, Stripe/PayPal webhooks, `checkout_complete` fallback
+- Offer acceptance still reserves stock immediately (seller commitment)
+- `expire_unpaid_orders` only calls `reverse_sale()` if `stock_reserved=True`
+
 ### Video Upload
 Tier-gated: Starter 1/250MB, Basic 1/500MB, Featured 2/1GB, Premium 3/2GB. Formats: MP4, WebM, MOV. YouTube/Vimeo URLs always allowed. Nginx `client_max_body_size=2G`, 600s timeouts.
 
@@ -67,7 +93,7 @@ Tier-gated: Starter 1/250MB, Basic 1/500MB, Featured 2/1GB, Premium 3/2GB. Forma
 `use_extended_bidding` (default True) + `extended_bidding_minutes` (default 15). Bids in last N minutes extend deadline. `times_extended` tracks count. Logic in `marketplace/api/views.py`.
 
 ## Homepage (`items/views.py` → `home()`)
-Sections: Hero → Stats → Ending Soon (8) → Featured Lots → Bid Wars (conditional) → Categories → Curated (conditional) → Official Auctions (conditional) → CTA
+Sections: Hero → Stats → Official Auctions (conditional) → Ending Soon (8) → Featured Lots → Bid Wars (conditional) → Categories → Curated (conditional) → CTA
 
 **Listing card annotations required** (`components/listing_card.html`): `save_count=Count('saves')`, `bid_count_total=Count('bids')`, `recent_bids=Count('bids', filter=Q(...))`. HOT LOT: `recent_bids >= 5` or `save_count >= 10`. Known inconsistency: card uses `listing.bid_count` not `bid_count_total`.
 
@@ -90,7 +116,7 @@ SSH: `ssh heroesandmore@174.138.33.140` → `/home/www/heroesandmore`
 **Loggers**: `accounts`, `marketplace`, `pricing`, `alerts`, `scanner`, `api`, `seller_tools`, `frontend`, `shipping`, `affiliates`
 
 ## Config
-See `config.py.example`. Required: `SECRET_KEY`, `DATABASE_PASSWORD`, Stripe keys, `DO_SPACES_KEY/SECRET`. Optional: `EASYPOST_API_KEY`, Stripe price IDs, PayPal keys. For deploys: `ansible/group_vars/vault.yml`.
+See `config.py.example`. Required: `SECRET_KEY`, `DATABASE_PASSWORD`, Stripe keys, `DO_SPACES_KEY/SECRET`. Optional: `EASYPOST_API_KEY`, Stripe price IDs, PayPal keys, `TIKTOK_ACCESS_TOKEN`, `USPS_CLIENT_ID/SECRET/EPS_ACCOUNT_NUMBER`. For deploys: `ansible/group_vars/vault.yml`.
 
 ## Seller Subscription Tiers
 Starter (Free): 50 listings, 12.95% | Basic ($9.99): 200, 9.95% | Featured ($29.99): 1000, 7.95% | Premium ($99.99): unlimited, 5.95%. Trusted Sellers get 2% discount (floor 3.95%).
@@ -139,7 +165,7 @@ API files: `api/` (central routing, permissions, pagination) + `{app}/api/` (ser
 **Subscriptions**: Internal billing via PaymentIntents (not Stripe Billing) — `Profile.stripe_customer_id` unified
 
 Webhooks: `/marketplace/webhooks/stripe/` (payment_intent, charge) | `/marketplace/webhooks/stripe-connect/` (account.updated)
-Services: `stripe_service.py`, `connect_service.py`, `subscription_service.py`
+Services: `stripe_service.py`, `connect_service.py`, `subscription_service.py`, `tiktok_events.py` (server-side event tracking)
 Seller onboarding: embedded Connect at `/marketplace/seller-setup/` — international supported
 Local: `stripe listen --forward-to localhost:8000/marketplace/webhooks/stripe/`
 
@@ -161,7 +187,7 @@ Payout settings: `/seller/payout-settings/` — sellers can set PayPal email and
 
 ## Shipping (USPS / EasyPost)
 Provider: `SHIPPING_PROVIDER` setting (`usps` default, or `easypost`). Modes: `flat` (default), `calculated` (real-time rates), `free`.
-Services: `marketplace/services/easypost_service.py`, USPS REST API v3 (`USPS_CLIENT_ID`, `USPS_CLIENT_SECRET`, `USPS_EPS_ACCOUNT_NUMBER`)
+Services: `marketplace/services/easypost_service.py`, `marketplace/services/usps_service.py` (REST API v3), `marketplace/services/shipping_factory.py` (provider selection). USPS config: `USPS_CLIENT_ID`, `USPS_CLIENT_SECRET`, `USPS_EPS_ACCOUNT_NUMBER`
 Profiles: `standard-card` (2oz), `graded-slab` (8oz), `multiple-cards` (16oz), `figure-toy` (32oz), `custom`
 Fee: $0.29 (Stripe) + $0.05 (label) + commission%. Webhook: `/shipping/webhooks/easypost/` (HMAC verified)
 Checkout: address validated → rates fetched → rate selected → payment. Seller: "Buy Label" on order detail.
@@ -207,7 +233,7 @@ John (john@nader.mx, owner) | Tony (tmgormond@gmail.com) | Jim (jim@sickboys.com
 ## Shared Utilities
 - `items.views._get_site_stats()` → `stat_active_listings`, `stat_collectors`, `stat_sold_total`, `stat_avg_rating`
 - Template tags: `seo_tags` (absolute_url, json_ld_escape), `seller_tools_tags` (get_item filter)
-- Context processor: `app/context_processors.seo()` → `site_url`, `default_og_image`
+- Context processors: `app/context_processors.seo()` → `site_url`, `default_og_image`; `auction_banner()` → `banner_auction_event` for trusted sellers
 - Frontend errors: POST `/api/log-error/` → `frontend` logger
 - Landing pages in `app/views.py`: `sell_landing`, `bid_landing`, `trusted_seller_landing`, `contact`
 - Dashboard: `/dashboard/` (user) | `/seller/` (seller tools)
@@ -220,10 +246,12 @@ John (john@nader.mx, owner) | Tony (tmgormond@gmail.com) | Jim (jim@sickboys.com
 ## Gotchas
 - allauth v65: OAuth creds in DB only (SocialApp), not settings — `MultipleObjectsReturned`
 - `bid_count` NOT a model property — use `listing.bids.count` or `Count('bids')`
+- `Order.buyer` is nullable (guest checkout) — always guard with `{% if order.buyer %}` in templates before accessing `order.buyer.username`
 - **Never** `listing.status = 'sold'` — use `record_sale()` / `reverse_sale()`
 - Commission is per `SellerSubscription.commission_rate`, not `PLATFORM_FEE_PERCENT`
 - `{% with %}` cannot contain `{% else %}` — only `{% if %}` can
 - `-webkit-appearance: none` on `.form-control` breaks iOS keyboard
+- No optional chaining (`?.`) in inline JS — old browsers from ad traffic don't support ES2020; use `var el = document.getElementById(id); if (el) ...` pattern instead
 - Error pages (404/403/500) are standalone HTML, don't extend base.html
 - Server `config.py` owned by `www:www` — use `sudo -u www`
 - Celery Beat: file-based scheduler only (django_celery_beat not in INSTALLED_APPS)

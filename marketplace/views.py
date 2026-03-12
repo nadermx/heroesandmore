@@ -176,6 +176,9 @@ def listing_detail(request, pk):
             user=request.user, listing=listing, is_active=True
         ).first()
 
+    # Count people currently in checkout for this listing (urgency indicator)
+    checkout_count = listing.active_checkout_count
+
     context = {
         'listing': listing,
         'is_saved': is_saved,
@@ -191,6 +194,7 @@ def listing_detail(request, pk):
         'comps_range': comps_range,
         'auction_end_iso': auction_end_iso,
         'user_autobid': user_autobid,
+        'checkout_count': checkout_count,
     }
     return render(request, 'marketplace/listing_detail.html', context)
 
@@ -258,6 +262,14 @@ def listing_create(request):
             request.session.pop('listing_prefill', None)
             request.session.pop('scan_image', None)
 
+            # Optimize images async (resize, WebP, thumbnails)
+            if any(listing.get_images()):
+                try:
+                    from marketplace.tasks import process_listing_images_task
+                    process_listing_images_task.delay(listing.pk)
+                except Exception:
+                    pass
+
             # TikTok server-side SubmitForm event
             try:
                 from marketplace.services.tiktok_events import send_event
@@ -310,9 +322,24 @@ def listing_edit(request, pk):
     if request.method == 'POST':
         form = ListingForm(request.POST, request.FILES, instance=listing, user=request.user)
         if form.is_valid():
+            # Check if images changed
+            images_changed = any(
+                field in form.changed_data
+                for field in ['image1', 'image2', 'image3', 'image4', 'image5']
+            )
+
             listing = form.save(commit=False)
             listing.auction_end = form.cleaned_data.get('auction_end')
             listing.save()
+
+            # Optimize new images async
+            if images_changed and any(listing.get_images()):
+                try:
+                    from marketplace.tasks import process_listing_images_task
+                    process_listing_images_task.delay(listing.pk)
+                except Exception:
+                    pass
+
             messages.success(request, 'Listing updated.')
             return redirect('marketplace:listing_detail', pk=pk)
     else:
@@ -484,6 +511,7 @@ def respond_offer(request, pk):
                 platform_fee=platform_fee,
                 seller_payout=offer.amount - platform_fee,
                 shipping_address='',  # Will be collected at checkout
+                stock_reserved=True,
             )
             listing.record_sale(1)
 
@@ -560,6 +588,7 @@ def respond_counter_offer(request, pk):
                 platform_fee=platform_fee,
                 seller_payout=offer.counter_amount - platform_fee,
                 shipping_address='',
+                stock_reserved=True,
             )
             listing.record_sale(1)
 
@@ -631,26 +660,17 @@ def checkout(request, pk):
     # Calculate fees based on seller tier
     from marketplace.services.stripe_service import StripeService
     if not order:
-        # For single-quantity listings, block concurrent checkouts
-        if listing.quantity <= 1:
-            exclude_q = Q()
-            if not is_guest:
-                exclude_q = Q(buyer=request.user)
-            elif request.session.get('guest_order_token'):
-                exclude_q = Q(guest_order_token=request.session['guest_order_token'])
-            if Order.objects.filter(
-                listing=listing,
-                status__in=['pending', 'payment_failed']
-            ).exclude(exclude_q).exists():
-                messages.error(request, 'This listing is currently in another checkout. Please try again shortly.')
-                return redirect('marketplace:listing_detail', pk=pk)
-
         # Read requested quantity
         try:
             qty = int(request.GET.get('qty', 1))
         except (ValueError, TypeError):
             qty = 1
         qty = max(1, min(qty, listing.quantity_available))
+
+        # Check stock availability (without reserving — reservation happens at payment)
+        if qty > listing.quantity_available:
+            messages.error(request, 'Sorry, this item is no longer available in the requested quantity.')
+            return redirect('marketplace:listing_detail', pk=pk)
 
         unit_price = listing.get_current_price()
         item_price = unit_price * qty
@@ -690,11 +710,6 @@ def checkout(request, pk):
                     shipping_address='',
                     shipping_mode=listing.shipping_mode,
                 )
-                # Reserve stock immediately so listing shows correct availability
-                if not listing.record_sale(qty):
-                    order.delete()
-                    messages.error(request, 'Sorry, this item is no longer available in the requested quantity.')
-                    return redirect('marketplace:listing_detail', pk=pk)
                 # Store token in session
                 request.session['guest_order_token'] = order.guest_order_token
         else:
@@ -715,12 +730,6 @@ def checkout(request, pk):
                     'shipping_mode': listing.shipping_mode,
                 }
             )
-            if created:
-                # Reserve stock immediately so listing shows correct availability
-                if not listing.record_sale(qty):
-                    order.delete()
-                    messages.error(request, 'Sorry, this item is no longer available in the requested quantity.')
-                    return redirect('marketplace:listing_detail', pk=pk)
     else:
         platform_fee = order.platform_fee
         total = order.amount
@@ -739,6 +748,11 @@ def checkout(request, pk):
     # Get shipping profiles for display
     use_calculated_shipping = listing.shipping_mode == 'calculated'
 
+    # Count other people in checkout (exclude current user's order)
+    checkout_count = listing.orders.filter(
+        status__in=['pending', 'payment_failed']
+    ).exclude(pk=order.pk).count()
+
     context = {
         'listing': listing,
         'order': order,
@@ -750,6 +764,7 @@ def checkout(request, pk):
         'paypal_client_id': settings.PAYPAL_CLIENT_ID,
         'is_guest': is_guest,
         'use_calculated_shipping': use_calculated_shipping,
+        'checkout_count': checkout_count,
     }
     return render(request, 'marketplace/checkout.html', context)
 
@@ -774,6 +789,10 @@ def payment(request, pk):
     if order.stripe_payment_intent:
         intent = StripeService.retrieve_payment_intent(order.stripe_payment_intent)
         if intent.status == 'succeeded':
+            # Reserve stock at payment time
+            if order.listing and not order.stock_reserved:
+                if order.listing.record_sale(order.quantity):
+                    order.stock_reserved = True
             order.status = 'paid'
             order.stripe_payment_status = 'succeeded'
             order.paid_at = timezone.now()
@@ -807,6 +826,10 @@ def checkout_complete(request, pk):
             from marketplace.services.stripe_service import StripeService
             intent = StripeService.retrieve_payment_intent(order.stripe_payment_intent)
             if intent.status == 'succeeded':
+                # Reserve stock at payment time
+                if order.listing and not order.stock_reserved:
+                    if order.listing.record_sale(order.quantity):
+                        order.stock_reserved = True
                 order.status = 'paid'
                 order.stripe_payment_status = 'succeeded'
                 order.paid_at = timezone.now()
@@ -816,6 +839,10 @@ def checkout_complete(request, pk):
             try:
                 pp_order = PayPalService.get_order_details(order.paypal_order_id)
                 if pp_order.get('status') == 'COMPLETED':
+                    # Reserve stock at payment time
+                    if order.listing and not order.stock_reserved:
+                        if order.listing.record_sale(order.quantity):
+                            order.stock_reserved = True
                     order.status = 'paid'
                     order.paid_at = timezone.now()
                     order.save()
@@ -924,6 +951,14 @@ def process_payment(request, pk):
         )
 
         if intent.status == 'succeeded':
+            # Reserve stock at payment time (not at checkout entry)
+            if order.listing and not order.stock_reserved:
+                if not order.listing.record_sale(order.quantity):
+                    return JsonResponse({
+                        'error': 'Sorry, this item just sold out. You will not be charged.'
+                    }, status=400)
+                order.stock_reserved = True
+
             order.status = 'paid'
             order.stripe_payment_status = 'succeeded'
             order.paid_at = timezone.now()
@@ -1107,6 +1142,14 @@ def paypal_capture_order(request, pk):
                     order.guest_email = payer_info['email']
                 if not order.guest_name and payer_info.get('full_name'):
                     order.guest_name = payer_info['full_name']
+
+            # Reserve stock at payment time (not at checkout entry)
+            if order.listing and not order.stock_reserved:
+                if not order.listing.record_sale(order.quantity):
+                    return JsonResponse({
+                        'error': 'Sorry, this item just sold out.'
+                    }, status=400)
+                order.stock_reserved = True
 
             order.paypal_capture_id = capture_id
             order.status = 'paid'
@@ -1450,9 +1493,11 @@ def order_cancel(request, pk):
             order.status = 'cancelled'
             order.save()
 
-            # Restore listing stock
-            if order.listing:
+            # Restore listing stock only if it was reserved
+            if order.listing and order.stock_reserved:
                 order.listing.reverse_sale(order.quantity)
+                order.stock_reserved = False
+                order.save(update_fields=['stock_reserved'])
 
             # Send notification to other party
             try:

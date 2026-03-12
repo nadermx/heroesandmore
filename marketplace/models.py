@@ -363,6 +363,11 @@ class Listing(models.Model):
             Listing.objects.filter(pk=self.pk).update(**updates)
             self.refresh_from_db()
 
+    @property
+    def active_checkout_count(self):
+        """Number of pending orders (people currently in checkout) for this listing."""
+        return self.orders.filter(status__in=['pending', 'payment_failed']).count()
+
 
 class Bid(models.Model):
     listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='bids')
@@ -519,6 +524,9 @@ class Order(models.Model):
     label_cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     tracking_number = models.CharField(max_length=100, blank=True)
     tracking_carrier = models.CharField(max_length=50, blank=True)
+
+    # Stock reservation (reserved at payment, not checkout entry)
+    stock_reserved = models.BooleanField(default=False)
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
 

@@ -279,7 +279,8 @@ class OfferViewSet(viewsets.ReadOnlyModelViewSet):
             platform_fee=platform_fee,
             seller_payout=offer.amount - platform_fee,
             shipping_address='',  # To be filled during checkout
-            status='pending'
+            status='pending',
+            stock_reserved=True,
         )
 
         listing.record_sale(1)
@@ -361,7 +362,8 @@ class OfferViewSet(viewsets.ReadOnlyModelViewSet):
             platform_fee=platform_fee,
             seller_payout=offer.counter_amount - platform_fee,
             shipping_address='',
-            status='pending'
+            status='pending',
+            stock_reserved=True,
         )
 
         listing.record_sale(1)
@@ -705,28 +707,23 @@ class CheckoutView(views.APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
         else:
-            # For single-quantity listings, block concurrent checkouts
-            if listing.quantity <= 1:
-                if Order.objects.filter(
-                    listing=listing,
-                    status__in=['pending', 'payment_failed']
-                ).exclude(buyer=request.user).exists():
-                    return Response(
-                        {'error': 'Listing is currently in another checkout'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
             # Calculate fees
             from marketplace.services.stripe_service import StripeService
             qty = serializer.validated_data.get('quantity', 1)
             qty = max(1, min(qty, listing.quantity_available))
+
+            if qty > listing.quantity_available:
+                return Response(
+                    {'error': 'This item is no longer available in the requested quantity.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             unit_price = listing.get_current_price()
             item_price = unit_price * qty
             platform_fee = StripeService.calculate_platform_fee(item_price, listing.seller)
             total = item_price + listing.shipping_price
 
-            # Create pending order
+            # Create pending order (no stock reservation — that happens at payment)
             order, _ = Order.objects.get_or_create(
                 listing=listing,
                 buyer=request.user,
@@ -784,17 +781,6 @@ class PaymentIntentView(views.APIView):
                         status=status.HTTP_400_BAD_REQUEST
                     )
             else:
-                # For single-quantity listings, block concurrent checkouts
-                if listing.quantity <= 1:
-                    if Order.objects.filter(
-                        listing=listing,
-                        status__in=['pending', 'payment_failed']
-                    ).exclude(buyer=request.user).exists():
-                        return Response(
-                            {'error': 'Listing is currently in another checkout'},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-
                 from marketplace.services.stripe_service import StripeService
                 qty = serializer.validated_data.get('quantity', 1)
                 qty = max(1, min(qty, listing.quantity_available))
@@ -819,8 +805,8 @@ class PaymentIntentView(views.APIView):
                     }
                 )
                 if created:
-                    # Reserve stock immediately so listing shows correct availability
-                    if not listing.record_sale(qty):
+                    # Check stock availability (reservation happens at payment)
+                    if qty > listing.quantity_available:
                         order.delete()
                         return Response(
                             {'error': 'This item is no longer available in the requested quantity.'},
@@ -892,10 +878,18 @@ class PaymentConfirmView(views.APIView):
             intent = StripeService.retrieve_payment_intent(payment_intent_id)
 
             if intent.status == 'succeeded':
+                # Reserve stock at payment time
+                if order.listing and not order.stock_reserved:
+                    if not order.listing.record_sale(order.quantity):
+                        return Response(
+                            {'error': 'Sorry, this item just sold out.'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    order.stock_reserved = True
                 order.status = 'paid'
                 order.stripe_payment_status = 'succeeded'
                 order.paid_at = timezone.now()
-                order.save(update_fields=['status', 'stripe_payment_status', 'paid_at', 'updated'])
+                order.save(update_fields=['status', 'stripe_payment_status', 'paid_at', 'stock_reserved', 'updated'])
                 return Response(OrderSerializer(order).data)
             else:
                 return Response(

@@ -27,6 +27,7 @@ class ListingListSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     category_slug = serializers.CharField(source='category.slug', read_only=True)
     primary_image = serializers.SerializerMethodField()
+    primary_image_thumbnail = serializers.SerializerMethodField()
     current_price = serializers.SerializerMethodField()
     time_remaining = serializers.SerializerMethodField()
     bid_count = serializers.SerializerMethodField()
@@ -35,6 +36,7 @@ class ListingListSerializer(serializers.ModelSerializer):
     save_count = serializers.SerializerMethodField()
     recent_bids = serializers.SerializerMethodField()
     has_video = serializers.SerializerMethodField()
+    checkout_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Listing
@@ -42,10 +44,10 @@ class ListingListSerializer(serializers.ModelSerializer):
             'id', 'title', 'collector_notes', 'price', 'current_price', 'listing_type',
             'condition', 'grading_service', 'grade', 'seller_username',
             'seller_is_trusted', 'seller_is_founding',
-            'category_name', 'category_slug', 'primary_image',
+            'category_name', 'category_slug', 'primary_image', 'primary_image_thumbnail',
             'auction_end', 'time_remaining', 'bid_count',
             'shipping_mode', 'shipping_price', 'views', 'created', 'quantity_available',
-            'is_platform_listing', 'save_count', 'recent_bids', 'has_video'
+            'is_platform_listing', 'save_count', 'recent_bids', 'has_video', 'checkout_count'
         ]
 
     def get_quantity_available(self, obj):
@@ -58,6 +60,21 @@ class ListingListSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.image1.url)
             return obj.image1.url
         return None
+
+    def get_primary_image_thumbnail(self, obj):
+        from marketplace.services.image_service import get_thumbnail_url
+        url = get_thumbnail_url(obj.image1)
+        if url:
+            request = self.context.get('request')
+            if request and not url.startswith('http'):
+                return request.build_absolute_uri(url)
+            return url
+        return self.get_primary_image(obj)
+
+    def get_checkout_count(self, obj):
+        if obj.listing_type == 'fixed' and obj.status == 'active':
+            return obj.active_checkout_count
+        return 0
 
     def get_current_price(self, obj):
         return str(obj.get_current_price())
@@ -139,11 +156,23 @@ class ListingDetailSerializer(serializers.ModelSerializer):
         ).data
 
     def get_images(self, obj):
+        from marketplace.services.image_service import get_thumbnail_url, get_original_url
         images = []
         for i, img in enumerate(obj.get_images(), 1):
             request = self.context.get('request')
             url = request.build_absolute_uri(img.url) if request else img.url
-            images.append({'url': url, 'order': i})
+            thumb = get_thumbnail_url(img)
+            original = get_original_url(img)
+            if thumb and request and not thumb.startswith('http'):
+                thumb = request.build_absolute_uri(thumb)
+            if original and request and not original.startswith('http'):
+                original = request.build_absolute_uri(original)
+            images.append({
+                'url': url,
+                'thumbnail': thumb or url,
+                'original': original or url,
+                'order': i,
+            })
         return images
 
     def get_videos(self, obj):

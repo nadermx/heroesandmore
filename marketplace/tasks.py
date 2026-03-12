@@ -172,8 +172,11 @@ def expire_unpaid_orders():
             order.status = 'cancelled'
             order.save(update_fields=['status', 'updated'])
 
-            if order.listing:
+            # Only reverse sale if stock was actually reserved (paid orders that somehow ended up here)
+            if order.listing and order.stock_reserved:
                 order.listing.reverse_sale(order.quantity)
+                order.stock_reserved = False
+                order.save(update_fields=['stock_reserved'])
 
             expired_count += 1
         except Exception as e:
@@ -250,3 +253,18 @@ def send_paypal_payout(order_id):
 
     except Exception as e:
         logger.error("Failed to send PayPal payout for order %s: %s", order_id, e)
+
+
+@shared_task
+def process_listing_images_task(listing_id):
+    """Optimize and create thumbnails for listing images (runs async via Celery)."""
+    from marketplace.services.image_service import process_listing_images
+
+    try:
+        listing = Listing.objects.get(pk=listing_id)
+    except Listing.DoesNotExist:
+        logger.error("Listing %s not found for image processing", listing_id)
+        return
+
+    process_listing_images(listing)
+    logger.info("Processed images for listing %s", listing_id)

@@ -39,6 +39,9 @@ DO_SPACES_BUCKET = '{{ app_name }}'
 DO_SPACES_REGION = 'nyc3'
 DO_SPACES_ENDPOINT = 'https://nyc3.digitaloceanspaces.com'
 
+# CDN domain (nginx reverse proxy to DO Spaces)
+CDN_DOMAIN = 'cdn.{{ domain }}'
+
 # Email Configuration (Self-hosted SMTP via Postfix)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'localhost'
