@@ -126,4 +126,24 @@ app.conf.beat_schedule = {
         'task': 'affiliates.tasks.process_affiliate_payouts',
         'schedule': crontab(hour=5, minute=30, day_of_month=1),
     },
+    # Review follow-up reminders (3 days after delivery, daily at 9 AM)
+    'review-followup-reminders': {
+        'task': 'alerts.tasks.send_review_followup_reminders',
+        'schedule': crontab(hour=9, minute=0),
+    },
+    # Seller delivery follow-up (1 day after delivery, daily at 9:30 AM)
+    'seller-delivery-followup': {
+        'task': 'alerts.tasks.send_seller_delivery_followup',
+        'schedule': crontab(hour=9, minute=30),
+    },
+    # New listings digest (Wednesday 10 AM)
+    'new-listings-digest': {
+        'task': 'alerts.tasks.send_new_listings_digest',
+        'schedule': crontab(hour=10, minute=0, day_of_week=3),
+    },
+    # Post-purchase follow-up (daily at 10:30 AM)
+    'post-purchase-followup': {
+        'task': 'alerts.tasks.send_post_purchase_followup',
+        'schedule': crontab(hour=10, minute=30),
+    },
 }

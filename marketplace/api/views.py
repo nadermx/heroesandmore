@@ -63,6 +63,20 @@ class ListingViewSet(viewsets.ModelViewSet):
             return ListingCreateSerializer
         return ListingDetailSerializer
 
+    def perform_update(self, serializer):
+        listing = self.get_object()
+        old_price = listing.price
+        instance = serializer.save()
+        # Track price drops and notify watchers
+        if instance.price < old_price and instance.status == 'active':
+            instance.previous_price = old_price
+            instance.save(update_fields=['previous_price'])
+            try:
+                from alerts.tasks import send_price_drop_notifications
+                send_price_drop_notifications.delay(instance.pk, str(old_price))
+            except Exception:
+                pass
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         # Record view

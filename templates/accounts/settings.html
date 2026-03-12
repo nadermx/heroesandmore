@@ -149,12 +149,28 @@
                                 <small class="text-muted d-block ms-4">Relist reminders, subscription renewal reminders</small>
                             </div>
 
-                            <div class="form-check mb-3">
+                            <div class="form-check mb-2">
                                 {{ profile_form.email_listings }}
                                 <label class="form-check-label" for="id_email_listings">
                                     Listing Updates
                                 </label>
                                 <small class="text-muted d-block ms-4">Listing expired notifications</small>
+                            </div>
+
+                            <div class="form-check mb-2">
+                                {{ profile_form.email_price_drops }}
+                                <label class="form-check-label" for="id_email_price_drops">
+                                    Price Drop Alerts
+                                </label>
+                                <small class="text-muted d-block ms-4">Get notified when items you saved drop in price</small>
+                            </div>
+
+                            <div class="form-check mb-3">
+                                {{ profile_form.email_post_purchase }}
+                                <label class="form-check-label" for="id_email_post_purchase">
+                                    Post-Purchase Recommendations
+                                </label>
+                                <small class="text-muted d-block ms-4">Similar items and more from sellers after you buy</small>
                             </div>
                         </div>
 

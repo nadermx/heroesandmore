@@ -79,6 +79,8 @@ class Profile(models.Model):
     email_marketing = models.BooleanField(default=True)
     email_reminders = models.BooleanField(default=True)
     email_listings = models.BooleanField(default=True)
+    email_price_drops = models.BooleanField(default=True)
+    email_post_purchase = models.BooleanField(default=True)
 
     # Push notification settings
     push_new_bid = models.BooleanField(default=True)

@@ -10,6 +10,7 @@ class ProfileForm(forms.ModelForm):
             'avatar', 'bio', 'location', 'website', 'is_public',
             'email_notifications', 'email_bidding', 'email_offers',
             'email_marketing', 'email_reminders', 'email_listings',
+            'email_price_drops', 'email_post_purchase',
         ]
         widgets = {
             'bio': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
@@ -23,6 +24,8 @@ class ProfileForm(forms.ModelForm):
             'email_marketing': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'email_reminders': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'email_listings': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'email_price_drops': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'email_post_purchase': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 

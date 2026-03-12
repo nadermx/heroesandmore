@@ -320,6 +320,7 @@ def listing_edit(request, pk):
         return redirect('marketplace:listing_detail', pk=pk)
 
     if request.method == 'POST':
+        old_price = listing.price
         form = ListingForm(request.POST, request.FILES, instance=listing, user=request.user)
         if form.is_valid():
             # Check if images changed
@@ -330,7 +331,20 @@ def listing_edit(request, pk):
 
             listing = form.save(commit=False)
             listing.auction_end = form.cleaned_data.get('auction_end')
+
+            # Track price drops for notifications
+            if 'price' in form.changed_data and listing.price < old_price:
+                listing.previous_price = old_price
+
             listing.save()
+
+            # Notify watchers of price drop
+            if 'price' in form.changed_data and listing.price < old_price and listing.status == 'active':
+                try:
+                    from alerts.tasks import send_price_drop_notifications
+                    send_price_drop_notifications.delay(listing.pk, str(old_price))
+                except Exception:
+                    pass
 
             # Optimize new images async
             if images_changed and any(listing.get_images()):

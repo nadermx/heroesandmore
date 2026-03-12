@@ -160,6 +160,8 @@ class Listing(models.Model):
 
     # Pricing
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    previous_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Stored automatically when price is lowered, for price drop notifications")
     listing_type = models.CharField(max_length=10, choices=LISTING_TYPE_CHOICES, default='fixed')
     auction_end = models.DateTimeField(null=True, blank=True)
     reserve_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)

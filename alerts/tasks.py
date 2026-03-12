@@ -1214,3 +1214,430 @@ def send_weekly_results_recap():
 
     logger.info(f"Weekly recap sent to {sent} users")
     return sent
+
+
+@shared_task
+def send_review_followup_reminders():
+    """
+    Send follow-up review reminders for orders delivered 3 days ago
+    that haven't been reviewed yet. Daily at 9 AM.
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Order, Listing
+    from .models import Alert
+
+    three_days_ago = timezone.now() - timedelta(days=3)
+    four_days_ago = timezone.now() - timedelta(days=4)
+
+    # Orders delivered ~3 days ago without a review
+    orders = Order.objects.filter(
+        status='delivered',
+        delivered_at__date__gte=four_days_ago.date(),
+        delivered_at__date__lte=three_days_ago.date(),
+    ).select_related('buyer', 'seller', 'listing', 'buyer__profile').exclude(
+        review__isnull=False
+    )
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    sent = 0
+
+    for order in orders:
+        # Dedup: skip if already sent review followup
+        already_sent = Alert.objects.filter(
+            user=order.buyer if order.buyer else None,
+            alert_type='review_followup',
+            link=f'/marketplace/order/{order.id}/',
+        ).exists()
+        if order.buyer and already_sent:
+            continue
+
+        buyer_email = order.buyer_email
+        if not buyer_email:
+            continue
+        if order.buyer and not _should_email(order.buyer, 'reminders'):
+            continue
+
+        # More from this seller
+        seller_listings = Listing.objects.filter(
+            seller=order.seller, status='active'
+        ).exclude(pk=order.listing_id).order_by('-created')[:4]
+
+        context = {
+            'order': order,
+            'site_url': site_url,
+            'seller_listings': seller_listings,
+        }
+        html_content = render_to_string('marketplace/emails/review_followup.html', context)
+        try:
+            send_mail(
+                subject=f'How was your purchase from {order.seller.username}?',
+                message=f'You received {order.listing.title} a few days ago. Leave a review for {order.seller.username}!',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[buyer_email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+            sent += 1
+        except Exception:
+            pass
+
+        # In-app alert for dedup
+        if order.buyer:
+            Alert.objects.create(
+                user=order.buyer,
+                alert_type='review_followup',
+                title=f'Rate your purchase: {order.listing.title}',
+                message=f'How was your experience with {order.seller.username}? Leave a review!',
+                link=f'/marketplace/order/{order.id}/',
+            )
+
+    if sent:
+        logger.info(f"Sent {sent} review follow-up reminders")
+    return sent
+
+
+@shared_task
+def send_seller_delivery_followup():
+    """
+    Send sellers a follow-up after delivery with their active listings status.
+    Triggered 1 day after delivery. Daily at 9:30 AM.
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Order, Listing
+    from .models import Alert
+
+    one_day_ago = timezone.now() - timedelta(days=1)
+    two_days_ago = timezone.now() - timedelta(days=2)
+
+    orders = Order.objects.filter(
+        status__in=['delivered', 'completed'],
+        delivered_at__date__gte=two_days_ago.date(),
+        delivered_at__date__lte=one_day_ago.date(),
+    ).select_related('buyer', 'seller', 'listing', 'seller__profile')
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    sent = 0
+
+    for order in orders:
+        seller = order.seller
+        if not seller.email or not _should_email(seller, 'reminders'):
+            continue
+
+        # Dedup
+        already_sent = Alert.objects.filter(
+            user=seller,
+            alert_type='seller_delivery_followup',
+            link=f'/marketplace/order/{order.id}/',
+        ).exists()
+        if already_sent:
+            continue
+
+        # Seller's other active listings with watcher counts
+        seller_listings = Listing.objects.filter(
+            seller=seller, status='active'
+        ).exclude(pk=order.listing_id).annotate(
+            save_count=Count('saves')
+        ).order_by('-save_count')[:6]
+
+        context = {
+            'order': order,
+            'site_url': site_url,
+            'seller_other_active': seller_listings,
+        }
+        html_content = render_to_string('marketplace/emails/seller_delivery_followup.html', context)
+        try:
+            send_mail(
+                subject=f'Sale delivered! Keep the momentum going',
+                message=f'Your sale of {order.listing.title} was delivered. List more items!',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[seller.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+            sent += 1
+        except Exception:
+            pass
+
+        Alert.objects.create(
+            user=seller,
+            alert_type='seller_delivery_followup',
+            title=f'Sale delivered: {order.listing.title}',
+            message=f'Your sale was delivered successfully. List more to keep selling!',
+            link=f'/marketplace/order/{order.id}/',
+        )
+
+    if sent:
+        logger.info(f"Sent {sent} seller delivery follow-ups")
+    return sent
+
+
+@shared_task
+def send_new_listings_digest():
+    """
+    Weekly new listings digest — sent Wednesday 10 AM.
+    Shows trending new listings, newest fixed-price items, and new auctions.
+    """
+    from django.template.loader import render_to_string
+    from django.contrib.auth.models import User
+    from marketplace.models import Listing
+
+    now = timezone.now()
+    week_ago = now - timedelta(days=7)
+
+    # Trending: new listings with most saves this week
+    trending_listings = (
+        Listing.objects.filter(
+            status='active', created__gte=week_ago,
+        )
+        .select_related('category')
+        .annotate(save_count=Count('saves'))
+        .order_by('-save_count')[:8]
+    )
+
+    # New fixed-price listings (with images, for grid display)
+    new_fixed_price = (
+        Listing.objects.filter(
+            status='active', listing_type='fixed', created__gte=week_ago,
+        )
+        .exclude(image1='')
+        .select_related('category')
+        .order_by('-created')[:4]
+    )
+
+    # New auctions
+    new_auctions = (
+        Listing.objects.filter(
+            status='active', listing_type='auction',
+            created__gte=week_ago, auction_end__gt=now,
+        )
+        .select_related('category')
+        .order_by('-created')[:6]
+    )
+
+    # Stats
+    new_listings_count = Listing.objects.filter(
+        status='active', created__gte=week_ago
+    ).count()
+    price_drops_count = Listing.objects.filter(
+        status='active', previous_price__isnull=False,
+        updated__gte=week_ago,
+    ).count()
+
+    if not new_listings_count:
+        logger.info("No new listings this week, skipping digest")
+        return 0
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+
+    users = User.objects.filter(
+        profile__email_notifications=True,
+        profile__email_marketing=True,
+        is_active=True,
+    ).exclude(email='')
+
+    sent = 0
+    for user in users.iterator():
+        context = {
+            'user': user,
+            'trending_listings': trending_listings,
+            'new_fixed_price': new_fixed_price,
+            'new_auctions': new_auctions,
+            'stats': {
+                'new_listings': new_listings_count,
+                'price_drops': price_drops_count,
+            },
+            'site_url': site_url,
+        }
+        html_content = render_to_string('marketplace/emails/new_listings_digest.html', context)
+        try:
+            send_mail(
+                subject='New This Week on HeroesAndMore',
+                message=f'{new_listings_count} new listings added this week. Check them out at {site_url}/marketplace/?sort=newest',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+            sent += 1
+        except Exception:
+            pass
+
+    logger.info(f"New listings digest sent to {sent} users")
+    return sent
+
+
+@shared_task
+def send_price_drop_notifications(listing_id, old_price_str):
+    """
+    Notify users who saved a listing when its price drops.
+    Triggered on-demand when seller lowers price.
+    """
+    from decimal import Decimal
+    from django.template.loader import render_to_string
+    from marketplace.models import Listing, SavedListing
+    from .models import Alert
+
+    try:
+        listing = Listing.objects.select_related('seller', 'category').get(id=listing_id)
+    except Listing.DoesNotExist:
+        return
+
+    old_price = Decimal(old_price_str)
+    savings = old_price - listing.price
+    percent_off = int((savings / old_price) * 100) if old_price > 0 else 0
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+
+    # Similar listings for cross-sell
+    similar_listings = Listing.objects.filter(
+        status='active', category=listing.category,
+    ).exclude(pk=listing.pk).order_by('-created')[:4]
+
+    # Find users who saved this listing
+    saved_entries = SavedListing.objects.filter(
+        listing=listing,
+    ).select_related('user', 'user__profile')
+
+    sent = 0
+    for saved in saved_entries:
+        user = saved.user
+        if not user.is_active or not user.email:
+            continue
+        if not _should_email(user, 'price_drops'):
+            continue
+
+        # Dedup: skip if already notified about this price drop
+        already_sent = Alert.objects.filter(
+            user=user,
+            listing=listing,
+            alert_type='price_drop',
+            created__gte=timezone.now() - timedelta(hours=24),
+        ).exists()
+        if already_sent:
+            continue
+
+        context = {
+            'user': user,
+            'listing': listing,
+            'old_price': old_price,
+            'savings': savings,
+            'percent_off': percent_off,
+            'similar_listings': similar_listings,
+            'site_url': site_url,
+        }
+        html_content = render_to_string('marketplace/emails/price_drop.html', context)
+        try:
+            send_mail(
+                subject=f'Price drop! {listing.title} — now ${listing.price}',
+                message=f'{listing.title} dropped from ${old_price} to ${listing.price}. Save ${savings}!',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+            sent += 1
+        except Exception:
+            pass
+
+        Alert.objects.create(
+            user=user,
+            alert_type='price_drop',
+            title=f'Price drop: {listing.title}',
+            message=f'Now ${listing.price} (was ${old_price}). Save ${savings}!',
+            link=listing.get_absolute_url(),
+            listing=listing,
+        )
+
+    if sent:
+        logger.info(f"Sent {sent} price drop notifications for listing {listing_id}")
+    return sent
+
+
+@shared_task
+def send_post_purchase_followup():
+    """
+    Send buyers a follow-up 2 days after purchase with more from seller + similar items.
+    Daily at 10:30 AM.
+    """
+    from django.template.loader import render_to_string
+    from marketplace.models import Order, Listing
+    from .models import Alert
+
+    two_days_ago = timezone.now() - timedelta(days=2)
+    three_days_ago = timezone.now() - timedelta(days=3)
+
+    orders = Order.objects.filter(
+        status__in=['paid', 'shipped'],
+        paid_at__date__gte=three_days_ago.date(),
+        paid_at__date__lte=two_days_ago.date(),
+    ).select_related('buyer', 'seller', 'listing', 'listing__category', 'buyer__profile')
+
+    site_url = getattr(settings, 'SITE_URL', 'https://heroesandmore.com')
+    sent = 0
+
+    for order in orders:
+        buyer_email = order.buyer_email
+        if not buyer_email:
+            continue
+        if order.buyer and not _should_email(order.buyer, 'post_purchase'):
+            continue
+
+        # Dedup
+        if order.buyer:
+            already_sent = Alert.objects.filter(
+                user=order.buyer,
+                alert_type='post_purchase',
+                link=f'/marketplace/order/{order.id}/',
+            ).exists()
+            if already_sent:
+                continue
+
+        # More from this seller
+        seller_listings = Listing.objects.filter(
+            seller=order.seller, status='active'
+        ).exclude(pk=order.listing_id).order_by('-created')[:4]
+
+        # Similar items from same category
+        similar_listings = []
+        if order.listing and order.listing.category:
+            similar_listings = Listing.objects.filter(
+                status='active', category=order.listing.category,
+            ).exclude(
+                seller=order.seller
+            ).exclude(pk=order.listing_id).select_related('category').order_by('-created')[:6]
+
+        if not seller_listings and not similar_listings:
+            continue
+
+        context = {
+            'order': order,
+            'seller_listings': seller_listings,
+            'similar_listings': similar_listings,
+            'site_url': site_url,
+        }
+        html_content = render_to_string('marketplace/emails/post_purchase_followup.html', context)
+        try:
+            send_mail(
+                subject=f'More collectibles you might love',
+                message=f'Check out more items similar to {order.listing.title} at {site_url}/marketplace/',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[buyer_email],
+                html_message=html_content,
+                fail_silently=True,
+            )
+            sent += 1
+        except Exception:
+            pass
+
+        if order.buyer:
+            Alert.objects.create(
+                user=order.buyer,
+                alert_type='post_purchase',
+                title=f'More items like {order.listing.title}',
+                message=f'Check out similar collectibles from {order.seller.username} and others.',
+                link=f'/marketplace/order/{order.id}/',
+            )
+
+    if sent:
+        logger.info(f"Sent {sent} post-purchase follow-ups")
+    return sent
