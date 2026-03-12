@@ -9,9 +9,14 @@
 {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
-  "name": "Marketplace",
-  "description": "Browse collectible listings on HeroesAndMore marketplace.",
-  "url": "{{ request.build_absolute_uri }}"
+  "name": "Marketplace — Buy Collectibles For Sale and at Auction",
+  "description": "Browse collectible listings on HeroesAndMore marketplace. Trading cards, comics, action figures, and more for sale and at auction.",
+  "url": "{{ site_url }}/marketplace/",
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "HeroesAndMore",
+    "url": "{{ site_url }}"
+  }
 }
 </script>
 {% endblock %}

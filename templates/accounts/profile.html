@@ -12,10 +12,13 @@
 {
   "@context": "https://schema.org",
   "@type": "ProfilePage",
+  "dateModified": "{{ profile_user.last_login|date:'c' }}",
   "mainEntity": {
     "@type": "Person",
-    "name": "{{ profile_user.username|json_ld_escape }}"{% if profile.avatar %},
-    "image": "{% absolute_media profile.avatar %}"{% endif %}{% if profile.rating %},
+    "name": "{{ profile_user.username|json_ld_escape }}",
+    "url": "{{ site_url }}{% url 'accounts:profile' username=profile_user.username %}"{% if profile.avatar %},
+    "image": "{% absolute_media profile.avatar %}"{% endif %}{% if profile.is_trusted_seller %},
+    "award": "Trusted Seller"{% endif %}{% if profile.rating %},
     "aggregateRating": {
       "@type": "AggregateRating",
       "ratingValue": "{{ profile.rating|floatformat:1 }}",

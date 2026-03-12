@@ -105,13 +105,14 @@ All styles inline in `templates/base.html` `<style>` block (no separate CSS file
 ## Deployment
 ```bash
 cd /home/john/heroesandmore/ansible
-/home/john/heroesandmore/venv/bin/ansible-playbook -i servers gitpull.yml    # Quick deploy
-/home/john/heroesandmore/venv/bin/ansible-playbook -i servers deploy.yml     # Full deploy (config)
-/home/john/heroesandmore/venv/bin/ansible-playbook -i servers backup.yml     # Backup DB
+ansible-playbook gitpull.yml    # Quick deploy (most common)
+ansible-playbook deploy.yml     # Full deploy (config changes)
+ansible-playbook backup.yml     # Backup DB
 ```
+SSH key auth (`~/.ssh/id_ed25519`) is deployed to the server. `ansible.cfg` sets inventory and host key checking. `group_vars/web.yml` (gitignored) has the become password. No extra flags needed — just `ansible-playbook <playbook>.yml` from the ansible dir.
 Debug: `cd ansible && ./debug.sh help` (errors, stripe, all, tail, grep, status, restart)
-SSH: `sshpass -p '<password>' ssh -o PubkeyAuthentication=no heroesandmore@174.138.33.140` → `/home/www/heroesandmore`
-Ansible with password auth: `ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i servers gitpull.yml -e "ansible_password=<password>" -e "ansible_ssh_common_args='-o PubkeyAuthentication=no'"`
+
+**CAUTION**: fail2ban is active — failed SSH attempts will ban your IP for ~10 min. If banned, wait or unban via DO console (droplet ID: `547914037`).
 
 ### Log Files
 **App logs** (`/home/www/heroesandmore/logs/`): `errors.log`, `stripe.log`, `frontend.log`, `app.log`, `security.log`, `celery_tasks.log`, `api.log`, `db.log`

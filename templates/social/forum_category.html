@@ -1,6 +1,31 @@
 {% extends "base.html" %}
+{% load seo_tags %}
 
-{% block title %}{{ category.name }} - Forums - HeroesAndMore{% endblock %}
+{% block title %}{{ category.name }} — Forum Discussions | HeroesAndMore{% endblock %}
+{% block meta_description %}{{ category.description|default:category.name }} — Discuss with fellow collectors on the HeroesAndMore forums.{% endblock %}
+{% block og_title %}{{ category.name }} — HeroesAndMore Forums{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "{{ category.name|json_ld_escape }} — Forum",
+  "description": "{{ category.description|json_ld_escape }}",
+  "url": "{{ site_url }}{% url 'social:forum_category' slug=category.slug %}"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Forums", "item": "{{ site_url }}{% url 'social:forum_index' %}"},
+    {"@type": "ListItem", "position": 2, "name": "{{ category.name|json_ld_escape }}"}
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="section-alt border-bottom" style="padding: 1.5rem 0;">

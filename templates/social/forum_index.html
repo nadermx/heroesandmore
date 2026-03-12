@@ -1,6 +1,42 @@
 {% extends 'base.html' %}
+{% load seo_tags %}
 
-{% block title %}Forums - HeroesAndMore{% endblock %}
+{% block title %}Community Forums — Collector Discussions | HeroesAndMore{% endblock %}
+{% block meta_description %}Join the HeroesAndMore collector community forums. Discuss trading cards, comics, action figures, and more with fellow collectors.{% endblock %}
+{% block og_title %}Community Forums — HeroesAndMore{% endblock %}
+{% block og_description %}Connect with fellow collectors. Discuss trading cards, comics, action figures, and more.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "HeroesAndMore Community Forums",
+  "description": "Collector discussion forums on HeroesAndMore. Trading cards, comics, action figures, and more.",
+  "url": "{{ site_url }}{% url 'social:forum_index' %}",
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "HeroesAndMore",
+    "url": "{{ site_url }}"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Forum Categories",
+  "itemListElement": [{% for category in categories %}
+    {
+      "@type": "ListItem",
+      "position": {{ forloop.counter }},
+      "name": "{{ category.name|json_ld_escape }}",
+      "url": "{{ site_url }}{{ category.get_absolute_url }}"
+    }{% if not forloop.last %},{% endif %}{% endfor %}
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <!-- Header -->

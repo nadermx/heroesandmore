@@ -1,8 +1,64 @@
 {% extends 'base.html' %}
 {% load humanize %}
 
-{% block title %}Official Auctions - HeroesAndMore{% endblock %}
-{% block meta_description %}Browse official HeroesAndMore auction events. Premium collectibles, curated lots, and exclusive items auctioned by the platform.{% endblock %}
+{% load seo_tags %}
+
+{% block title %}Official Auctions — Curated Collectible Auction Events | HeroesAndMore{% endblock %}
+{% block meta_description %}Browse official HeroesAndMore auction events. Premium collectibles, curated lots, and exclusive items. {% if live_events %}{{ live_events|length }} live auction{{ live_events|length|pluralize }} now!{% endif %}{% endblock %}
+{% block og_title %}Official Auctions — HeroesAndMore{% endblock %}
+{% block og_description %}Curated auction events featuring premium collectibles, rare finds, and exclusive items from trusted sellers.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "Official Auctions — HeroesAndMore",
+  "description": "Curated auction events featuring premium collectibles, rare finds, and exclusive items from trusted sellers.",
+  "url": "{{ site_url }}{% url 'marketplace:platform_auctions' %}",
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "HeroesAndMore",
+    "url": "{{ site_url }}"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "HeroesAndMore Auction Events",
+  "itemListElement": [{% for event in live_events %}
+    {
+      "@type": "ListItem",
+      "position": {{ forloop.counter }},
+      "item": {
+        "@type": "Event",
+        "name": "{{ event.name|json_ld_escape }}",
+        "startDate": "{{ event.bidding_start|date:'c' }}",
+        "endDate": "{{ event.bidding_end|date:'c' }}",
+        "url": "{{ site_url }}{% url 'marketplace:platform_auction_detail' slug=event.slug %}",
+        "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
+        "eventStatus": "https://schema.org/EventScheduled"
+      }
+    }{% if not forloop.last %},{% endif %}{% endfor %}{% if live_events and upcoming_events %},{% endif %}{% for event in upcoming_events %}
+    {
+      "@type": "ListItem",
+      "position": {{ forloop.counter }},
+      "item": {
+        "@type": "Event",
+        "name": "{{ event.name|json_ld_escape }}",
+        "startDate": "{{ event.bidding_start|date:'c' }}",
+        "endDate": "{{ event.bidding_end|date:'c' }}",
+        "url": "{{ site_url }}{% url 'marketplace:platform_auction_detail' slug=event.slug %}",
+        "eventAttendanceMode": "https://schema.org/OnlineEventAttendanceMode",
+        "eventStatus": "https://schema.org/EventScheduled"
+      }
+    }{% if not forloop.last %},{% endif %}{% endfor %}
+  ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <!-- Hero -->

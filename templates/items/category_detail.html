@@ -12,8 +12,15 @@
 {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
-  "name": "{{ category.name|json_ld_escape }}",
-  "url": "{{ request.build_absolute_uri }}"
+  "name": "{{ category.name|json_ld_escape }} — For Sale on HeroesAndMore",
+  "description": "Browse {{ category.name|json_ld_escape }} collectibles for sale on HeroesAndMore. Find listings, track prices, and discover rare items.",
+  "url": "{{ site_url }}{{ category.get_absolute_url }}",
+  "numberOfItems": {{ listings.paginator.count|default:0 }},
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "HeroesAndMore",
+    "url": "{{ site_url }}"
+  }
 }
 </script>
 <script type="application/ld+json">

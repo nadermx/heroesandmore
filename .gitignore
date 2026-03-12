@@ -58,6 +58,7 @@ celerybeat.pid
 # Ansible
 *.retry
 ansible/group_vars/vault.yml
+ansible/group_vars/web.yml
 
 # Secrets
 *.pem

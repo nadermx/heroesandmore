@@ -4,6 +4,8 @@
 - name: Backup database and config
   hosts: web
   become: yes
+  vars_files:
+    - group_vars/vault.yml
 
   vars:
     backup_dir: /home/{{ server_user }}/backups

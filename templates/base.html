@@ -40,6 +40,7 @@
     <meta property="og:image" content="{% block og_image %}{{ default_og_image }}{% endblock %}">
     <meta name="twitter:card" content="{% block twitter_card %}summary_large_image{% endblock %}">
     <meta name="twitter:image" content="{% block twitter_image %}{{ default_og_image }}{% endblock %}">
+    {% block extra_meta %}{% endblock %}
     <meta name="google-site-verification" content="xyMDHqFJ09pl9Dki2R7m4yxguaDuXTN2Z_GJgDrHyTY">
 
     <!-- Frontend Error Logging - must be first to catch all errors -->

@@ -4,6 +4,7 @@ server_user: www
 app_name: heroesandmore
 domain: heroesandmore.com
 
+
 # Git repository
 git_repo: https://github.com/nadermx/heroesandmore.git
 git_branch: main

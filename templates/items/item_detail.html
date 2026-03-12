@@ -14,7 +14,18 @@
   "@type": "Product",
   "name": "{{ item.name|json_ld_escape }}"{% if item.description %},
   "description": "{{ item.description|truncatewords:50|json_ld_escape }}"{% endif %}{% if item.images and item.images.0 %},
-  "image": "{{ item.images.0 }}"{% endif %}
+  "image": "{{ item.images.0 }}"{% endif %}{% if category %},
+  "category": "{{ category.name|json_ld_escape }}"{% endif %}{% if item.year %},
+  "releaseDate": "{{ item.year }}"{% endif %}{% if listings %},
+  "offers": {
+    "@type": "AggregateOffer",
+    "priceCurrency": "USD",
+    "offerCount": {{ listings|length }},
+    "lowPrice": "{{ listings.first.price }}",
+    "highPrice": "{{ listings.last.price }}",
+    "availability": "https://schema.org/InStock",
+    "url": "{{ request.build_absolute_uri }}"
+  }{% endif %}
 }
 </script>
 <script type="application/ld+json">

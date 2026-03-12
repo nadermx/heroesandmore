@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load seo_tags %}
 
 {% block title %}Browse Categories - HeroesAndMore{% endblock %}
 {% block meta_description %}Browse collectible categories on HeroesAndMore. Trading cards, comics, action figures, video games, coins, and more. Find what you collect.{% endblock %}
@@ -8,9 +9,29 @@
 {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
-  "name": "Browse Categories",
-  "description": "Browse collectible categories on HeroesAndMore.",
-  "url": "{{ request.build_absolute_uri }}"
+  "name": "Browse Collectible Categories — HeroesAndMore",
+  "description": "Browse collectible categories on HeroesAndMore. Trading cards, comics, action figures, video games, coins, and more.",
+  "url": "{{ site_url }}/items/",
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "HeroesAndMore",
+    "url": "{{ site_url }}"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Collectible Categories",
+  "itemListElement": [{% for category in categories %}
+    {
+      "@type": "ListItem",
+      "position": {{ forloop.counter }},
+      "name": "{{ category.name|json_ld_escape }}",
+      "url": "{{ site_url }}{{ category.get_absolute_url }}"
+    }{% if not forloop.last %},{% endif %}{% endfor %}
+  ]
 }
 </script>
 {% endblock %}

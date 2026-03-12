@@ -5,6 +5,8 @@
 - name: Harden server security
   hosts: web
   become: yes
+  vars_files:
+    - group_vars/vault.yml
   vars:
     deploy_user: heroesandmore
     ssh_port: 22

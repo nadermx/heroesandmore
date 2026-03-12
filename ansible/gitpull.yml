@@ -5,6 +5,8 @@
   hosts: web
   become: yes
   become_user: "{{ server_user }}"
+  vars_files:
+    - group_vars/vault.yml
 
   tasks:
     - name: Pull latest code

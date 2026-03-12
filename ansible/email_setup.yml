@@ -6,6 +6,8 @@
 - name: Setup Email System
   hosts: all
   become: yes
+  vars_files:
+    - group_vars/vault.yml
   vars:
     mail_domain: mail.heroesandmore.com
     main_domain: heroesandmore.com

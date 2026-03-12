@@ -3,13 +3,20 @@
 {% load seo_tags %}
 {% load image_tags %}
 
-{% block title %}{{ listing.title }} - HeroesAndMore{% endblock %}
-{% block meta_description %}{{ listing.title }}{% if listing.is_graded %} — {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %}{% if listing.condition %} ({{ listing.get_condition_display }}){% endif %} — ${{ listing.price }} on HeroesAndMore.{% endblock %}
-{% block og_title %}{{ listing.title }} - HeroesAndMore{% endblock %}
-{% block og_description %}{{ listing.title }}{% if listing.is_graded %} — {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %} — ${{ listing.price }} on HeroesAndMore.{% endblock %}
+{% block title %}{{ listing.title }}{% if listing.is_graded %} — {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %} — {% if listing.listing_type == 'auction' %}Up for Auction{% else %}For Sale{% endif %} | HeroesAndMore{% endblock %}
+{% block meta_description %}{{ listing.title }}{% if listing.is_graded %} — {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %}{% if listing.condition %} ({{ listing.get_condition_display }}){% endif %} — {% if listing.listing_type == 'auction' %}Current bid ${{ listing.get_current_price }}. Bid now{% else %}${{ listing.price }}. Buy now{% endif %} on HeroesAndMore.{% endblock %}
+{% block og_title %}{{ listing.title }}{% if listing.is_graded %} — {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %} — {% if listing.listing_type == 'auction' %}Up for Auction{% else %}For Sale{% endif %}{% endblock %}
+{% block og_description %}{{ listing.title }}{% if listing.is_graded %} — {{ listing.grading_service|upper }} {{ listing.grade }}{% endif %} — {% if listing.listing_type == 'auction' %}Current bid ${{ listing.get_current_price }}. Bid now{% else %}${{ listing.price }}. Buy now{% endif %} on HeroesAndMore.{% endblock %}
 {% block og_type %}product{% endblock %}
 {% block og_image %}{% if listing.image1 %}{% absolute_media listing.image1 %}{% else %}{{ default_og_image }}{% endif %}{% endblock %}
 {% block twitter_image %}{% if listing.image1 %}{% absolute_media listing.image1 %}{% else %}{{ default_og_image }}{% endif %}{% endblock %}
+{% block extra_meta %}
+    <meta property="product:price:amount" content="{% if listing.listing_type == 'auction' %}{{ listing.get_current_price }}{% else %}{{ listing.price }}{% endif %}">
+    <meta property="product:price:currency" content="USD">
+    <meta property="product:availability" content="{% if listing.status == 'active' %}in stock{% else %}out of stock{% endif %}">
+    <meta property="product:condition" content="{% if listing.condition == 'new' %}new{% else %}used{% endif %}">
+    {% if listing.category %}<meta property="product:category" content="{{ listing.category.name }}">{% endif %}
+{% endblock %}
 
 {% block structured_data %}
 <script type="application/ld+json">
@@ -18,26 +25,33 @@
   "@type": "Product",
   "name": "{{ listing.title|json_ld_escape }}",
   "description": "{{ listing.description|truncatewords:50|json_ld_escape }}",
-  {% if listing.image1 %}"image": "{% absolute_media listing.image1 %}",{% endif %}
+  "sku": "HAM-{{ listing.pk }}",
+  {% if listing.category %}"category": "{{ listing.category.name|json_ld_escape }}",{% endif %}
+  {% if listing.is_graded %}"additionalProperty": [
+    {"@type": "PropertyValue", "name": "Grading Service", "value": "{{ listing.grading_service|upper }}"},
+    {"@type": "PropertyValue", "name": "Grade", "value": "{{ listing.grade }}"}
+  ],{% endif %}
+  "image": [{% for image in listing.get_images %}"{% absolute_media image %}"{% if not forloop.last %}, {% endif %}{% endfor %}],
   "offers": {
     "@type": "Offer",
     "url": "{{ request.build_absolute_uri }}",
     "priceCurrency": "USD",
-    "price": "{{ listing.price }}",
+    "price": "{% if listing.listing_type == 'auction' %}{{ listing.get_current_price }}{% else %}{{ listing.price }}{% endif %}",
+    "priceValidUntil": "{% if listing.listing_type == 'auction' and listing.end_date %}{{ listing.end_date|date:'Y-m-d' }}{% else %}{{ listing.created|date:'Y' }}-12-31{% endif %}",
     "availability": "https://schema.org/{% if listing.status == 'active' %}InStock{% else %}SoldOut{% endif %}",
     "itemCondition": "https://schema.org/{% if listing.condition == 'new' %}NewCondition{% else %}UsedCondition{% endif %}"{% if listing.seller %},
     "seller": {
-      "@type": "Person",
-      "name": "{{ listing.seller.username|json_ld_escape }}"{% if listing.seller.profile.rating %},
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "{{ listing.seller.profile.rating|floatformat:1 }}",
-        "reviewCount": "{{ listing.seller.profile.rating_count }}",
-        "bestRating": "5",
-        "worstRating": "1"
-      }{% endif %}
+      "@type": "Organization",
+      "name": "{{ listing.seller.username|json_ld_escape }}"
     }{% endif %}
-  }
+  }{% if listing.seller.profile.rating_count %},
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "{{ listing.seller.profile.rating|floatformat:1 }}",
+    "reviewCount": "{{ listing.seller.profile.rating_count }}",
+    "bestRating": "5",
+    "worstRating": "1"
+  }{% endif %}
 }
 </script>
 <script type="application/ld+json">

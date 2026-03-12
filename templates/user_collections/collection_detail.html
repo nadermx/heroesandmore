@@ -13,7 +13,12 @@
   "@type": "CollectionPage",
   "name": "{{ collection.name|json_ld_escape }}",
   "url": "{{ request.build_absolute_uri }}"{% if collection.description %},
-  "description": "{{ collection.description|truncatewords:50|json_ld_escape }}"{% endif %}
+  "description": "{{ collection.description|truncatewords:50|json_ld_escape }}"{% endif %},
+  "author": {
+    "@type": "Person",
+    "name": "{{ collection.user.username|json_ld_escape }}",
+    "url": "{{ site_url }}{% url 'accounts:profile' username=collection.user.username %}"
+  }
 }
 </script>
 {% endblock %}

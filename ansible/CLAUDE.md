@@ -14,13 +14,13 @@ Ansible deployment automation for HeroesAndMore (Django collectibles marketplace
 - **App path**: `/home/www/heroesandmore`
 - **Inventory**: `servers` file
 
-## Ansible Binary
+## Ansible Binary & Config
 
-Ansible is installed in the project virtualenv, not system-wide:
-```bash
-/home/john/heroesandmore/venv/bin/ansible-playbook -i servers <playbook>
-/home/john/heroesandmore/venv/bin/ansible -i servers all -m shell -a "command" --become
-```
+Ansible is installed system-wide (`~/.local/bin/ansible-playbook`). `ansible.cfg` in this directory sets `inventory = servers` and `host_key_checking = False`, so no `-i servers` flag needed.
+
+SSH key auth (`~/.ssh/id_ed25519`) is deployed to the server. `group_vars/web.yml` (gitignored) has the become (sudo) password. No extra `-e` flags needed.
+
+**CAUTION**: fail2ban is active on the server. Failed SSH auth attempts will ban your IP for ~10 min. Avoid making repeated failing connection attempts. If banned, wait or unban via DigitalOcean web console (`fail2ban-client set sshd unbanip <your-ip>`). Droplet ID: `547914037`.
 
 ## Playbooks
 
@@ -37,22 +37,22 @@ Ansible is installed in the project virtualenv, not system-wide:
 
 ```bash
 # Deploy code changes (most common)
-/home/john/heroesandmore/venv/bin/ansible-playbook -i servers gitpull.yml
+ansible-playbook gitpull.yml
 
 # Full deploy with config update
-/home/john/heroesandmore/venv/bin/ansible-playbook -i servers deploy.yml
+ansible-playbook deploy.yml
 
 # Run shell command on server as root
-/home/john/heroesandmore/venv/bin/ansible -i servers all -m shell -a "command" --become
+ansible all -m shell -a "command" --become
 
 # Run shell command as www user
-/home/john/heroesandmore/venv/bin/ansible -i servers all -m shell -a "command" --become --become-user=www
+ansible all -m shell -a "command" --become --become-user=www
 
 # Restart services
-/home/john/heroesandmore/venv/bin/ansible -i servers all -m shell -a "supervisorctl restart heroesandmore:*" --become
+ansible all -m shell -a "supervisorctl restart heroesandmore:*" --become
 
 # Copy a file to server
-/home/john/heroesandmore/venv/bin/ansible -i servers all -m copy -a "src=files/file dest=/path/on/server" --become
+ansible all -m copy -a "src=files/file dest=/path/on/server" --become
 ```
 
 ## Debug Script
@@ -91,7 +91,7 @@ Ansible is installed in the project virtualenv, not system-wide:
 ### Editing Server Config Directly
 For quick config changes without a full deploy (e.g., adding a new API key):
 ```bash
-/home/john/heroesandmore/venv/bin/ansible -i servers all -m shell \
+ansible all -m shell \
   -a "echo \"NEW_KEY = 'value'\" >> /home/www/heroesandmore/config.py" --become --become-user=www
 ```
 Then restart services. Remember to also update vault.yml so `deploy.yml` won't overwrite it.
@@ -107,9 +107,9 @@ Config file: `files/heroesandmore.supervisor.conf`
 
 ### Updating Supervisor Config
 ```bash
-/home/john/heroesandmore/venv/bin/ansible -i servers all -m copy \
+ansible all -m copy \
   -a "src=files/heroesandmore.supervisor.conf dest=/etc/supervisor/conf.d/heroesandmore.conf" --become
-/home/john/heroesandmore/venv/bin/ansible -i servers all -m shell \
+ansible all -m shell \
   -a "supervisorctl reread && supervisorctl update && supervisorctl restart heroesandmore:*" --become
 ```
 
