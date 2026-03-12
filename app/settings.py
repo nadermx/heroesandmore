@@ -271,7 +271,13 @@ SITE_URL = getattr(config, 'SITE_URL', 'http://localhost:8000')
 if not DEBUG:
     SITE_URL = 'https://heroesandmore.com'
 
-# DigitalOcean Spaces (for production)
+# CDN for media files (cookie-free domain, parallel browser connections)
+# Works with both local filesystem and DO Spaces storage
+CDN_DOMAIN = getattr(config, 'CDN_DOMAIN', '')
+if CDN_DOMAIN:
+    MEDIA_URL = f'https://{CDN_DOMAIN}/media/'
+
+# DigitalOcean Spaces (for production, optional)
 USE_SPACES = getattr(config, 'USE_SPACES', False)
 if USE_SPACES:
     AWS_ACCESS_KEY_ID = config.DO_SPACES_KEY
@@ -282,11 +288,7 @@ if USE_SPACES:
     AWS_DEFAULT_ACL = 'public-read'
     AWS_LOCATION = 'media'
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    # Use CDN domain for media URLs (nginx reverse proxy to DO Spaces)
-    CDN_DOMAIN = getattr(config, 'CDN_DOMAIN', '')
-    if CDN_DOMAIN:
-        MEDIA_URL = f'https://{CDN_DOMAIN}/media/'
-    else:
+    if not CDN_DOMAIN:
         MEDIA_URL = f'{config.DO_SPACES_ENDPOINT}/{config.DO_SPACES_BUCKET}/media/'
 
 # Email
