@@ -37,44 +37,44 @@
     <!-- Stats -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-2">
-            <div class="card">
+            <a href="{% url 'marketplace:my_listings' %}?status=active" class="card text-decoration-none" style="transition: transform 0.15s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
                 <div class="card-body text-center py-3">
                     <h3 class="mb-0" style="color: var(--gray-900);">{{ stats.active_listings|default:0 }}</h3>
                     <small class="text-muted">Active</small>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card">
+            <a href="{% url 'marketplace:my_listings' %}?status=draft" class="card text-decoration-none" style="transition: transform 0.15s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
                 <div class="card-body text-center py-3">
                     <h3 class="mb-0" style="color: var(--gray-500);">{{ stats.draft_listings|default:0 }}</h3>
                     <small class="text-muted">Drafts</small>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card">
+            <a href="{% url 'marketplace:my_listings' %}?status=sold" class="card text-decoration-none" style="transition: transform 0.15s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
                 <div class="card-body text-center py-3">
                     <h3 class="mb-0" style="color: var(--gray-900);">{{ stats.sold_listings|default:0 }}</h3>
                     <small class="text-muted">Sold</small>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card">
+            <a href="#ordersSection" class="card text-decoration-none" style="transition: transform 0.15s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
                 <div class="card-body text-center py-3">
                     <h3 class="mb-0" style="color: var(--gray-700);">{{ stats.pending_orders|default:0 }}</h3>
                     <small class="text-muted">Pending</small>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-6 col-md-2">
-            <div class="card">
+            <a href="{% url 'marketplace:my_listings' %}?status=sold" class="card text-decoration-none" style="transition: transform 0.15s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
                 <div class="card-body text-center py-3">
                     <h3 class="mb-0" style="color: var(--gray-900);">{{ stats.completed_orders|default:0 }}</h3>
                     <small class="text-muted">Completed</small>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-6 col-md-2">
             <div class="card" style="background: var(--gray-900);">
@@ -172,7 +172,7 @@
 
     <div class="row g-4">
         <!-- Orders Needing Action -->
-        <div class="col-lg-8">
+        <div class="col-lg-8" id="ordersSection">
             <div class="card">
                 <div class="card-header bg-transparent">
                     <h6 class="fw-bold mb-0">Orders Needing Action</h6>
