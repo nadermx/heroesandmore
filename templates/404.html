@@ -1,24 +1,38 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Page Not Found</title>
-    <style>
-      body { font-family: Arial, sans-serif; background: #f7f7f9; color: #222; margin: 0; }
-      main { max-width: 720px; margin: 10vh auto; padding: 24px; background: #fff; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.08); }
-      h1 { margin: 0 0 8px; font-size: 28px; }
-      p { margin: 8px 0; line-height: 1.5; }
-      code { background: #f0f0f4; padding: 2px 6px; border-radius: 6px; }
-      a { color: #0d6efd; text-decoration: none; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>We can't find that page.</h1>
-      <p>The address may be incorrect or the page moved.</p>
-      <p>Try returning to the home page or searching the marketplace.</p>
-      <p><a href="/">Go to home</a></p>
-    </main>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Page Not Found - HeroesAndMore</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, system-ui, -apple-system, sans-serif; background: #f7f7f9; color: #171717; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+    .container { max-width: 520px; text-align: center; }
+    .logo { font-size: 1.5rem; font-weight: 800; color: #171717; letter-spacing: -0.03em; margin-bottom: 2rem; }
+    .logo span { color: #e63946; }
+    .icon { font-size: 3rem; margin-bottom: 1rem; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+    p { color: #6b7280; line-height: 1.6; margin-bottom: 1rem; }
+    .card { background: #fff; border-radius: 12px; padding: 2.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-bottom: 1.5rem; }
+    .btn { display: inline-block; padding: 0.75rem 2rem; background: #171717; color: #fff; border-radius: 8px; text-decoration: none; font-weight: 600; transition: background 0.2s; margin: 0 0.5rem; }
+    .btn:hover { background: #333; }
+    .btn-outline { background: transparent; color: #171717; border: 2px solid #e5e7eb; }
+    .btn-outline:hover { background: #f3f4f6; }
+    .meta { font-size: 0.8rem; color: #9ca3af; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">Heroes<span>&</span>More</div>
+    <div class="card">
+      <div class="icon">&#128270;</div>
+      <h1>Page Not Found</h1>
+      <p>The page you're looking for doesn't exist or may have moved.</p>
+      <div>
+        <a href="/" class="btn">Go Home</a>
+        <a href="/marketplace/" class="btn btn-outline">Browse Marketplace</a>
+      </div>
+    </div>
+  </div>
+</body>
 </html>
