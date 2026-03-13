@@ -23,48 +23,48 @@
     <!-- Stats Cards -->
     <div class="row g-4 mb-4">
         <div class="col-6 col-md-3">
-            <div class="card">
+            <a href="{% url 'marketplace:my_listings' %}?status=active" class="card text-decoration-none" style="transition: transform 0.15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
                 <div class="card-body text-center">
                     <div class="mb-2">
                         <i class="bi bi-tag" style="font-size: 1.5rem; color: var(--gray-400);"></i>
                     </div>
-                    <h2 class="mb-1" style="font-size: 2rem;">{{ stats.active_listings|default:0 }}</h2>
+                    <h2 class="mb-1" style="font-size: 2rem; color: var(--gray-900);">{{ stats.active_listings|default:0 }}</h2>
                     <small class="text-muted">Active Listings</small>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-6 col-md-3">
-            <div class="card">
+            <a href="{% url 'marketplace:my_listings' %}?status=sold" class="card text-decoration-none" style="transition: transform 0.15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
                 <div class="card-body text-center">
                     <div class="mb-2">
                         <i class="bi bi-cash-stack" style="font-size: 1.5rem; color: var(--gray-400);"></i>
                     </div>
-                    <h2 class="mb-1" style="font-size: 2rem;">{{ stats.total_sales|default:0 }}</h2>
+                    <h2 class="mb-1" style="font-size: 2rem; color: var(--gray-900);">{{ stats.total_sales|default:0 }}</h2>
                     <small class="text-muted">Total Sales</small>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-6 col-md-3">
-            <div class="card">
+            <a href="{% url 'marketplace:my_orders' %}" class="card text-decoration-none" style="transition: transform 0.15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
                 <div class="card-body text-center">
                     <div class="mb-2">
                         <i class="bi bi-bag-check" style="font-size: 1.5rem; color: var(--gray-400);"></i>
                     </div>
-                    <h2 class="mb-1" style="font-size: 2rem;">{{ stats.total_purchases|default:0 }}</h2>
+                    <h2 class="mb-1" style="font-size: 2rem; color: var(--gray-900);">{{ stats.total_purchases|default:0 }}</h2>
                     <small class="text-muted">Purchases</small>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-6 col-md-3">
-            <div class="card">
+            <a href="{% url 'marketplace:my_orders' %}?status=pending" class="card text-decoration-none" style="transition: transform 0.15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
                 <div class="card-body text-center">
                     <div class="mb-2">
                         <i class="bi bi-hourglass-split" style="font-size: 1.5rem; color: var(--gray-400);"></i>
                     </div>
-                    <h2 class="mb-1" style="font-size: 2rem;">{{ stats.pending_orders|default:0 }}</h2>
+                    <h2 class="mb-1" style="font-size: 2rem; color: var(--gray-900);">{{ stats.pending_orders|default:0 }}</h2>
                     <small class="text-muted">Pending Orders</small>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 
