@@ -80,6 +80,17 @@ def home(request):
         Q(accepting_submissions=True, status='draft')
     ).order_by('bidding_start')[:3]
 
+    # Hero image listings — find active listings matching hero card images
+    hero_comic = Listing.objects.filter(
+        status='active', title__icontains='amazing fantasy'
+    ).order_by('-created').first()
+    hero_pokemon = Listing.objects.filter(
+        status='active', title__icontains='charizard'
+    ).order_by('-created').first()
+    hero_baseball = Listing.objects.filter(
+        status='active', title__icontains='mantle'
+    ).order_by('-created').first()
+
     context = {
         'categories': categories,
         'recent_listings': recent_listings,
@@ -88,6 +99,9 @@ def home(request):
         'bid_wars': bid_wars,
         'curated_listings': curated_listings,
         'platform_events': platform_events,
+        'hero_comic': hero_comic,
+        'hero_pokemon': hero_pokemon,
+        'hero_baseball': hero_baseball,
         **_get_site_stats(),
     }
     return render(request, 'home.html', context)
