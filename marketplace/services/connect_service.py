@@ -26,6 +26,10 @@ class ConnectService:
                     'transfers': {'requested': True},
                 },
                 business_type='individual',
+                business_profile={
+                    'url': 'https://heroesandmore.com',
+                    'mcc': '5999',
+                },
                 metadata={'user_id': user.id}
             )
 
@@ -72,6 +76,7 @@ class ConnectService:
 
             profile.stripe_charges_enabled = account.charges_enabled
             profile.stripe_payouts_enabled = account.payouts_enabled
+            profile.stripe_details_submitted = account.details_submitted
             profile.stripe_account_complete = (
                 account.charges_enabled and
                 account.payouts_enabled and
@@ -80,6 +85,7 @@ class ConnectService:
             profile.save(update_fields=[
                 'stripe_charges_enabled',
                 'stripe_payouts_enabled',
+                'stripe_details_submitted',
                 'stripe_account_complete'
             ])
 
@@ -91,12 +97,14 @@ class ConnectService:
             profile.stripe_account_type = ''
             profile.stripe_charges_enabled = False
             profile.stripe_payouts_enabled = False
+            profile.stripe_details_submitted = False
             profile.stripe_account_complete = False
             profile.save(update_fields=[
                 'stripe_account_id',
                 'stripe_account_type',
                 'stripe_charges_enabled',
                 'stripe_payouts_enabled',
+                'stripe_details_submitted',
                 'stripe_account_complete'
             ])
             return None

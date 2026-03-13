@@ -43,6 +43,17 @@
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
+    {% elif request.user.profile.stripe_details_submitted and not request.user.profile.stripe_account_complete %}
+    <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-hourglass-split fs-4 me-3"></i>
+            <div>
+                <strong>Verification Pending</strong>
+                <p class="mb-2">Your payment details are being verified by Stripe. This usually takes a few minutes.</p>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
     {% elif not request.user.profile.stripe_account_complete %}
     <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
         <div class="d-flex align-items-center">

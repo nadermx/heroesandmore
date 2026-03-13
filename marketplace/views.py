@@ -1721,6 +1721,10 @@ def seller_setup(request):
             messages.success(request, 'Your seller account is ready to receive payments!')
             return redirect('seller_tools:dashboard')
 
+        # If details submitted but not yet fully verified, show pending page
+        if profile.stripe_details_submitted:
+            return render(request, 'marketplace/seller_setup_pending.html')
+
         # Render embedded onboarding page
         context = {
             'stripe_public_key': settings.STRIPE_PUBLIC_KEY,
@@ -1788,6 +1792,8 @@ def seller_setup_return(request):
 
     if profile.stripe_account_complete:
         return redirect('marketplace:seller_setup_complete')
+    elif profile.stripe_details_submitted:
+        return redirect('marketplace:seller_setup')
     else:
         messages.warning(request, 'Please complete all required information to start selling.')
         return redirect('marketplace:seller_setup')

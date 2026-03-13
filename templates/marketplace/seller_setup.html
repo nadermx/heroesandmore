@@ -32,7 +32,7 @@
             <!-- Stripe Embedded Onboarding Container -->
             <div class="card">
                 <div class="card-body p-4">
-                    <div id="onboarding-container">
+                    <div id="onboarding-container" style="min-height: 600px;">
                         <div class="text-center py-5">
                             <div class="spinner-border text-dark" role="status">
                                 <span class="visually-hidden">Loading...</span>
@@ -121,7 +121,6 @@
                 publishableKey: "{{ stripe_public_key }}",
                 fetchClientSecret: fetchClientSecret,
                 appearance: {
-                    overlays: 'dialog',
                     variables: {
                         colorPrimary: '#171717',
                         colorBackground: '#ffffff',

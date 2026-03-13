@@ -31,6 +31,7 @@ class Profile(models.Model):
     stripe_account_complete = models.BooleanField(default=False)
     stripe_payouts_enabled = models.BooleanField(default=False)
     stripe_charges_enabled = models.BooleanField(default=False)
+    stripe_details_submitted = models.BooleanField(default=False)
 
     # Stripe Customer (buyer)
     stripe_customer_id = models.CharField(max_length=100, blank=True)
