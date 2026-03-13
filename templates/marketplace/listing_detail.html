@@ -430,7 +430,7 @@
                     {% for image in listing.get_images %}
                     {% thumbnail image as thumb_src %}
                     {% original_image image as orig_src %}
-                    <div class="thumbnail-item {% if forloop.first %}active{% endif %}" onclick="switchImage(this, '{{ image.url }}', '{{ orig_src }}')" data-original="{{ orig_src }}">
+                    <div class="thumbnail-item {% if forloop.first %}active{% endif %}" onclick="switchImage(this, '{{ image.url }}', '{{ orig_src }}')" data-image="{{ image.url }}" data-original="{{ orig_src }}">
                         <img src="{{ thumb_src|default:image.url }}" alt="Thumbnail {{ forloop.counter }}" loading="lazy">
                     </div>
                     {% endfor %}
@@ -1178,8 +1178,13 @@ document.addEventListener('htmx:afterRequest', function(e) {
 </script>
 <script>
 function switchImage(thumb, imageUrl, originalUrl) {
-    document.getElementById('mainImage').src = imageUrl;
-    document.querySelectorAll('.thumbnail-item').forEach(t => t.classList.remove('active'));
+    var mainImg = document.getElementById('mainImage');
+    if (!mainImg) return;
+    mainImg.src = imageUrl;
+    var thumbs = document.querySelectorAll('.thumbnail-item');
+    for (var i = 0; i < thumbs.length; i++) {
+        thumbs[i].classList.remove('active');
+    }
     thumb.classList.add('active');
     // Update full-res link if it exists
     var fullResLink = document.getElementById('fullResLink');
@@ -1190,6 +1195,19 @@ function switchImage(thumb, imageUrl, originalUrl) {
         fullResLink.style.display = 'none';
     }
 }
+
+// Attach thumbnail click handlers via JS (backup for inline onclick)
+(function() {
+    var thumbs = document.querySelectorAll('.thumbnail-item[data-image]');
+    for (var i = 0; i < thumbs.length; i++) {
+        thumbs[i].addEventListener('click', function(e) {
+            e.stopPropagation();
+            var imageUrl = this.getAttribute('data-image');
+            var originalUrl = this.getAttribute('data-original');
+            switchImage(this, imageUrl, originalUrl || imageUrl);
+        });
+    }
+})();
 
 // Multi-quantity Buy Now
 (function() {
